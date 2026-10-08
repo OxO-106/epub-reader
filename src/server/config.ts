@@ -12,8 +12,10 @@ export interface Config {
   libraryRescanMs: number;
   /** Built front end (Vite output). Served when it exists. */
   webDir: string;
-  /** Interface to listen on. Localhost only unless explicitly changed. */
+  /** Base address to listen on. Localhost only unless explicitly changed (READER_HOST). */
   host: string;
+  /** Also listen on this PC's Tailscale address (READER_TAILSCALE=1). Off by default. */
+  tailscale: boolean;
   /** Port to listen on. 0 picks a free port. */
   port: number;
 }
@@ -37,6 +39,7 @@ export function resolveConfig(
     libraryRescanMs: overrides.libraryRescanMs ?? 60_000,
     webDir: resolve(overrides.webDir ?? env.READER_WEB_DIR ?? resolve(repoRoot, "dist/web")),
     host: overrides.host ?? env.READER_HOST ?? "127.0.0.1",
+    tailscale: overrides.tailscale ?? ["1", "true"].includes(env.READER_TAILSCALE?.toLowerCase() ?? ""),
     port: overrides.port ?? Number(env.READER_PORT ?? 5174),
   };
 }
