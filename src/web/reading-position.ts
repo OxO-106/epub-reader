@@ -28,14 +28,23 @@ export function trackReadingPosition(
   let timer: ReturnType<typeof setTimeout> | undefined;
   let lastSent = restored;
 
+  let stopped = false;
+
   const send = () => {
     clearTimeout(timer);
     timer = undefined;
     if (!waiting) return;
-    const { position, fraction } = waiting;
+    const sent = waiting;
+    const before = lastSent;
     waiting = null;
-    lastSent = position;
-    saveReadingPosition(bookId, { position, fraction }, { keepalive: true });
+    lastSent = sent.position;
+    saveReadingPosition(bookId, { position: sent.position, fraction: sent.fraction }, { keepalive: true }).then((saved) => {
+      // The server could not be reached: keep this position (unless a newer one is waiting) and try again shortly.
+      if (saved || stopped) return;
+      lastSent = before;
+      waiting ??= sent;
+      timer ??= setTimeout(send, saveDelayMs);
+    });
   };
 
   const stopListening = reader.onLocation((location) => {
@@ -54,5 +63,6 @@ export function trackReadingPosition(
     removeEventListener("pagehide", send);
     document.removeEventListener("visibilitychange", onHidden);
     send();
+    stopped = true;
   };
 }

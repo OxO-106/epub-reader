@@ -1,4 +1,14 @@
 /** Typed client for the server's HTTP API. */
+import { apiFetch } from "./connection.ts";
+
+/** The server answered, but with an error. (A server that cannot be reached throws the fetch error instead.) */
+export class HttpError extends Error {
+  status: number;
+  constructor(status: number) {
+    super(`Server answered ${status}`);
+    this.status = status;
+  }
+}
 
 export interface BookSummary {
   id: string;
@@ -19,36 +29,37 @@ export interface SavedReadingPosition {
 }
 
 export async function getReadingPosition(bookId: string): Promise<SavedReadingPosition> {
-  const response = await fetch(`/api/books/${bookId}/position`);
-  if (!response.ok) throw new Error(`Server answered ${response.status}`);
+  const response = await apiFetch(`/api/books/${bookId}/position`);
+  if (!response.ok) throw new HttpError(response.status);
   return (await response.json()) as SavedReadingPosition;
 }
 
 /**
  * Saves a Reading position; the latest save wins. With `keepalive` the request is allowed to finish after the
- * page closes. Never throws: a position that could not be saved is simply replaced by the next one.
+ * page closes. Never throws; resolves false when the server could not be reached, so the caller can try again.
  */
 export async function saveReadingPosition(
   bookId: string,
   body: { position: string; fraction: number },
   options: { keepalive?: boolean } = {},
-): Promise<void> {
+): Promise<boolean> {
   try {
-    await fetch(`/api/books/${bookId}/position`, {
+    await apiFetch(`/api/books/${bookId}/position`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
       keepalive: options.keepalive,
     });
+    return true;
   } catch {
-    // Offline or the server is down: nothing to do, the next page turn tries again.
+    return false;
   }
 }
 
 /** The Library, or only the Books whose title or author match `query`. */
 export async function listBooks(query = ""): Promise<BookSummary[]> {
-  const response = await fetch(query.trim() ? `/api/books?q=${encodeURIComponent(query)}` : "/api/books");
-  if (!response.ok) throw new Error(`Server answered ${response.status}`);
+  const response = await apiFetch(query.trim() ? `/api/books?q=${encodeURIComponent(query)}` : "/api/books");
+  if (!response.ok) throw new HttpError(response.status);
   const body = (await response.json()) as { books: BookSummary[] };
   return body.books;
 }
@@ -56,7 +67,7 @@ export async function listBooks(query = ""): Promise<BookSummary[]> {
 /** Deletes the app's copy of a Book. Resolves true when it is gone (including when it already was). */
 export async function deleteBook(book: BookSummary): Promise<boolean> {
   try {
-    const response = await fetch(`/api/books/${book.id}`, { method: "DELETE" });
+    const response = await apiFetch(`/api/books/${book.id}`, { method: "DELETE" });
     return response.ok || response.status === 404;
   } catch {
     return false;
@@ -67,8 +78,8 @@ export const coverUrl =(book: BookSummary) => `/api/books/${book.id}/cover`;
 
 /** Downloads a Book's file. */
 export async function getBookFile(id: string): Promise<Blob> {
-  const response = await fetch(`/api/books/${id}/file`);
-  if (!response.ok) throw new Error(`Server answered ${response.status}`);
+  const response = await apiFetch(`/api/books/${id}/file`);
+  if (!response.ok) throw new HttpError(response.status);
   return response.blob();
 }
 
@@ -86,7 +97,7 @@ export interface ImportOutcome {
 export async function importFile(file: File): Promise<ImportOutcome> {
   const fileName = file.name;
   try {
-    const response = await fetch(`/api/books?name=${encodeURIComponent(fileName)}`, { method: "POST", body: file });
+    const response = await apiFetch(`/api/books?name=${encodeURIComponent(fileName)}`, { method: "POST", body: file });
     const body = (await response.json()) as { status?: string; error?: string; book?: BookSummary };
     if (response.ok && body.status === "added") {
       return { fileName, status: "added", message: `Added "${body.book?.title ?? fileName}".` };
@@ -107,8 +118,8 @@ export interface LibraryFolderFailure {
 }
 
 export async function listLibraryFolderFailures(): Promise<LibraryFolderFailure[]> {
-  const response = await fetch("/api/library-folder");
-  if (!response.ok) throw new Error(`Server answered ${response.status}`);
+  const response = await apiFetch("/api/library-folder");
+  if (!response.ok) throw new HttpError(response.status);
   const body = (await response.json()) as { failures: LibraryFolderFailure[] };
   return body.failures;
 }

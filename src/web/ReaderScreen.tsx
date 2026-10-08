@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { getBookFile, getReadingPosition } from "./api.ts";
+import { getBookFile, getReadingPosition, HttpError } from "./api.ts";
+import { checkConnection, heartbeatMs } from "./connection.ts";
+import { ConnectionNotice } from "./ConnectionNotice.tsx";
 import { createReader, type Reader, type TocEntry } from "./reader/reader.ts";
 import { ReadingProgress } from "./ReadingProgress.tsx";
 import { trackReadingPosition } from "./reading-position.ts";
@@ -17,6 +19,8 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const [chapterId, setChapterId] = useState<number | null>(null);
   const [fraction, setFraction] = useState<number | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  // Bumped to open the Book again after the server could not be reached.
+  const [attempt, setAttempt] = useState(0);
   // The contents and the search panel share one place beside (or over) the text, so only one is open at a time.
   useEffect(() => {
     if (tocOpen) setSearchOpen(false);
@@ -26,6 +30,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     const instance = createReader(viewport.current!);
     reader.current = instance;
     setState({ kind: "loading" });
@@ -51,21 +56,27 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
           },
         );
       },
-      () => {
-        if (!cancelled) {
-          setState({ kind: "error", message: "Cannot reach the server, or the Book is no longer in the Library." });
+      (error) => {
+        if (cancelled) return;
+        if (error instanceof HttpError) {
+          setState({ kind: "error", message: "This Book is no longer in the Library." });
+          return;
         }
+        // The server could not be reached (the notice says so): keep trying until it is back.
+        checkConnection();
+        retryTimer = setTimeout(() => setAttempt((n) => n + 1), heartbeatMs);
       },
     );
 
     return () => {
       cancelled = true;
+      clearTimeout(retryTimer);
       stopTracking();
       stopListening();
       instance.close();
       reader.current = null;
     };
-  }, [bookId]);
+  }, [bookId, attempt]);
 
   const toc = state.kind === "ready" ? state.toc : [];
 
@@ -98,6 +109,8 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         </button>
         <h1 class="reader-title">{state.kind === "ready" ? state.title : ""}</h1>
       </header>
+
+      <ConnectionNotice />
 
       <div class="reader-body">
         {tocOpen && (

@@ -394,3 +394,28 @@ button {
   font-variant-numeric: tabular-nums;
   opacity: 0.75;
 }
+
+/* "Cannot reach the server": the same notice on top of the Library and between the Reader's bars. */
+.connection-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 1rem;
+  box-sizing: border-box;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.connection-notice p {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.reader-screen > .connection-notice {
+  flex: none;
+  margin: 0;
+  border-width: 1px 0;
+  border-radius: 0;
+}

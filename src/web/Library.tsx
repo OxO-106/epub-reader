@@ -1,12 +1,21 @@
 import { useEffect, useRef, useState } from "preact/hooks";
+import { ConnectionNotice } from "./ConnectionNotice.tsx";
 import { DeleteBook } from "./DeleteBook.tsx";
 import { LibraryFolderProblems } from "./LibraryFolderProblems.tsx";
 import { formatProgress } from "./reading-position.ts";
-import { coverUrl, importFile, importableExtensions, listBooks, type BookSummary, type ImportOutcome } from "./api.ts";
+import {
+  coverUrl,
+  HttpError,
+  importFile,
+  importableExtensions,
+  listBooks,
+  type BookSummary,
+  type ImportOutcome,
+} from "./api.ts";
 
 type State =
   | { kind: "loading" }
-  | { kind: "error" }
+  | { kind: "error"; serverAnswered: boolean }
   | { kind: "ready"; books: BookSummary[] };
 
 export function Library() {
@@ -25,7 +34,12 @@ export function Library() {
     const request = ++latestRequest.current;
     return listBooks(currentQuery.current).then(
       (books) => request === latestRequest.current && setState({ kind: "ready", books }),
-      () => request === latestRequest.current && setState({ kind: "error" }),
+      (error) => {
+        if (request !== latestRequest.current) return;
+        const serverAnswered = error instanceof HttpError;
+        // A server that has gone away does not empty the Library on screen; the notice says why it is not updating.
+        setState((previous) => (previous.kind === "ready" && !serverAnswered ? previous : { kind: "error", serverAnswered }));
+      },
     );
   }
 
@@ -76,6 +90,7 @@ export function Library() {
       onDrop={onDrop}
     >
       <h1>Library</h1>
+      <ConnectionNotice />
 
       <section class={`dropzone${dragging ? " dragging" : ""}`} data-testid="dropzone">
         <p>Drag EPUB files here to add them to your Library.</p>
@@ -110,9 +125,9 @@ export function Library() {
 
       <LibraryFolderProblems />
 
-      {state.kind === "error" && (
+      {state.kind === "error" && state.serverAnswered && (
         <p role="alert" class="notice">
-          Cannot reach the server. Check that Reader is still running, then reload this page.
+          The server could not list your Library. Reload this page to try again.
         </p>
       )}
       <input
