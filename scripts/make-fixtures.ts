@@ -210,3 +210,43 @@ writeFileSync(
 );
 
 writeFileSync(join(out, "sample.txt"), "Sample text\n\nA short plain-text file.\nIt has two paragraphs.\n");
+
+// Three chapters of 60 numbered paragraphs each, so a window shows several pages per chapter. Used to test turning
+// pages: every paragraph says which chapter and paragraph it is, so a test can tell what is on screen.
+{
+  const paragraphs = (n: number) =>
+    Array.from(
+      { length: 60 },
+      (_, i) => `<p>Chapter ${n}, paragraph ${i + 1}. The lamp burned low while the long story went on and on through the night.</p>`,
+    ).join("");
+  writeFileSync(
+    join(out, "long.epub"),
+    epub({
+      metadata: `${id(6)}<dc:title>Long Book</dc:title><dc:creator>Test Author</dc:creator><dc:language>en</dc:language>${modified}`,
+      chapters: [1, 2, 3].map((n) => ({ title: `Chapter ${n}`, body: paragraphs(n) })),
+    }),
+  );
+}
+
+// Two long chapters of numbered paragraphs ("C1 P037 ..."), so a test can tell exactly which paragraph is on screen.
+{
+  const paragraph = (c: number, p: number) =>
+    `<p>C${c} P${String(p).padStart(3, "0")} The reader walked on through the long afternoon, noting the lamps, the rain on the stones and the slow turning of the street.</p>`;
+  // The Book styles itself black on white, as many real ones do; display themes must override that.
+  const longChapter = (c: number) =>
+    chapter(c, "")
+      .replace("<p></p>", Array.from({ length: 120 }, (_, i) => paragraph(c, i + 1)).join(""))
+      .replace("</head>", '<link rel="stylesheet" type="text/css" href="style.css"/></head>');
+  writeFileSync(
+    join(out, "long-styled.epub"),
+    epub({
+      metadata: `${id(7)}<dc:title>Long Styled Book</dc:title><dc:creator>Test Author</dc:creator><dc:language>en</dc:language>${modified}`,
+      manifest: '<item id="css" href="style.css" media-type="text/css"/>',
+      files: {
+        "OEBPS/c1.xhtml": strToU8(longChapter(1)),
+        "OEBPS/c2.xhtml": strToU8(longChapter(2)),
+        "OEBPS/style.css": strToU8("body { background: #fff; color: #000; }\np { color: #222; background: #fafafa; }\na { color: #00f; }\n"),
+      },
+    }),
+  );
+}

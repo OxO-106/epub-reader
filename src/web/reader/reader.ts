@@ -7,11 +7,14 @@
  *
  * Planned additions, each a method or a `BookSource` kind rather than a change to existing ones:
  * saving and restoring the Reading position (`onLocation` + `open`'s `position`, ticket 04),
- * display settings (`setDisplay`, ticket 05), keyboard and edge page turning (06), in-book search (07),
+ * display settings (`setDisplay`, ticket 05), in-book search (07),
  * and Markdown and plain-text Books, which arrive as a `BookSource` of kind "custom" holding a
  * foliate-js book object built by an adapter and are passed to the same view (08, 09).
  */
 import type { FoliateBook, RelocateDetail, TocItem, View } from "../vendor/foliate-js/view.js";
+import { marginSizes, type DisplaySettings } from "../display-settings.ts";
+import { bookStyles } from "./book-styles.ts";
+import { clickMayTurnPage, createTurnQueue, directionForKey, edgeAt, keyMayTurnPage, type Direction } from "./page-turn.ts";
 import { sha1 } from "./sha1.ts";
 
 export type BookSource =
@@ -72,8 +75,20 @@ export interface Reader {
   open(source: BookSource, options?: { position?: string }): Promise<OpenedBook>;
   /** Moves to a `TocEntry.target` or a position (CFI). */
   goTo(target: string): Promise<void>;
+  /**
+   * Turns a page, crossing into the next or previous chapter at the end or start of one. Safe to call repeatedly
+   * and quickly: turns are made one after another, and `goTo` drops turns that have not started. Resolves when
+   * every turn asked for so far is done. The page-turn keys and clicks on the page edges call these too.
+   */
   next(): Promise<void>;
   prev(): Promise<void>;
+  /** Moves keyboard focus to the Book, so the page-turn keys work after a click elsewhere. */
+  focus(): void;
+  /**
+   * Applies display settings (font, size, spacing, margins, theme, scrolling or paginated) to the open Book and
+   * to every Book opened after. The reader stays at the same place in the Book; a Reading position is never involved.
+   */
+  setDisplay(settings: DisplaySettings): void;
   /**
    * Searches the open Book for `query` (case-insensitive; Chinese works) and yields results chapter by chapter, since
    * a whole-Book search is slow. Every match is outlined on its page until `clearSearch`. Starting a search
@@ -95,13 +110,62 @@ export interface Reader {
 export function createReader(container: HTMLElement): Reader {
   let view: View | null = null;
   const listeners = new Set<(location: ReaderLocation) => void>();
+  let display: DisplaySettings | null = null;
+
+  const applyDisplay = () => {
+    const renderer = view?.renderer;
+    if (!renderer || !display) return;
+    const margins = marginSizes[display.margins];
+    renderer.setAttribute("flow", display.flow);
+    renderer.setAttribute("gap", `${margins.gap}%`);
+    renderer.setAttribute("max-inline-size", `${margins.maxLine}px`);
+    renderer.setStyles?.(bookStyles(display));
+    renderer.render?.();
+  };
+
   /** Incremented to cancel whatever search is running. */
   let searchRun = 0;
+
+  let rtl = false;
+  let stopInput: (() => void) | null = null;
+  let opened: Promise<void> = Promise.resolve(); // settles when the current Book has finished opening
+  const turns = createTurnQueue(async (direction) => {
+    await opened; // a key pressed while the Book is still opening waits for it instead of being lost
+    if (view) await (direction === "next" ? view.next() : view.prev());
+  });
 
   const requireView = () => {
     if (!view) throw new Error("No Book is open.");
     return view;
   };
+  const turn = (direction: "next" | "prev") => {
+    requireView();
+    return turns.request(direction);
+  };
+  /** "left" and "right" follow the page direction of the Book; the other directions mean the same everywhere. */
+  const turnToward = (direction: Direction) => {
+    const forward = direction === "forward" || (direction === "right") !== rtl;
+    turn(forward ? "next" : "prev").catch(() => {});
+  };
+  const scrolled = () => view?.renderer.scrolled === true;
+
+  /** Keys pressed on the page itself (inside the Book's frame) or anywhere in the app outside a field or panel. */
+  function onKeyDown(event: KeyboardEvent) {
+    if (event.defaultPrevented || !view) return;
+    const direction = directionForKey(event);
+    if (!direction || !keyMayTurnPage(event.target, event.key)) return;
+    event.preventDefault(); // otherwise Space and the arrows would also scroll the page
+    turnToward(direction);
+  }
+
+  /** `x` is in page coordinates. Clicks on the edges turn pages in paginated mode only. */
+  function onClick(event: MouseEvent, x: number, doc: Document | null) {
+    if (event.defaultPrevented || event.button !== 0 || !view || scrolled()) return;
+    if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
+    if (!clickMayTurnPage(event.target, doc?.getSelection())) return;
+    const edge = edgeAt(x, container.getBoundingClientRect());
+    if (edge) turnToward(edge);
+  }
 
   return {
     async open(source, options = {}) {
@@ -123,11 +187,41 @@ export function createReader(container: HTMLElement): Reader {
         for (const listener of listeners) listener(location);
       });
 
-      await next.open(book);
-      await next.init({ lastLocation: options.position ?? null, showTextStart: false });
+      rtl = book.dir === "rtl";
+      // Key and click events inside the Book's iframes do not reach this page, so listen inside each one too.
+      next.addEventListener("load", (event) => {
+        const { doc } = (event as CustomEvent<{ doc: Document }>).detail;
+        const frameLeft = () => doc.defaultView?.frameElement?.getBoundingClientRect().left ?? 0;
+        doc.addEventListener("keydown", onKeyDown);
+        doc.addEventListener("click", (click) => onClick(click, frameLeft() + click.clientX, doc));
+      });
+      const keyTarget = container.ownerDocument;
+      const onMarginClick = (click: MouseEvent) => onClick(click, click.clientX, null); // outside the frames
+      keyTarget.addEventListener("keydown", onKeyDown);
+      container.addEventListener("click", onMarginClick);
+      container.tabIndex = -1;
+      container.style.outline = "none";
+      stopInput = () => {
+        keyTarget.removeEventListener("keydown", onKeyDown);
+        container.removeEventListener("click", onMarginClick);
+        container.removeAttribute("tabindex");
+        container.style.outline = "";
+      };
+
+      const opening = next.open(book).then(() => {
+        applyDisplay();
+        return next.init({ lastLocation: options.position ?? null, showTextStart: false });
+      });
+      opened = opening.then(
+        () => {},
+        () => {},
+      );
+      await opening;
       return { title: titleOf(book), toc: flattenToc(book.toc ?? []) };
     },
     async goTo(target) {
+      requireView();
+      await turns.cancel(); // the page view ignores a jump while a turn is settling
       await requireView().goTo(target);
     },
     async *search(query) {
@@ -161,14 +255,26 @@ export function createReader(container: HTMLElement): Reader {
       searchRun++;
       view?.clearSearch();
     },
-    goToMatch: (match) => requireView().goTo(match.target).then(() => undefined),
-    next: () => requireView().next(),
-    prev: () => requireView().prev(),
+    async goToMatch(match) {
+      await this.goTo(match.target);
+    },
+    next: () => turn("next"),
+    prev: () => turn("prev"),
+    focus() {
+      container.focus({ preventScroll: true });
+    },
+    setDisplay(settings) {
+      display = settings;
+      applyDisplay();
+    },
     onLocation(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
     close() {
+      void turns.cancel();
+      stopInput?.();
+      stopInput = null;
       searchRun++;
       view?.close();
       view?.remove();

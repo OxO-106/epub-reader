@@ -22,6 +22,15 @@ export interface RelocateDetail {
   tocItem?: TocItem | null;
 }
 
+/** The page renderer inside a View (the paginator, or the fixed-layout renderer, which has no `setStyles`). */
+export interface Renderer extends HTMLElement {
+  /** CSS added to every page: one string, or `[before the Book's own styles, after them]`. */
+  setStyles?(css: string | [string, string]): void;
+  render?(): void;
+  /** Set on a paginated or scrolled Book's page view; a fixed-layout Book's has no `scrolled`. */
+  scrolled?: boolean;
+}
+
 /** What `View.search` yields: progress ticks, then per-section results, then "done". */
 export type SearchResult =
   | "done"
@@ -29,6 +38,8 @@ export type SearchResult =
   | { label: string; subitems: { cfi: string; excerpt: { pre: string; match: string; post: string } }[] };
 
 export class View extends HTMLElement {
+  /** Set once a Book is open. */
+  renderer: Renderer;
   /** Searches the whole Book section by section. Draws an outline over each match until `clearSearch`. */
   search(options: { query: string }): AsyncGenerator<SearchResult>;
   clearSearch(): void;

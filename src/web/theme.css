@@ -1,0 +1,169 @@
+/*
+ * Themes (light, dark, sepia) for the whole app: the Library, the Reader screen and its table of contents.
+ * The Reader module colours the Book's own pages with the same palette (display-settings.ts), so keep the
+ * colours of each theme in step with `themes` there. `data-theme` on <html> is set before the first paint.
+ */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --fg: #1b1b1b;
+  --surface: #f1f2f4;
+  --border: #b9bcc3;
+  --link: #1a56b0;
+  --danger: #b3261e;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #16181d;
+  --fg: #dcdde1;
+  --surface: #262a32;
+  --border: #5a606c;
+  --link: #8ab4f8;
+  --danger: #ff8f85;
+}
+
+:root[data-theme="sepia"] {
+  color-scheme: light;
+  --bg: #f4ecd8;
+  --fg: #43331f;
+  --surface: #e8dcbf;
+  --border: #a8946a;
+  --link: #7a3e00;
+  --danger: #9c2a1b;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+a {
+  color: var(--link);
+}
+
+button,
+.button,
+select,
+input[type="search"],
+input[type="text"] {
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+}
+
+.toc-item {
+  background: none;
+  border: 0;
+}
+
+.toc-item[aria-current="location"] {
+  background: color-mix(in srgb, var(--fg) 16%, transparent);
+}
+
+.book-search-match[aria-current="location"] {
+  background: color-mix(in srgb, var(--fg) 16%, transparent);
+}
+
+.toc,
+.book-search,
+.display-settings,
+dialog {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.confirm .error,
+.outcomes .failed {
+  color: var(--danger);
+}
+
+.outcomes .failed {
+  border-left-color: var(--danger);
+}
+
+.confirm .danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--bg);
+}
+
+/* Four buttons and a title do not fit one row on a phone, so the bar wraps instead of squeezing the title away. */
+.reader-bar {
+  flex-wrap: wrap;
+}
+
+.reader-title {
+  flex: 1 1 6rem;
+  min-width: 6rem;
+}
+
+/* The display settings float over the text, so the text does not reflow when they open. */
+.display-settings {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  z-index: 2;
+  box-sizing: border-box;
+  width: min(22rem, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0 0 0 0.5rem;
+  box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 0.25);
+}
+
+.display-settings .setting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.display-settings select,
+.display-settings input[type="range"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.75rem;
+  font: inherit;
+}
+
+.display-settings .choices {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.display-settings .choices legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-bottom: 0.35rem;
+}
+
+.display-settings .choices label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+}
+
+/* A range control: its name and current value share the first row, the slider fills the second. */
+.display-settings div.setting {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.display-settings div.setting input {
+  grid-column: 1 / -1;
+}
