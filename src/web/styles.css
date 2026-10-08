@@ -7,16 +7,6 @@ body {
   margin: 0;
 }
 
-/* Fluid layout: no fixed widths, so it holds down to a narrow window and later a phone. */
-.page {
-  box-sizing: border-box;
-  /* Tall enough that a file dropped anywhere on the window lands on the page. */
-  min-height: 100vh;
-  max-width: 64rem;
-  margin: 0 auto;
-  padding: 1.5rem 1rem;
-}
-
 button {
   font: inherit;
   padding: 0.5rem 1rem;
@@ -37,109 +27,6 @@ button {
   opacity: 1;
 }
 
-.dropzone {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem 1rem;
-  margin: 0 0 1rem;
-  padding: 1rem;
-  border: 2px dashed currentColor;
-  border-radius: 0.75rem;
-  opacity: 0.75;
-}
-
-.dropzone p {
-  margin: 0;
-}
-
-.dropzone.dragging {
-  opacity: 1;
-  background: color-mix(in srgb, currentColor 10%, transparent);
-}
-
-.progress {
-  margin: 0 0 0.5rem;
-}
-
-.outcomes {
-  margin: 0 0 1rem;
-  padding: 0;
-  list-style: none;
-}
-
-.outcomes li {
-  padding: 0.35rem 0.75rem;
-  border-left: 4px solid currentColor;
-  margin-bottom: 0.25rem;
-  overflow-wrap: anywhere;
-}
-
-.outcomes .failed {
-  border-left-color: #c0392b;
-}
-
-.outcomes .added {
-  border-left-color: #2e8b57;
-}
-
-.books {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
-  gap: 1.25rem 1rem;
-}
-
-.book {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  min-width: 0;
-}
-
-.cover {
-  display: block;
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  object-fit: cover;
-  border-radius: 0.25rem;
-  background: color-mix(in srgb, currentColor 12%, transparent);
-}
-
-.cover.placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.5rem;
-  opacity: 0.6;
-}
-
-.title {
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.author {
-  font-size: 0.9em;
-  opacity: 0.75;
-  overflow-wrap: anywhere;
-}
-
-.book-link {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  color: inherit;
-  text-decoration: none;
-  min-width: 0;
-}
-
-.book-link:hover .title,
-.book-link:focus-visible .title {
-  text-decoration: underline;
 }
 
 .button {
@@ -154,69 +41,14 @@ button {
   text-decoration: none;
 }
 
-.search {
-  box-sizing: border-box;
-  display: block;
-  width: 100%;
-  min-height: 2.75rem;
-  margin: 0 0 1rem;
   padding: 0.5rem 0.75rem;
   font: inherit;
-}
-
-/* Always visible (never hover-only) and kept to the bottom of its card. */
-.delete-book {
-  margin-top: auto;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.9em;
-}
-
-.confirm {
-  box-sizing: border-box;
-  width: min(28rem, calc(100% - 2rem));
-  padding: 1rem 1.25rem;
-  border: 1px solid currentColor;
-  border-radius: 0.75rem;
-}
-
-.confirm h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1.15rem;
-  overflow-wrap: anywhere;
-}
-
-.confirm .error {
-  color: #c0392b;
-}
-
-.confirm .actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-.confirm .danger {
-  background: #c0392b;
-  border: 1px solid #c0392b;
-  color: white;
-}
-
-.folder-problems h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1rem;
 }
 
 /* How far through the Book: in the Reader's top bar and under each Book in the Library. */
 .reading-fraction {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  opacity: 0.75;
-}
-
-.book .fraction-label {
-  font-size: 0.85rem;
-  font-variant-numeric: tabular-nums;
   opacity: 0.75;
 }
 

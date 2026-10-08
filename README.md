@@ -32,7 +32,7 @@ Both folders are created on first start, relative to the folder you start the se
 | `READER_DATA_DIR`    | `./data`    | The SQLite database and the stored Book files. Back this folder up.        |
 | `READER_LIBRARY_DIR` | `./library` | Watched folder: a file copied in here is added to the Library.             |
 
-Books can also be dragged onto the Library page or picked with its Choose files button. Deleting a Book removes only the app's copy, never your original file.
+Books can also be dragged onto the Library page or picked with its Choose files button. Deleting a Book removes only the app's copy, never your original file. The Library offers the Book you read last under Continue reading, and sorts by recently read, title or author (Chinese by pinyin); the sort is remembered per browser. A Book without a cover gets a generated one, and Markdown and text files are drawn as documents.
 
 ### The library folder is the source of truth
 
