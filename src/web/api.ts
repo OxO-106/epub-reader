@@ -8,6 +8,41 @@ export interface BookSummary {
   hasCover: boolean;
   addedAt: number;
   lastReadAt: number | null;
+  /** How far through the Book the Reading position is, 0 to 1; null when the Book was never opened. */
+  progress: number | null;
+}
+
+/** The saved Reading position of a Book: a CFI, and how far through the Book it is. Both null when never opened. */
+export interface SavedReadingPosition {
+  position: string | null;
+  fraction: number | null;
+}
+
+export async function getReadingPosition(bookId: string): Promise<SavedReadingPosition> {
+  const response = await fetch(`/api/books/${bookId}/position`);
+  if (!response.ok) throw new Error(`Server answered ${response.status}`);
+  return (await response.json()) as SavedReadingPosition;
+}
+
+/**
+ * Saves a Reading position; the latest save wins. With `keepalive` the request is allowed to finish after the
+ * page closes. Never throws: a position that could not be saved is simply replaced by the next one.
+ */
+export async function saveReadingPosition(
+  bookId: string,
+  body: { position: string; fraction: number },
+  options: { keepalive?: boolean } = {},
+): Promise<void> {
+  try {
+    await fetch(`/api/books/${bookId}/position`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      keepalive: options.keepalive,
+    });
+  } catch {
+    // Offline or the server is down: nothing to do, the next page turn tries again.
+  }
 }
 
 /** The Library, or only the Books whose title or author match `query`. */

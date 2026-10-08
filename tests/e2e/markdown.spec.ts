@@ -1,9 +1,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readFile } from "node:fs/promises";
 import type { Frame, Page } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
-import { loadReaderHarness } from "./reader-harness.ts";
 
 const fixture = (name: string) => join(dirname(fileURLToPath(import.meta.url)), "../fixtures", name);
 
@@ -184,58 +182,67 @@ test.describe("a Markdown Book", () => {
     await expect.poll(() => bookText(page)).toContain("贾夫人仙逝扬州城");
   });
 
-  test("reopens at exactly the Reading position it was left at", async ({ page }) => {
-    await loadReaderHarness(page);
-    const source = await readFile(fixture("notes.md"), "utf8");
+  test("reopens at exactly the Reading position it was left at, here and in another browser profile", async ({ page, browser, server }) => {
+    await importAndOpen(page, "notes.md", "Field Notes");
+    const bookId = new URL(page.url()).hash.split("/").pop()!;
+    const progress = (p: Page) => p.locator(".reading-progress");
+    /** The position the server holds, a CFI. The Reader saves it by itself a moment after the page changes. */
+    const serverPosition = async () =>
+      ((await (await page.request.get(`${server.url}/api/books/${bookId}/position`)).json()) as { position: string | null }).position;
+    /** Long enough for the Reader to save a position that differs from the one it opened at. */
+    const settle = () => page.waitForTimeout(2500);
 
-    // Reads the Book through the Reader module itself: open at a position, collect where the reader is.
-    const open = (position: string | null) =>
-      page.evaluate(
-        async ({ source, position }) => {
-          type Harness = { createReader: (el: HTMLElement) => any; renderMarkdown: (text: string, title: string) => unknown };
-          const harness = (window as unknown as { readerHarness: Harness }).readerHarness;
-          const w = window as unknown as { box?: HTMLElement; reader?: any; locations: Array<{ position: string }>; toc: Array<{ label: string; target: string }> };
-          w.reader?.close();
-          w.box?.remove();
-          w.box = document.createElement("div");
-          w.box.style.cssText = "position:fixed;inset:0;background:white";
-          document.body.append(w.box);
-          w.locations = [];
-          w.reader = harness.createReader(w.box);
-          w.reader.onLocation((location: { position: string }) => w.locations.push(location));
-          const opened = await w.reader.open({ kind: "custom", book: harness.renderMarkdown(source, "Field Notes") }, position ? { position } : {});
-          w.toc = opened.toc;
-        },
-        { source, position },
-      );
-    const lastPosition = () =>
-      page.evaluate(() => (window as unknown as { locations: Array<{ position: string }> }).locations.at(-1)?.position ?? null);
-
-    await open(null);
-    await expect.poll(lastPosition).not.toBeNull();
-    const start = await lastPosition();
-
-    // Into the middle of the long section, a page at a time.
-    await page.evaluate(async () => {
-      const w = window as unknown as { reader: any; toc: Array<{ label: string; target: string }> };
-      await w.reader.goTo(w.toc.find((entry) => entry.label === "Long Section")!.target);
-    });
+    // Into the middle of the long section, a page at a time (a turn can be ignored while the last one settles).
+    await expect.poll(() => bookText(page)).toContain("Welcome. Skip to");
+    await page.getByRole("button", { name: "Contents" }).click();
+    await toc(page).getByRole("button", { name: "Long Section" }).click();
+    await page.getByRole("button", { name: "Contents" }).click();
     for (let turn = 0; turn < 2; turn++) {
-      const before = await lastPosition();
-      await page.evaluate(() => (window as unknown as { reader: any }).reader.next());
-      await expect.poll(lastPosition).not.toBe(before);
+      const before = await progress(page).textContent();
+      await expect(async () => {
+        await page.getByRole("button", { name: "Next" }).click();
+        await expect(progress(page)).not.toHaveText(before!, { timeout: 1000 });
+      }).toPass();
     }
-    const saved = (await lastPosition())!;
-    // Section 3 of 4 (Long Section) has the base CFI /6/6, and the position points inside it.
-    expect(saved).toMatch(/^epubcfi\(\/6\/6!\/4[,/]/);
-    expect(saved).not.toBe(start);
-    const textAtSaved = await bookText(page);
-    expect(textAtSaved).toContain("Paragraph");
+    const percentage = (await progress(page).textContent())!;
+    await expect.poll(serverPosition).toMatch(/^epubcfi\(\/6\/6!\/4[,/]/); // inside the third section, "Long Section"
+    await settle();
+    const saved = (await serverPosition())!;
 
-    // Close it, open it again from the saved position.
-    await open(saved);
-    await expect.poll(lastPosition).toBe(saved);
-    expect(await bookText(page)).toBe(textAtSaved);
+    // Nothing was saved by hand. Leave and come back: same percentage, and the position the Reader reports
+    // after opening is the saved one, otherwise it would save a different one in the next moments.
+    await page.getByRole("link", { name: "Library" }).click();
+    await expect(page.locator(".books > li").first()).toContainText(percentage);
+    await page.getByRole("link", { name: /Field Notes/ }).click();
+    await expect(progress(page)).toHaveText(percentage);
+    await expect.poll(() => bookText(page)).toContain("Paragraph 1 of the long section");
+    await settle();
+    expect(await serverPosition()).toBe(saved);
+    await page.close();
+
+    // Another browser profile shares nothing but the server, and lands in the same place.
+    const profile = await browser.newContext({ baseURL: server.url });
+    const other = await profile.newPage();
+    await other.goto("/");
+    await other.getByRole("link", { name: /Field Notes/ }).click();
+    await expect(progress(other)).toHaveText(percentage);
+    await other.waitForTimeout(2500);
+    expect(((await (await other.request.get(`${server.url}/api/books/${bookId}/position`)).json()) as { position: string }).position).toBe(saved);
+    await profile.close();
+  });
+
+  test("can be searched, and choosing a match jumps to it", async ({ page }) => {
+    await importAndOpen(page, "notes.md", "Field Notes");
+    await expect.poll(() => bookText(page)).toContain("Welcome. Skip to");
+
+    await page.getByRole("button", { name: "Search" }).click();
+    const panel = page.getByRole("search", { name: "Search in this Book" });
+    await panel.getByRole("searchbox").fill("Paragraph 150 of");
+    await panel.getByRole("searchbox").press("Enter");
+
+    await expect(panel.getByRole("status")).toContainText("1 match");
+    await panel.getByRole("group", { name: "Long Section" }).getByRole("button").click();
+    await expect((await bookFrame(page)).getByText("Paragraph 150 of the long section")).toBeInViewport();
   });
 
   test("a Markdown Book with no heading is titled by its file name and has no table of contents", async ({ page }) => {

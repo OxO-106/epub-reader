@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { DeleteBook } from "./DeleteBook.tsx";
 import { LibraryFolderProblems } from "./LibraryFolderProblems.tsx";
+import { formatProgress } from "./reading-position.ts";
 import { coverUrl, importFile, importableExtensions, listBooks, type BookSummary, type ImportOutcome } from "./api.ts";
 
 type State =
@@ -142,6 +143,7 @@ export function Library() {
                 )}
                 <span class="title">{book.title}</span>
                 {book.author && <span class="author">{book.author}</span>}
+                {book.progress !== null && <span class="progress-label">{formatProgress(book.progress)} read</span>}
               </a>
               <DeleteBook book={book} onDeleted={refresh} />
             </li>

@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "preact/hooks";
+import { getReadingPosition } from "./api.ts";
 import { loadBookSource } from "./bookSource.ts";
 import { createReader, type Reader, type TocEntry } from "./reader/reader.ts";
+import { ReadingProgress } from "./ReadingProgress.tsx";
+import { trackReadingPosition } from "./reading-position.ts";
+import { SearchPanel } from "./SearchPanel.tsx";
 
 type State =
   | { kind: "loading" }
@@ -12,6 +16,12 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [tocOpen, setTocOpen] = useState(false);
   const [chapterId, setChapterId] = useState<number | null>(null);
+  const [fraction, setFraction] = useState<number | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  // The contents and the search panel share one place beside (or over) the text, so only one is open at a time.
+  useEffect(() => {
+    if (tocOpen) setSearchOpen(false);
+  }, [tocOpen]);
   const viewport = useRef<HTMLDivElement>(null);
   const reader = useRef<Reader | null>(null);
 
@@ -21,18 +31,27 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     reader.current = instance;
     setState({ kind: "loading" });
     setChapterId(null);
-    const stopListening = instance.onLocation((location) => setChapterId(location.chapterId));
+    setFraction(null);
+    let stopTracking = () => {};
+    const stopListening = instance.onLocation((location) => {
+      setChapterId(location.chapterId);
+      setFraction(location.fraction);
+    });
 
-    loadBookSource(bookId).then(
-      (source) =>
-        instance.open(source).then(
+    Promise.all([loadBookSource(bookId), getReadingPosition(bookId)]).then(
+      ([source, saved]) => {
+        if (cancelled) return;
+        if (saved.fraction !== null) setFraction(saved.fraction);
+        stopTracking = trackReadingPosition(bookId, instance, saved.position);
+        return instance.open(source, { position: saved.position ?? undefined }).then(
           ({ title, toc }) => {
             if (!cancelled) setState({ kind: "ready", title, toc });
           },
           () => {
             if (!cancelled) setState({ kind: "error", message: "This Book could not be opened. Its file may be damaged." });
           },
-        ),
+        );
+      },
       () => {
         if (!cancelled) {
           setState({ kind: "error", message: "Cannot reach the server, or the Book is no longer in the Library." });
@@ -42,6 +61,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
 
     return () => {
       cancelled = true;
+      stopTracking();
       stopListening();
       instance.close();
       reader.current = null;
@@ -52,6 +72,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
 
   function openChapter(entry: TocEntry) {
     reader.current?.goTo(entry.target);
+    reader.current?.focus(); // so the page-turn keys work straight after choosing
     // On a narrow window the contents cover the text, so get out of the way once a chapter is chosen.
     if (window.matchMedia("(max-width: 45rem)").matches) setTocOpen(false);
   }
@@ -64,6 +85,18 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         </a>
         <button type="button" aria-expanded={tocOpen} aria-controls="toc" onClick={() => setTocOpen(!tocOpen)}>
           Contents
+        </button>
+        <button
+          type="button"
+          aria-expanded={searchOpen}
+          aria-controls="book-search"
+          disabled={state.kind !== "ready"}
+          onClick={() => {
+            setSearchOpen(!searchOpen);
+            setTocOpen(false);
+          }}
+        >
+          Search
         </button>
         <h1 class="reader-title">{state.kind === "ready" ? state.title : ""}</h1>
       </header>
@@ -91,6 +124,16 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
             )}
           </nav>
         )}
+        {searchOpen && state.kind === "ready" && reader.current && (
+          <SearchPanel
+            reader={reader.current}
+            onClose={() => setSearchOpen(false)}
+            onPicked={() => {
+              // On a narrow window the panel covers the text, so get out of the way once a match is chosen.
+              if (window.matchMedia("(max-width: 45rem)").matches) setSearchOpen(false);
+            }}
+          />
+        )}
         <div class="reader-view" ref={viewport} />
         {state.kind === "loading" && (
           <p role="status" class="reader-message">
@@ -108,6 +151,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         <button type="button" onClick={() => reader.current?.prev()} disabled={state.kind !== "ready"}>
           Previous
         </button>
+        <ReadingProgress fraction={fraction} />
         <button type="button" onClick={() => reader.current?.next()} disabled={state.kind !== "ready"}>
           Next
         </button>

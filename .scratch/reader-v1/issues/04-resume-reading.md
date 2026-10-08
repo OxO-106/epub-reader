@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] Reading position is saved without any manual action and survives closing the tab or browser
-- [ ] Reopening lands on the identical position, including after a server restart and from a second browser profile
-- [ ] Position survives changes to window width (font changes are verified again in ticket 05)
-- [ ] Percentage is shown in the Reader and per Book in the Library
-- [ ] Library order is most recently read first; never-opened Books start at the beginning
-- [ ] API tests cover save and load of a Reading position; a Playwright journey covers close and reopen
+- [x] Reading position is saved without any manual action and survives closing the tab or browser
+- [x] Reopening lands on the identical position, including after a server restart and from a second browser profile
+- [x] Position survives changes to window width (font changes are verified again in ticket 05)
+- [x] Percentage is shown in the Reader and per Book in the Library
+- [x] Library order is most recently read first; never-opened Books start at the beginning
+- [x] API tests cover save and load of a Reading position; a Playwright journey covers close and reopen
