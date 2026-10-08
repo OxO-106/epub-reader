@@ -97,7 +97,6 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
           Search
         </button>
         <h1 class="reader-title">{state.kind === "ready" ? state.title : ""}</h1>
-        <ReadingProgress fraction={fraction} />
       </header>
 
       <div class="reader-body">
@@ -150,6 +149,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         <button type="button" onClick={() => reader.current?.prev()} disabled={state.kind !== "ready"}>
           Previous
         </button>
+        <ReadingProgress fraction={fraction} />
         <button type="button" onClick={() => reader.current?.next()} disabled={state.kind !== "ready"}>
           Next
         </button>
