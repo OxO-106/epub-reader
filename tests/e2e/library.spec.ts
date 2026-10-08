@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.ts";
 
 const fixture = (name: string) => join(dirname(fileURLToPath(import.meta.url)), "../fixtures", name);
 
@@ -20,7 +20,6 @@ test("tells the user when the server cannot be reached", async ({ page }) => {
   await expect(page.getByRole("alert")).toContainText("Cannot reach the server");
 });
 
-// This server and its Library are shared by every test in the run, so this journey comes last.
 test("drag an EPUB onto the page, then pick several more files, and see them in the Library", async ({ page }) => {
   await page.goto("/");
 
