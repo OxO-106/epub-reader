@@ -1,0 +1,3 @@
+# Use Hono for the HTTP server
+
+The server is built on Hono (with `@hono/node-server`) rather than Fastify. The API is small (list, import, delete, stream content, positions) and Hono's routing sits on standard `Request`/`Response` objects, so handlers read plainly and can be exercised with a real `fetch` against a real port, which is how our primary test seam works. Fastify's plugin system and schema validation would be more machinery than this app needs. The cost is that file streaming and multipart upload are a little more hand-rolled on Node (we convert Node streams to web streams), and switching frameworks later means rewriting the route layer, though not the storage or import modules behind it.

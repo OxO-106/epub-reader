@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] One documented command starts the server and serves the front end
-- [ ] The Library page loads and shows an empty state
-- [ ] An API test passes against a real temporary data folder and SQLite file, with no mocks
-- [ ] A Playwright test passes: opens the Library page headlessly
-- [ ] Data folder and library folder locations are configurable, and the server listens on localhost only by default
-- [ ] The test fixtures folder exists with a small EPUB, Markdown and TXT sample
+- [x] One documented command starts the server and serves the front end
+- [x] The Library page loads and shows an empty state
+- [x] An API test passes against a real temporary data folder and SQLite file, with no mocks
+- [x] A Playwright test passes: opens the Library page headlessly
+- [x] Data folder and library folder locations are configurable, and the server listens on localhost only by default
+- [x] The test fixtures folder exists with a small EPUB, Markdown and TXT sample

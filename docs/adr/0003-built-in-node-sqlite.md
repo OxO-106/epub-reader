@@ -1,0 +1,3 @@
+# Use Node's built-in `node:sqlite` for the database
+
+Metadata and Reading positions are stored through `node:sqlite` (`DatabaseSync`), which ships with Node 24, instead of `better-sqlite3`. It needs no native build step or prebuilt binary download, so install works on Windows with nothing but Node, and there is one less dependency to keep compatible with future Node versions. The cost is that the module is still marked experimental in Node 24, so its API could change; we mitigate that by confining it to a single file, `src/server/db.ts`, so a swap to `better-sqlite3` touches nothing else. Schema changes are forward-only migrations tracked in SQLite's `user_version`. This also sets the minimum runtime to Node 24 (`engines` in `package.json`).
