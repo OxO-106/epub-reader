@@ -19,6 +19,13 @@ export async function listBooks(): Promise<BookSummary[]> {
 
 export const coverUrl = (book: BookSummary) => `/api/books/${book.id}/cover`;
 
+/** Downloads a Book's file. */
+export async function getBookFile(id: string): Promise<Blob> {
+  const response = await fetch(`/api/books/${id}/file`);
+  if (!response.ok) throw new Error(`Server answered ${response.status}`);
+  return response.blob();
+}
+
 /** File types the file picker offers. The server decides what it accepts; add formats here as they arrive. */
 export const importableExtensions = [".epub"];
 

@@ -108,15 +108,17 @@ export function Library() {
         <ul class="books">
           {state.books.map((book) => (
             <li key={book.id} class="book">
-              {book.hasCover ? (
-                <img class="cover" src={coverUrl(book)} alt={`Cover of ${book.title}`} loading="lazy" />
-              ) : (
-                <div class="cover placeholder" aria-hidden="true">
-                  {[...book.title][0]}
-                </div>
-              )}
-              <span class="title">{book.title}</span>
-              {book.author && <span class="author">{book.author}</span>}
+              <a class="book-link" href={`#/read/${book.id}`}>
+                {book.hasCover ? (
+                  <img class="cover" src={coverUrl(book)} alt={`Cover of ${book.title}`} loading="lazy" />
+                ) : (
+                  <div class="cover placeholder" aria-hidden="true">
+                    {[...book.title][0]}
+                  </div>
+                )}
+                <span class="title">{book.title}</span>
+                {book.author && <span class="author">{book.author}</span>}
+              </a>
             </li>
           ))}
         </ul>

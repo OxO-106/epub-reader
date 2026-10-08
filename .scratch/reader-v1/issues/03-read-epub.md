@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] Opening a Book from the Library shows its text in the Reader
-- [ ] The table of contents lists chapters, jumps to them, highlights the current one, and can be opened and closed without losing the place
-- [ ] The Reader works through one Reader module that hides foliate-js; no other code imports the library
-- [ ] The Content-Security-Policy is in place and a test EPUB containing a script does not execute it
-- [ ] An EPUB with obfuscated fonts displays on a non-localhost HTTP address
-- [ ] A Playwright journey: import, open, see table of contents, jump to a chapter
+- [x] Opening a Book from the Library shows its text in the Reader
+- [x] The table of contents lists chapters, jumps to them, highlights the current one, and can be opened and closed without losing the place
+- [x] The Reader works through one Reader module that hides foliate-js; no other code imports the library
+- [x] The Content-Security-Policy is in place and a test EPUB containing a script does not execute it
+- [x] An EPUB with obfuscated fonts displays on a non-localhost HTTP address
+- [x] A Playwright journey: import, open, see table of contents, jump to a chapter

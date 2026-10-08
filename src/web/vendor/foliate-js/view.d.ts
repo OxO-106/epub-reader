@@ -1,0 +1,32 @@
+// Types for the parts of view.js that Reader uses. Written for this project, not part of foliate-js.
+
+export interface TocItem {
+  /** Assigned by foliate-js when a Book is opened. */
+  id?: number;
+  label?: string;
+  href?: string;
+  subitems?: TocItem[] | null;
+}
+
+/** foliate-js's "book" interface: what an EPUB, or our own Markdown and text adapter, looks like to the View. */
+export interface FoliateBook {
+  metadata?: { title?: string | Record<string, string>; language?: string | string[] };
+  toc?: TocItem[];
+  sections: unknown[];
+  [key: string]: unknown;
+}
+
+export interface RelocateDetail {
+  cfi: string;
+  fraction?: number;
+  tocItem?: TocItem | null;
+}
+
+export class View extends HTMLElement {
+  open(book: FoliateBook): Promise<void>;
+  init(options: { lastLocation?: string | null; showTextStart?: boolean }): Promise<void>;
+  goTo(target: string | number): Promise<unknown>;
+  next(): Promise<void>;
+  prev(): Promise<void>;
+  close(): void;
+}

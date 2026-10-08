@@ -1,6 +1,7 @@
 // Regenerates tests/fixtures. Output is committed; run `npm run fixtures` only when changing a fixture.
 // Later tickets add a GBK .txt here. The oversized file used by the import tests is created on the fly in the test.
-import { mkdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { crc32, deflateSync } from "node:zlib";
@@ -112,6 +113,60 @@ writeFileSync(
     files: { "OEBPS/cover.png": png(3, 2, [40, 40, 180]) },
   }),
 );
+
+// A hostile EPUB: scripts of every kind try to change the page. Reader must show the text and run none of them.
+const xhtml = (body: string) =>
+  `${xml}<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter 1</title></head><body>${body}</body></html>`;
+writeFileSync(
+  join(out, "script.epub"),
+  epub({
+    metadata: `${id(4)}<dc:title>Script Test</dc:title><dc:creator>Test Author</dc:creator><dc:language>en</dc:language>${modified}`,
+    manifest: '<item id="evil" href="evil.js" media-type="text/javascript"/>',
+    files: {
+      "OEBPS/c1.xhtml": strToU8(
+        xhtml(
+          '<h1>Chapter 1</h1><p id="probe">The script did not run.</p>' +
+            "<script>document.getElementById('probe').textContent='The script ran.'; parent.document.title='pwned'</script>" +
+            '<script src="evil.js"></script>' +
+            `<img src="missing.png" alt="" onerror="document.getElementById('probe').textContent='The script ran.'"/>`,
+        ),
+      ),
+      "OEBPS/evil.js": strToU8("document.getElementById('probe').textContent = 'The script ran.'; parent.document.title = 'pwned';"),
+    },
+  }),
+);
+
+// A font obfuscated the way EPUB 3 specifies (IDPF algorithm: XOR of the first 1040 bytes with the SHA-1 of the
+// book identifier). Chapter 1 sets a paragraph in it; the font only shows if Reader can undo the obfuscation.
+{
+  const identifier = "urn:uuid:00000000-0000-4000-8000-000000000005";
+  const key = createHash("sha1").update(identifier).digest();
+  const font = new Uint8Array(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixture-assets/probe-font.ttf")));
+  for (let i = 0; i < Math.min(1040, font.length); i++) font[i] = font[i]! ^ key[i % key.length]!;
+  writeFileSync(
+    join(out, "obfuscated-font.epub"),
+    epub({
+      metadata: `${id(5)}<dc:title>Obfuscated Font</dc:title><dc:creator>Test Author</dc:creator><dc:language>en</dc:language>${modified}`,
+      manifest:
+        '<item id="css" href="style.css" media-type="text/css"/>' +
+        '<item id="font" href="fonts/probe-font.ttf" media-type="font/ttf"/>',
+      files: {
+        "OEBPS/c1.xhtml": strToU8(
+          `${xml}<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter 1</title><link rel="stylesheet" type="text/css" href="style.css"/></head>` +
+            `<body><h1>Chapter 1</h1><p class="probe">AAAA</p></body></html>`,
+        ),
+        "OEBPS/style.css": strToU8(
+          "@font-face { font-family: 'ProbeFont'; src: url(fonts/probe-font.ttf); }\n.probe { font-family: 'ProbeFont', serif; font-size: 2em; }\n",
+        ),
+        "OEBPS/fonts/probe-font.ttf": font,
+        "META-INF/encryption.xml": strToU8(
+          `${xml}<encryption xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><EncryptedData xmlns="http://www.w3.org/2001/04/xmlenc#">` +
+            `<EncryptionMethod Algorithm="http://www.idpf.org/2008/embedding"/><CipherData><CipherReference URI="OEBPS/fonts/probe-font.ttf"/></CipherData></EncryptedData></encryption>`,
+        ),
+      },
+    }),
+  );
+}
 
 // Looks like an EPUB by name, but is not a ZIP archive at all.
 writeFileSync(join(out, "corrupt.epub"), "This is not really an EPUB file.\n");
