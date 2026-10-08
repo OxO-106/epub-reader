@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { copyFile, mkdir, open, readFile, rm, stat, truncate, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, open, readFile, rm, stat, truncate, utimes, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { startServer } from "../../src/server/server.ts";
@@ -234,5 +234,87 @@ describe("the original files", () => {
     await quietPeriod();
 
     expect(await snapshot()).toEqual(before);
+  });
+});
+
+describe("a Book deleted while its original is still in the library folder", () => {
+  const remove = (s: { url: string }, id: string) => fetch(`${s.url}/api/books/${id}`, { method: "DELETE" });
+  /** Time for several rescans and settle periods, with the timings these tests use. */
+  const severalRescans = () => new Promise((resolve) => setTimeout(resolve, 1200));
+
+  it("stays deleted across rescans while the file is unchanged", async () => {
+    server = await startTestServer({ librarySettleMs: 100, libraryRescanMs: 200 });
+    await copyIn(server, "sample.epub");
+    await vi.waitFor(async () => expect(await books(server!)).toHaveLength(1));
+
+    expect((await remove(server, (await books(server))[0]!.id)).status).toBe(204);
+    await severalRescans();
+
+    expect(await books(server)).toEqual([]);
+  });
+
+  it("stays deleted when the folder had not been looked at yet, because the Book arrived by upload first", async () => {
+    server = await startTestServer({ librarySettleMs: 400, libraryRescanMs: 200 });
+    await copyIn(server, "sample.epub");
+    expect((await uploadFixture(server, "sample.epub")).status).toBe(201); // well before the folder's file has settled
+    expect((await remove(server, (await books(server))[0]!.id)).status).toBe(204);
+
+    await severalRescans();
+
+    expect(await books(server)).toEqual([]);
+  });
+
+  it("can still be uploaded again, and is deleted again for good", async () => {
+    server = await startTestServer({ librarySettleMs: 100, libraryRescanMs: 200 });
+    await copyIn(server, "sample.epub");
+    await vi.waitFor(async () => expect(await books(server!)).toHaveLength(1));
+    await remove(server, (await books(server))[0]!.id);
+
+    expect((await uploadFixture(server, "sample.epub")).status).toBe(201);
+    await remove(server, (await books(server))[0]!.id);
+    await severalRescans();
+
+    expect(await books(server)).toEqual([]);
+  });
+
+  it("is added again when the original file is replaced by a new version", async () => {
+    server = await startTestServer({ librarySettleMs: 100, libraryRescanMs: 200 });
+    await copyIn(server, "sample.epub", "book.epub");
+    await vi.waitFor(async () => expect(await books(server!)).toHaveLength(1));
+    await remove(server, (await books(server))[0]!.id);
+
+    await copyIn(server, "chinese.epub", "book.epub");
+
+    await vi.waitFor(async () => expect(await titles(server!)).toEqual(["红楼梦"]));
+  });
+
+  it("comes back when the file is touched without changing its content", async () => {
+    server = await startTestServer({ librarySettleMs: 100, libraryRescanMs: 200 });
+    await copyIn(server, "sample.epub");
+    await vi.waitFor(async () => expect(await books(server!)).toHaveLength(1));
+    await remove(server, (await books(server))[0]!.id);
+    await severalRescans();
+    expect(await books(server)).toEqual([]);
+
+    const later = new Date(Date.now() + 60_000);
+    await utimes(join(server.libraryDir, "sample.epub"), later, later);
+
+    await vi.waitFor(async () => expect(await books(server!)).toHaveLength(1));
+  });
+
+  it("returns after a server restart, because the library folder is the source of truth", async () => {
+    server = await startTestServer(fast);
+    await copyIn(server, "sample.epub");
+    await vi.waitFor(async () => expect(await books(server!)).toHaveLength(1));
+    await remove(server, (await books(server))[0]!.id);
+    const { dataDir, libraryDir } = server;
+    await stopKeepingFolders(server);
+
+    const restarted = await startServer({ dataDir, libraryDir, port: 0, ...fast });
+    try {
+      await vi.waitFor(async () => expect(await titles(restarted)).toEqual(["Sample Book"]));
+    } finally {
+      await restarted.close();
+    }
   });
 });
