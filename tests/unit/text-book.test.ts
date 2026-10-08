@@ -7,7 +7,7 @@ import { renderText } from "../../src/web/reader/text.ts";
 
 /** The paragraphs and headings of a section, as plain strings: `<p>` as is, `<h2>` as "# ...". */
 function blocks(html: string): string[] {
-  return [...html.matchAll(/<(p|h2)>([\s\S]*?)<\/\1>/g)].map(([, tag, body]) => (tag === "h2" ? `# ${body}` : body!));
+  return [...html.matchAll(/<(p|h2)(?: [^>]*)?>([\s\S]*?)<\/\1>/g)].map(([, tag, body]) => (tag === "h2" ? `# ${body}` : body!));
 }
 
 describe("paragraphs", () => {
@@ -145,9 +145,23 @@ describe("sections", () => {
   });
 });
 
+describe("first-line indent", () => {
+  it("marks paragraphs of Chinese text, so the style sheet can indent exactly those", () => {
+    const book = renderText("　　这是一段中文。\n　　This paragraph is English.\n　　又是一段中文，混着English words。\n", "x");
+
+    const marked = [...book.sections[0]!.html.matchAll(/<p( class="cjk")?>([^<]*)<\/p>/g)].map((m) => [m[1] !== undefined, m[2]]);
+    expect(marked).toEqual([
+      [true, "这是一段中文。"],
+      [false, "This paragraph is English."],
+      [true, "又是一段中文，混着English words。"],
+    ]);
+    expect(book.css).toMatch(/p\.cjk[^{]*\{[^}]*text-indent:\s*2em/);
+  });
+});
+
 describe("book details", () => {
   it("uses the Library title and marks Chinese text as Chinese", () => {
-    expect(renderText("这是一本中文书。\n", "我的书")).toMatchObject({ title: "我的书", language: "zh" });
+    expect(renderText("这是一本中文书。\n", "我的书")).toMatchObject({ title: "我的书", language: "zh-Hans" });
     expect(renderText("This is English.\n", "Mine").language).toBeUndefined();
   });
 });

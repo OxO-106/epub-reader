@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Chinese text uses CJK-capable fonts in every theme and with the font-family setting
-- [ ] Punctuation does not begin a line in paginated and scrolling modes
-- [ ] Mixed Chinese and English paragraphs display correctly
-- [ ] Playwright journeys open a Chinese EPUB, Markdown file and GBK text file and check readable text
+- [x] Chinese text uses CJK-capable fonts in every theme and with the font-family setting
+- [x] Punctuation does not begin a line in paginated and scrolling modes
+- [x] Mixed Chinese and English paragraphs display correctly
+- [x] Playwright journeys open a Chinese EPUB, Markdown file and GBK text file and check readable text

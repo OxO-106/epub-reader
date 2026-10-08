@@ -52,9 +52,11 @@ interface EpubOptions {
   files?: Record<string, Uint8Array>;
   /** Replaces the two default one-line chapters. `body` is HTML, or plain text that gets wrapped in a paragraph. */
   chapters?: { title: string; body: string }[];
+  /** The Book's own style sheet, linked from every chapter. */
+  style?: string;
 }
 
-function epub({ metadata, manifest = "", version = "3.0", files = {}, chapters }: EpubOptions): Uint8Array {
+function epub({ metadata, manifest = "", version = "3.0", files = {}, chapters, style }: EpubOptions): Uint8Array {
   const chapterList = chapters ?? [
     { title: "Chapter 1", body: "It was a quiet morning in the sample library." },
     { title: "Chapter 2", body: "The second chapter is only here so there is a table of contents." },
@@ -71,7 +73,7 @@ function epub({ metadata, manifest = "", version = "3.0", files = {}, chapters }
         `<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">${metadata}</metadata>` +
         `<manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>` +
         chapterList.map((_, i) => `<item id="c${i + 1}" href="c${i + 1}.xhtml" media-type="application/xhtml+xml"/>`).join("") +
-        `${manifest}</manifest><spine>${chapterList.map((_, i) => `<itemref idref="c${i + 1}"/>`).join("")}</spine></package>`,
+        `${style ? '<item id="own-style" href="own.css" media-type="text/css"/>' : ""}${manifest}</manifest><spine>${chapterList.map((_, i) => `<itemref idref="c${i + 1}"/>`).join("")}</spine></package>`,
     ),
     "OEBPS/nav.xhtml": strToU8(
       `${xml}<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head>` +
@@ -81,8 +83,12 @@ function epub({ metadata, manifest = "", version = "3.0", files = {}, chapters }
     ),
   };
   chapterList.forEach((c, i) => {
-    entries[`OEBPS/c${i + 1}.xhtml`] = strToU8(chapter(i + 1, c.body, c.title));
+    const page = chapter(i + 1, c.body, c.title);
+    entries[`OEBPS/c${i + 1}.xhtml`] = strToU8(
+      style ? page.replace("</head>", '<link rel="stylesheet" type="text/css" href="own.css"/></head>') : page,
+    );
   });
+  if (style) entries["OEBPS/own.css"] = strToU8(style);
   for (const [path, data] of Object.entries(files)) entries[path] = data;
   return zipSync(entries, { mtime: fixedTime });
 }
@@ -369,4 +375,61 @@ writeFileSync(join(out, "no-heading.md"), "Just a few words, with no heading any
     (_, i) => wrap(`Paragraph ${i + 1}. ${`${sentence}, and nobody on the street thought it strange. `.repeat(6).trim()}`),
   );
   writeFileSync(join(out, "latin-long.txt"), `The Lamplighter\n\n${paragraphs.join("\n\n")}\n`);
+}
+
+// Chinese typesetting stress tests: paragraphs dense with the punctuation that must not start (or end) a line, and with
+// long English words and URLs that must not overflow the page. The same sentences are combined in different orders, so
+// line breaks fall in many different places as the window width changes.
+{
+  const sentences = {
+    traditional: [
+      "他說：「這件事，我們明天再談。」",
+      "她問道：“你到底去了哪裡？”",
+      "春天來了，花開了；鳥兒在樹上唱歌！",
+      "《紅樓夢》是中國古典小說的巔峰之作，（共一百二十回）。",
+      "山河依舊，人事全非……誰還記得當年的約定？",
+      "『不必了』，他搖搖頭，轉身離去。",
+      "天下大勢，分久必合、合久必分：此古今之通理也。",
+    ],
+    simplified: [
+      "他说：“这件事，我们明天再谈。”",
+      "她问道：「你到底去了哪里？」",
+      "春天来了，花开了；鸟儿在树上唱歌！",
+      "《红楼梦》是中国古典小说的巅峰之作，（共一百二十回）。",
+      "山河依旧，人事全非……谁还记得当年的约定？",
+      "『不必了』，他摇摇头，转身离去。",
+      "天下大势，分久必合、合久必分：此古今之通理也。",
+    ],
+  };
+  const url = "https://example.com/a/very/long/path/that/keeps/going/and/going/without/any/natural/break/opportunity?query=string&more=parameters";
+  const english = "Supercalifragilisticexpialidocious_and_antidisestablishmentarianism_in_a_single_unbroken_word";
+  const paragraph = (list: string[], seed: number, extra = "") =>
+    Array.from({ length: 9 + (seed % 5) }, (_, i) => list[(i * 3 + seed) % list.length]).join("") + extra;
+  const extras = {
+    traditional: [`請訪問 ${url} 了解詳情。`, `這個詞 ${english} 很長，但頁面不能被撐破。`, "它在 Windows 11 和 macOS 上都能運行，版本號是 v2.3.1，價格 $19.99。", ""],
+    simplified: [`请访问 ${url} 了解详情。`, `这个词 ${english} 很长，但页面不能被撑破。`, "它在 Windows 11 和 macOS 上都能运行，版本号是 v2.3.1，价格 $19.99。", ""],
+  };
+  const paragraphs = (script: "traditional" | "simplified", count: number, withExtras: boolean) =>
+    Array.from({ length: count }, (_, i) => `<p>${paragraph(sentences[script], i, withExtras ? extras[script][i % 4] : "")}</p>`).join("");
+  writeFileSync(
+    join(out, "chinese-typeset.epub"),
+    epub({
+      metadata: `${id(8)}<dc:title>排版測試</dc:title><dc:creator>測試作者</dc:creator><dc:language>zh-TW</dc:language>${modified}`,
+      chapters: [
+        { title: "第一章 標點", body: paragraphs("traditional", 14, false) },
+        { title: "第二章 中英混排", body: paragraphs("traditional", 10, true) },
+      ],
+      // The Book breaks lines anywhere and sets its own font, as badly made ones do: the Reader must still keep
+      // punctuation off the start of a line.
+      style: 'p { line-break: anywhere; word-break: break-all; font-family: "Palatino Linotype", serif; }\n',
+    }),
+  );
+  const markdown = [
+    "# 排版测试",
+    ...Array.from({ length: 7 }, (_, i) => paragraph(sentences.simplified, i)),
+    ...extras.simplified.slice(0, 3).map((extra, i) => paragraph(sentences.simplified, i + 3, extra)),
+    `An English paragraph with ${english} and ${url} inside it, which is not indented.`,
+    ...Array.from({ length: 8 }, (_, i) => paragraph(sentences.simplified, i + 6)),
+  ];
+  writeFileSync(join(out, "chinese-typeset.md"), `${markdown.join("\n\n")}\n`);
 }
