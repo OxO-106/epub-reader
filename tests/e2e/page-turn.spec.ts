@@ -242,6 +242,21 @@ test.describe("keys are left alone when something else has the keyboard", () => 
     await expect(page.getByRole("button", { name: "Chapter 1" })).toHaveAttribute("aria-current", "location");
   });
 
+  test("while the search panel has focus", async ({ page }) => {
+    await openLongBook(page);
+    await page.getByRole("button", { name: "Search" }).click();
+    const box = page.getByRole("search").getByRole("searchbox");
+    await box.click();
+
+    await page.keyboard.type("the lamp");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("PageDown");
+    await page.waitForTimeout(500);
+
+    await expect(box).toHaveValue("the lamp");
+    expect(await firstVisible(page)).toBe("Chapter 1, paragraph 1.");
+  });
+
   test("but choosing a chapter hands the keys back to the Book", async ({ page }) => {
     await openLongBook(page);
     await page.getByRole("button", { name: "Contents" }).click();

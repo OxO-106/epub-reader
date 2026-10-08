@@ -39,7 +39,7 @@ export function directionForKey(event: KeyLike): Direction | null {
 // Things that own the keyboard while they have focus: typing fields, dialogs and side panels.
 const OWN_KEYBOARD =
   "input, textarea, select, [contenteditable], dialog, nav, aside, " +
-  '[role="dialog"], [role="alertdialog"], [role="listbox"], [role="menu"], [role="textbox"], [data-no-page-turn]';
+  '[role="dialog"], [role="alertdialog"], [role="listbox"], [role="menu"], [role="search"], [role="textbox"], [data-no-page-turn]';
 // Things that act on Space (and Enter) themselves.
 const ACTIVATED_BY_SPACE = 'a[href], button, summary, [role="button"], [role="link"]';
 
