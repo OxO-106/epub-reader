@@ -9,6 +9,8 @@ import { startServer, type RunningServer, type ServerOptions } from "../../src/s
 export interface TestServer extends RunningServer {
   dataDir: string;
   libraryDir: string;
+  /** The temporary folder that holds the data, library and (default) fonts folders. */
+  root: string;
   /** Stops the server and removes its temporary folders. */
   dispose(): Promise<void>;
 }
@@ -35,11 +37,14 @@ export async function startTestServer(options: ServerOptions = {}): Promise<Test
   const root = await mkdtemp(join(tmpdir(), "reader-test-"));
   const dataDir = join(root, "data");
   const libraryDir = join(root, "library");
-  const server = await startServer({ dataDir, libraryDir, port: 0, ...options });
+  // A fonts folder that does not exist unless a test fills it, so a real ./fonts folder never changes a test.
+  const fontsDir = join(root, "fonts");
+  const server = await startServer({ dataDir, libraryDir, fontsDir, port: 0, ...options });
   return {
     ...server,
     dataDir,
     libraryDir,
+    root,
     async dispose() {
       await server.close();
       await rm(root, { recursive: true, force: true });

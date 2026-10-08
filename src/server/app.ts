@@ -4,6 +4,7 @@ import { Readable } from "node:stream";
 import { Hono, type Context } from "hono";
 import type { BookRow, Db } from "./db.ts";
 import { deleteBook } from "./delete.ts";
+import { fontsInfo, serveFonts } from "./fonts.ts";
 import { formatById } from "./formats/index.ts";
 import { importBook, type RejectionCode } from "./import.ts";
 import { parseReadingPosition } from "./reading-position.ts";
@@ -21,6 +22,8 @@ export interface AppContext {
   libraryFolder: LibraryFolder;
   /** Folder holding the built front end. */
   webDir: string;
+  /** Folder with the Chinese font pieces made by `npm run fonts:build`. May not exist. */
+  fontsDir: string;
 }
 
 const toSummary = (row: BookRow & { fraction?: number | null }) => ({
@@ -53,7 +56,7 @@ const isBookId = (id: string) => /^[0-9a-f]{64}$/.test(id);
 
 const notFound = (c: Context) => c.json({ error: "Not found" }, 404);
 
-export function createApp({ db, storage, libraryFolder, webDir }: AppContext): Hono {
+export function createApp({ db, storage, libraryFolder, webDir, fontsDir }: AppContext): Hono {
   const app = new Hono();
   app.use(securityHeaders);
 
@@ -150,7 +153,13 @@ export function createApp({ db, storage, libraryFolder, webDir }: AppContext): H
   // Files in the watched library folder that could not be imported, so the front end can show them.
   app.get("/api/library-folder", (c) => c.json({ failures: libraryFolder.failures() }));
 
+  // Whether the Chinese font is in the fonts folder, and where its style sheet is; the front end declares it only if so.
+  app.get("/api/fonts", (c) => c.json(fontsInfo(fontsDir)));
+
   app.all("/api/*", (c) => c.json({ error: "Not found" }, 404));
+
+  // The fonts folder, read-only. Not part of the front end build: the Chinese font is never in the repository.
+  app.get("/fonts/*", serveFonts(fontsDir));
 
   app.get("*", serveFrontEnd(webDir));
 
