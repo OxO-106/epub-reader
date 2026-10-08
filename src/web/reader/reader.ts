@@ -195,7 +195,8 @@ export function createReader(container: HTMLElement): Reader {
     /**
      * foliate-js scrolls back to its anchor whenever the Book document changes size, which would undo the correction
      * made for a change. Its observer was created first, so ours runs after it in the same frame, before anything is
-     * painted, and puts the position back. A scroll event afterwards lets foliate-js notice where the reader is.
+     * painted, and puts the position back; the position is only held for that one frame, so a scroll by the reader is
+     * never undone. A scroll event afterwards lets foliate-js notice where the reader is.
      */
     const hold = (top: number) => {
       held = top;
@@ -205,9 +206,10 @@ export function createReader(container: HTMLElement): Reader {
         });
         observer.observe(doc.body);
       }
+      requestAnimationFrame(() => (held = null));
+      setTimeout(() => (held = null), 100); // a hidden page draws no frames
       clearTimeout(holdTimer);
       holdTimer = setTimeout(() => {
-        held = null;
         nudging = true;
         scroller?.dispatchEvent(new Event("scroll"));
         nudging = false;

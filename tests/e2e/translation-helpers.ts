@@ -14,6 +14,7 @@ type ReaderHandle = {
   retryTranslation(id?: number): void;
   isEnglish(): boolean;
   goTo(target: string): Promise<void>;
+  onLocation(listener: (location: { position: string }) => void): () => void;
 };
 declare global {
   interface Window {
@@ -54,7 +55,93 @@ export async function bookFrame(page: Page): Promise<Frame> {
   throw new Error("No Book page is showing.");
 }
 
-export const setTranslation = (page: Page, on: boolean) => page.evaluate((on) => window.__reader!.setTranslation(on), on);
+/**
+ * foliate-js keeps its scrolling element in a closed shadow root. Opening them (before the page loads) changes nothing the
+ * Reader does, but lets a test watch the scroll position the way a reader sees it.
+ */
+export async function openShadowRoots(page: Page) {
+  await page.addInitScript(() => {
+    const attachShadow = Element.prototype.attachShadow;
+    Element.prototype.attachShadow = function (init) {
+      return attachShadow.call(this, { ...init, mode: "open" });
+    };
+  });
+}
+
+/** Waits until translation has nothing left to do for what is on screen and ahead (and has done something). */
+export async function untilReady(page: Page, atLeast = 1) {
+  await expect
+    .poll(async () => {
+      const status = await translationStatus(page);
+      return status.state === "ready" && status.translated >= atLeast;
+    }, { timeout: 15_000 })
+    .toBe(true);
+}
+
+/**
+ * Starts watching how still the text stays. After each scroll has been quiet for a moment the paragraph at the top is
+ * pinned; from then on any movement of it (in px, as the reader sees it) is logged, together with how many Translations
+ * were removed or added meanwhile. `stillness` returns and clears the log.
+ */
+export async function watchStillness(page: Page) {
+  const frame = await bookFrame(page);
+  await frame.evaluate(() => {
+    const w = window as unknown as Record<string, any>;
+    w.moves = [];
+    w.removed = 0;
+    w.added = 0;
+    const view = window.parent.document.querySelector(".reader-view")!.getBoundingClientRect();
+    const scroller = (window.parent.document.querySelector("foliate-view") as any).renderer.shadowRoot.getElementById("container");
+    const topOf = (p: Element) => window.frameElement!.getBoundingClientRect().top + p.getBoundingClientRect().top - view.top;
+    let timer: ReturnType<typeof setTimeout>;
+    scroller.addEventListener("scroll", () => {
+      clearTimeout(timer);
+      w.pinned = null;
+      timer = setTimeout(() => {
+        w.pinned = [...document.querySelectorAll("p")].find((p) => topOf(p) >= 0) ?? null;
+        w.last = w.pinned ? topOf(w.pinned) : 0;
+      }, 20);
+    });
+    const loop = () => {
+      if (w.pinned) {
+        const now = topOf(w.pinned);
+        if (Math.abs(now - w.last) > 0.5) w.moves.push(Math.round((now - w.last) * 10) / 10);
+        w.last = now;
+      }
+      requestAnimationFrame(loop);
+    };
+    loop();
+    new MutationObserver((records) => {
+      for (const record of records) {
+        if (record.attributeName !== "data-reader-tx") continue;
+        if ((record.target as Element).getAttribute("data-reader-tx")) w.added++;
+        else w.removed++;
+      }
+    }).observe(document.body, { attributes: true, subtree: true });
+  });
+  return async () => {
+    const current = await bookFrame(page);
+    return current.evaluate(() => {
+      const w = window as unknown as Record<string, any>;
+      const result = { moves: w.moves as number[], removed: w.removed as number, added: w.added as number };
+      w.moves = [];
+      w.removed = 0;
+      w.added = 0;
+      return result;
+    });
+  };
+}
+
+/** Remembers the latest Reading position the Reader reports, as window.__position. */
+export async function trackPosition(page: Page) {
+  await page.evaluate(() => {
+    (window as any).__position = null;
+    (window.__reader as any).onLocation((location: { position: string }) => ((window as any).__position = location.position));
+  });
+  return () => page.evaluate(() => (window as any).__position as string | null);
+}
+
+export const setTranslation =(page: Page, on: boolean) => page.evaluate((on) => window.__reader!.setTranslation(on), on);
 export const translationStatus = (page: Page) => page.evaluate(() => window.__reader!.translationStatus());
 
 /** The source part of the user message the model gets: the paragraph itself, not the background information. */
