@@ -18,8 +18,12 @@ import { bookStyles } from "./book-styles.ts";
 import { clickMayTurnPage, createTurnQueue, directionForKey, edgeAt, keyMayTurnPage, type Direction } from "./page-turn.ts";
 import { sha1 } from "./sha1.ts";
 import { resolveLanguage } from "./chinese.ts";
+import { createTranslationEngine, type Surface, type TranslationStatus } from "./translation/engine.ts";
+import { declaredEnglish, looksEnglish } from "./translation/language.ts";
+import { translationStyles } from "./translation/style.ts";
 
 export type { CustomBook } from "./custom-book.ts";
+export type { TranslationState, TranslationStatus } from "./translation/engine.ts";
 
 export type BookSource =
   /** An EPUB file, as downloaded from the server. */
@@ -106,6 +110,23 @@ export interface Reader {
   clearSearch(): void;
   /** Jumps to a match returned by `search`. */
   goToMatch(match: SearchMatch): Promise<void>;
+  /**
+   * Whether the open Book is in English (as it declares, or as its text shows), which is when translation is offered.
+   * Only certain once the first page has loaded, so ask after `open` has resolved.
+   */
+  isEnglish(): boolean;
+  /**
+   * Switches live translation on or off. While on, the blocks on screen and about one screenful ahead are translated
+   * through /api/translate and shown after each block, with nothing added to the Book's document (so the Reading position
+   * is unaffected); switching it off removes every Translation and cancels the work. Nothing is stored. The setting
+   * survives opening another Book on the same Reader.
+   */
+  setTranslation(enabled: boolean): void;
+  /** What translation is doing, for a status indicator. Also passed to `onTranslationStatus` listeners whenever it changes. */
+  translationStatus(): TranslationStatus;
+  onTranslationStatus(listener: (status: TranslationStatus) => void): () => void;
+  /** Tries a block whose translation failed again (`TranslationStatus.failed` lists their ids), or all of them when no id is given. */
+  retryTranslation(blockId?: number): void;
   /** Calls `listener` whenever the visible place changes. Returns a function that stops listening. */
   onLocation(listener: (location: ReaderLocation) => void): () => void;
   /** Removes the Book and everything the Reader added to its container. */
@@ -125,7 +146,7 @@ export function createReader(container: HTMLElement): Reader {
     renderer.setAttribute("flow", display.flow);
     renderer.setAttribute("gap", `${margins.gap}%`);
     renderer.setAttribute("max-inline-size", `${margins.maxLine}px`);
-    renderer.setStyles?.(bookStyles(display));
+    renderer.setStyles?.(bookStyles(display) + translationStyles(display));
     renderer.render?.();
   };
 
@@ -139,6 +160,95 @@ export function createReader(container: HTMLElement): Reader {
     await opened; // a key pressed while the Book is still opening waits for it instead of being lost
     if (view) await (direction === "next" ? view.next() : view.prev());
   });
+
+  // ---- translation: the Reader tells the engine where each Book document is on screen ----------------------------------
+  const translation = createTranslationEngine();
+  /** Is the open Book English? Declared by the Book, otherwise decided from the text of the first page with enough of it. */
+  let english: boolean | null = null;
+  let stopWatching: (() => void) | null = null;
+
+  /**
+   * The element foliate-js scrolls: it sits in a shadow root that is closed to the page, but is reached from the page
+   * of the Book by walking up from the frame that holds it.
+   */
+  function scrollerOf(frame: Element | null): HTMLElement | null {
+    const root = frame?.getRootNode();
+    const named = root instanceof ShadowRoot ? root.getElementById("container") : null; // foliate-js's own name for it
+    if (named) return named;
+    for (let el = frame?.parentElement ?? null; el; el = el.parentElement) {
+      const style = getComputedStyle(el);
+      const clips = /auto|scroll|hidden/.test(style.overflowY + style.overflowX);
+      if (clips && (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth)) return el;
+    }
+    return null;
+  }
+
+  function attachTranslation(doc: Document) {
+    stopWatching?.();
+    const frame = doc.defaultView?.frameElement ?? null;
+    const scroller = scrollerOf(frame);
+    let nudging = false;
+    let observer: ResizeObserver | null = null;
+    let held: number | null = null;
+    let holdTimer: ReturnType<typeof setTimeout> | undefined;
+
+    /**
+     * foliate-js scrolls back to its anchor whenever the Book document changes size, which would undo the correction
+     * made for a change. Its observer was created first, so ours runs after it in the same frame, before anything is
+     * painted, and puts the position back. A scroll event afterwards lets foliate-js notice where the reader is.
+     */
+    const hold = (top: number) => {
+      held = top;
+      if (!observer && doc.body) {
+        observer = new ResizeObserver(() => {
+          if (held !== null && scroller && scroller.scrollTop !== held) scroller.scrollTop = held;
+        });
+        observer.observe(doc.body);
+      }
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(() => {
+        held = null;
+        nudging = true;
+        scroller?.dispatchEvent(new Event("scroll"));
+        nudging = false;
+      }, 120);
+    };
+
+    const surface: Surface = {
+      doc,
+      get scrolled() {
+        return scrolled();
+      },
+      viewport() {
+        if (!scroller || !frame) return null;
+        const page = frame.getBoundingClientRect();
+        const shown = scroller.getBoundingClientRect();
+        return scrolled()
+          ? { start: shown.top - page.top, end: shown.bottom - page.top }
+          : { start: shown.left - page.left, end: shown.right - page.left };
+      },
+      keepStill(change, anchor) {
+        if (!scroller || !anchor || !scrolled()) return change();
+        const before = anchor.getBoundingClientRect().top;
+        const scrollBefore = scroller.scrollTop;
+        change();
+        const moved = anchor.getBoundingClientRect().top - before;
+        if (moved !== 0) scroller.scrollTop = scrollBefore + moved;
+        hold(scroller.scrollTop);
+      },
+    };
+    const onScroll = () => {
+      if (!nudging) translation.refresh();
+    };
+    scroller?.addEventListener("scroll", onScroll);
+    stopWatching = () => {
+      scroller?.removeEventListener("scroll", onScroll);
+      observer?.disconnect();
+      clearTimeout(holdTimer);
+      stopWatching = null;
+    };
+    translation.attach(surface);
+  }
 
   const requireView = () => {
     if (!view) throw new Error("No Book is open.");
@@ -173,10 +283,23 @@ export function createReader(container: HTMLElement): Reader {
     if (edge) turnToward(edge);
   }
 
+  function closeBook() {
+    stopWatching?.();
+    translation.detach();
+    void turns.cancel();
+    stopInput?.();
+    stopInput = null;
+    searchRun++;
+    view?.close();
+    view?.remove();
+    view = null;
+  }
+
   return {
     async open(source, options = {}) {
-      this.close();
+      closeBook();
       const book = await makeBook(source);
+      english = declaredEnglish(book.metadata?.language);
       await import("../vendor/foliate-js/view.js"); // registers <foliate-view>
       const next = document.createElement("foliate-view") as View;
       next.style.cssText = "display:block;width:100%;height:100%";
@@ -191,6 +314,7 @@ export function createReader(container: HTMLElement): Reader {
           chapterId: detail.tocItem?.id ?? null,
         };
         for (const listener of listeners) listener(location);
+        translation.refresh(); // a jump or a page turn moves the window
       });
 
       // Links to other sites open in a new tab that cannot reach back into this one. foliate-js would
@@ -206,6 +330,8 @@ export function createReader(container: HTMLElement): Reader {
       next.addEventListener("load", (event) => {
         const { doc } = (event as CustomEvent<{ doc: Document }>).detail;
         setChineseLanguage(doc);
+        english ??= looksEnglish((doc.body?.textContent ?? "").slice(0, 8000));
+        attachTranslation(doc);
         const frameLeft = () => doc.defaultView?.frameElement?.getBoundingClientRect().left ?? 0;
         doc.addEventListener("keydown", onKeyDown);
         doc.addEventListener("click", (click) => onClick(click, frameLeft() + click.clientX, doc));
@@ -282,18 +408,18 @@ export function createReader(container: HTMLElement): Reader {
       display = settings;
       applyDisplay();
     },
+    isEnglish: () => english === true,
+    setTranslation: (enabled) => translation.setEnabled(enabled),
+    translationStatus: () => translation.status(),
+    onTranslationStatus: (listener) => translation.onStatus(listener),
+    retryTranslation: (blockId) => translation.retry(blockId),
     onLocation(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
     close() {
-      void turns.cancel();
-      stopInput?.();
-      stopInput = null;
-      searchRun++;
-      view?.close();
-      view?.remove();
-      view = null;
+      closeBook();
+      translation.dispose();
     },
   };
 }

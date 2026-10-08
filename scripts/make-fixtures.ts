@@ -433,3 +433,54 @@ writeFileSync(join(out, "no-heading.md"), "Just a few words, with no heading any
   ];
   writeFileSync(join(out, "chinese-typeset.md"), `${markdown.join("\n\n")}\n`);
 }
+
+// English Books for the translation engine. The first chapter opens with what must be skipped (a decoration, a bare
+// number, a Chinese paragraph) and with proper names, including one that starts a sentence; the rest is numbered filler
+// so a test can tell which paragraph is which. Chapter 2 is short, for a jump through the table of contents.
+{
+  const filler = (chapter: number, count: number, from = 1) =>
+    Array.from(
+      { length: count },
+      (_, i) => `<p>Filler ${chapter}.${from + i} is where the lamplighter stopped to rest and to watch the rain on the long street.</p>`,
+    ).join("");
+  writeFileSync(
+    join(out, "english-mixed.epub"),
+    epub({
+      metadata: `${id(9)}<dc:title>Mixed English</dc:title><dc:creator>Test Author</dc:creator><dc:language>en</dc:language>${modified}`,
+      chapters: [
+        {
+          title: "The Arrival",
+          body:
+            "<p>It was Elizabeth who walked into the hall with Mr. Darcy at her side.</p>" +
+            "<p>* * *</p><p>12</p>" +
+            "<p>此开卷第一回也。红楼一梦，黛玉初入府，众人皆惊。</p>" +
+            "<p>Elizabeth smiled at the company, and Darcy bowed to the room.</p>" +
+            filler(1, 60),
+        },
+        { title: "The Departure", body: `<p>By morning the guests had gone, and only Darcy remained.</p>${filler(2, 8)}` },
+      ],
+    }),
+  );
+
+  const markdown = [
+    "# The Lamp",
+    "",
+    "It was Elizabeth who found the lamp in the cellar, and Darcy who lit it.",
+    "",
+    "## A List",
+    "",
+    "- The first item is about the rain on the stones.",
+    "- The second item is about the slow turning of the street.",
+    "",
+    "> A quotation sits here, and it says something about the long afternoon.",
+    "",
+    "```",
+    "const lamp = 'not prose';",
+    "```",
+    "",
+    "***",
+    "",
+    ...Array.from({ length: 40 }, (_, i) => `Filler ${i + 1} is where the lamplighter stopped to rest and to watch the rain on the long street.\n`),
+  ];
+  writeFileSync(join(out, "english.md"), `${markdown.join("\n")}\n`);
+}

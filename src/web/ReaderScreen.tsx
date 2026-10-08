@@ -39,6 +39,8 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
     const instance = createReader(viewport.current!);
     reader.current = instance;
+    // A seam for browser tests until the Translate button exists: they call the Reader's translation methods through it.
+    (window as { __reader?: Reader }).__reader = instance;
     instance.setDisplay(displayNow.current);
     setState({ kind: "loading" });
     setChapterId(null);
@@ -82,6 +84,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       stopListening();
       instance.close();
       reader.current = null;
+      if ((window as { __reader?: Reader }).__reader === instance) delete (window as { __reader?: Reader }).__reader;
     };
   }, [bookId, attempt]);
 
