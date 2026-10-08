@@ -3,9 +3,12 @@ import { extname } from "node:path";
 import { Readable } from "node:stream";
 import { Hono } from "hono";
 import type { BookRow, Db } from "./db.ts";
+import { deleteBook } from "./delete.ts";
 import { formatById } from "./formats/index.ts";
 import { importBook, type RejectionCode } from "./import.ts";
+import { searchBooks } from "./search.ts";
 import { securityHeaders } from "./security.ts";
+import type { LibraryFolder } from "./library-folder.ts";
 import type { Storage } from "./storage.ts";
 import { serveFrontEnd } from "./static.ts";
 
@@ -13,6 +16,8 @@ import { serveFrontEnd } from "./static.ts";
 export interface AppContext {
   db: Db;
   storage: Storage;
+  /** The watched library folder. */
+  libraryFolder: LibraryFolder;
   /** Folder holding the built front end. */
   webDir: string;
 }
@@ -48,11 +53,12 @@ const coverTypes: Record<string, string> = {
 /** A Book's id is its SHA-256 content hash. */
 const isBookId = (id: string) => /^[0-9a-f]{64}$/.test(id);
 
-export function createApp({ db, storage, webDir }: AppContext): Hono {
+export function createApp({ db, storage, libraryFolder, webDir }: AppContext): Hono {
   const app = new Hono();
   app.use(securityHeaders);
 
-  app.get("/api/books", (c) => c.json({ books: db.listBooks().map(toSummary) }));
+  // `?q=` narrows the list by title and author.
+  app.get("/api/books", (c) => c.json({ books: searchBooks(db.listBooks(), c.req.query("q") ?? "").map(toSummary) }));
 
   // Import one file: the request body is the file itself, `name` is its file name.
   // The body is streamed to disk; to add several files the client sends several requests.
@@ -107,6 +113,16 @@ export function createApp({ db, storage, webDir }: AppContext): Hono {
       },
     });
   });
+
+  // Deletes the app's copy of a Book. Never touches the original file it was imported from.
+  app.delete("/api/books/:id", async (c) => {
+    const id = c.req.param("id");
+    if (!isBookId(id) || !(await deleteBook({ db, storage }, id))) return c.json({ error: "Not found" }, 404);
+    return c.body(null, 204);
+  });
+
+  // Files in the watched library folder that could not be imported, so the front end can show them.
+  app.get("/api/library-folder", (c) => c.json({ failures: libraryFolder.failures() }));
 
   app.all("/api/*", (c) => c.json({ error: "Not found" }, 404));
 

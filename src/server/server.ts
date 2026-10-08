@@ -5,6 +5,8 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
 import { resolveConfig, type Config, type ConfigOverrides } from "./config.ts";
 import { openDb } from "./db.ts";
+import { importBook } from "./import.ts";
+import { watchLibraryFolder } from "./library-folder.ts";
 import { openStorage } from "./storage.ts";
 
 export type ServerOptions = ConfigOverrides;
@@ -24,7 +26,13 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
 
   const db = openDb(join(config.dataDir, "reader.sqlite"));
   const storage = openStorage(config.dataDir);
-  const app = createApp({ db, storage, webDir: config.webDir });
+  const libraryFolder = watchLibraryFolder({
+    dir: config.libraryDir,
+    importBook: (input) => importBook({ db, storage }, input),
+    settleMs: config.librarySettleMs,
+    rescanMs: config.libraryRescanMs,
+  });
+  const app = createApp({ db, storage, libraryFolder, webDir: config.webDir });
 
   const httpServer = await new Promise<Server>((resolve, reject) => {
     // Plain HTTP/1.1, so the returned server is a node:http Server.
@@ -42,9 +50,15 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     close() {
       return new Promise<void>((resolve, reject) => {
         httpServer.close((err) => {
-          db.close();
-          if (err) reject(err);
-          else resolve();
+          // The folder watcher imports through the database, so it stops first.
+          libraryFolder.close().then(
+            () => {
+              db.close();
+              if (err) reject(err);
+              else resolve();
+            },
+            reject,
+          );
         });
         httpServer.closeAllConnections();
       });

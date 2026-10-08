@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
+import { DeleteBook } from "./DeleteBook.tsx";
+import { LibraryFolderProblems } from "./LibraryFolderProblems.tsx";
 import { coverUrl, importFile, importableExtensions, listBooks, type BookSummary, type ImportOutcome } from "./api.ts";
 
 type State =
@@ -11,18 +13,27 @@ export function Library() {
   const [dragging, setDragging] = useState(false);
   const [importing, setImporting] = useState<{ done: number; total: number } | null>(null);
   const [outcomes, setOutcomes] = useState<ImportOutcome[]>([]);
+  const [query, setQuery] = useState("");
   const picker = useRef<HTMLInputElement>(null);
+  const latestRequest = useRef(0);
+  const currentQuery = useRef(query);
+  currentQuery.current = query;
 
+  /** Loads the Books matching the search box. Only the newest request may update the page. */
   function refresh() {
-    return listBooks().then(
-      (books) => setState({ kind: "ready", books }),
-      () => setState({ kind: "error" }),
+    const request = ++latestRequest.current;
+    return listBooks(currentQuery.current).then(
+      (books) => request === latestRequest.current && setState({ kind: "ready", books }),
+      () => request === latestRequest.current && setState({ kind: "error" }),
     );
   }
 
   useEffect(() => {
     refresh();
-  }, []);
+    // Books also arrive through the watched library folder, so look again every few seconds.
+    const timer = setInterval(refresh, 3000);
+    return () => clearInterval(timer);
+  }, [query]);
 
   /** Imports files one after another, so the Library fills in as each one lands. */
   async function importFiles(files: File[]) {
@@ -96,13 +107,26 @@ export function Library() {
         </ul>
       )}
 
+      <LibraryFolderProblems />
+
       {state.kind === "error" && (
         <p role="alert" class="notice">
           Cannot reach the server. Check that Reader is still running, then reload this page.
         </p>
       )}
-      {state.kind === "ready" && state.books.length === 0 && (
+      <input
+        type="search"
+        class="search"
+        placeholder="Search by title or author"
+        aria-label="Search the Library"
+        value={query}
+        onInput={(event) => setQuery(event.currentTarget.value)}
+      />
+      {state.kind === "ready" && state.books.length === 0 && query.trim() === "" && (
         <p class="empty">Your Library is empty. Books you add will appear here.</p>
+      )}
+      {state.kind === "ready" && state.books.length === 0 && query.trim() !== "" && (
+        <p class="empty">No Books match “{query.trim()}”.</p>
       )}
       {state.kind === "ready" && state.books.length > 0 && (
         <ul class="books">
@@ -119,6 +143,7 @@ export function Library() {
                 <span class="title">{book.title}</span>
                 {book.author && <span class="author">{book.author}</span>}
               </a>
+              <DeleteBook book={book} onDeleted={refresh} />
             </li>
           ))}
         </ul>

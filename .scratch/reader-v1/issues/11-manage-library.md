@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] Search narrows the Library by title and author, including Chinese
-- [ ] Deleting asks for confirmation
-- [ ] After deletion the Book, its stored copy and its Reading position are gone
-- [ ] An original file in the watched folder survives deletion of its Book
-- [ ] API tests cover delete and the survival of originals; Playwright covers search and delete
+- [x] Search narrows the Library by title and author, including Chinese
+- [x] Deleting asks for confirmation
+- [x] After deletion the Book, its stored copy and its Reading position are gone (Reading positions do not exist yet: the stored copy and metadata are tested; ticket 04 must extend `db.deleteBook` in `src/server/db.ts` and add its own deletion test)
+- [x] An original file in the watched folder survives deletion of its Book
+- [x] API tests cover delete and the survival of originals; Playwright covers search and delete

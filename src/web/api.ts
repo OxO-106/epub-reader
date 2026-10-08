@@ -10,14 +10,25 @@ export interface BookSummary {
   lastReadAt: number | null;
 }
 
-export async function listBooks(): Promise<BookSummary[]> {
-  const response = await fetch("/api/books");
+/** The Library, or only the Books whose title or author match `query`. */
+export async function listBooks(query = ""): Promise<BookSummary[]> {
+  const response = await fetch(query.trim() ? `/api/books?q=${encodeURIComponent(query)}` : "/api/books");
   if (!response.ok) throw new Error(`Server answered ${response.status}`);
   const body = (await response.json()) as { books: BookSummary[] };
   return body.books;
 }
 
-export const coverUrl = (book: BookSummary) => `/api/books/${book.id}/cover`;
+/** Deletes the app's copy of a Book. Resolves true when it is gone (including when it already was). */
+export async function deleteBook(book: BookSummary): Promise<boolean> {
+  try {
+    const response = await fetch(`/api/books/${book.id}`, { method: "DELETE" });
+    return response.ok || response.status === 404;
+  } catch {
+    return false;
+  }
+}
+
+export const coverUrl =(book: BookSummary) => `/api/books/${book.id}/cover`;
 
 /** Downloads a Book's file. */
 export async function getBookFile(id: string): Promise<Blob> {
@@ -52,4 +63,17 @@ export async function importFile(file: File): Promise<ImportOutcome> {
   } catch {
     return { fileName, status: "failed", message: `"${fileName}" was not added: cannot reach the server.` };
   }
+}
+
+/** A file in the watched library folder that could not be imported. */
+export interface LibraryFolderFailure {
+  path: string;
+  message: string;
+}
+
+export async function listLibraryFolderFailures(): Promise<LibraryFolderFailure[]> {
+  const response = await fetch("/api/library-folder");
+  if (!response.ok) throw new Error(`Server answered ${response.status}`);
+  const body = (await response.json()) as { failures: LibraryFolderFailure[] };
+  return body.failures;
 }
