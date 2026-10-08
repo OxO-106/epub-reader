@@ -1,0 +1,124 @@
+# Words the name detector (translate-names.ts) never treats as names, so they are translated instead of being kept
+# in English. A plain data file: add a word to a group (or start a new group) and it takes effect at the next start.
+#
+# Format: "[group]" starts a group, the words under it are separated by spaces or line breaks, "#" starts a comment.
+# Matching ignores case. Every group is a stop-list except two with a special meaning:
+#   [titles]         also dropped from names the caller supplies ("Mr. Darcy" becomes "Darcy"), and the capitalised
+#                    word after a title is a name even at the start of a sentence or in a heading.
+#   [abbreviations]  a full stop after one of them does not end a sentence ("Mr. Bennet"). Stop words too.
+#
+# Err on the side of translating: a missed name only costs a transliterated name, a masked ordinary word stays
+# English in the middle of the Chinese.
+
+[weekdays]
+Monday Tuesday Wednesday Thursday Friday Saturday Sunday
+Mon Tue Tues Wed Thu Thur Thurs Fri Sat Sun
+
+[months]
+January February March April May June July August September October November December
+Feb Mar Apr Aug Sep Sept Oct Nov Dec
+
+[holidays]
+Christmas Easter Halloween Thanksgiving Lent Passover Ramadan Hanukkah Yule Whitsun Epiphany Advent
+
+[continents and regions]
+Africa Asia Europe America Americas Antarctica Australia Oceania Arctic Atlantic Pacific Orient Occident Levant
+Balkans Scandinavia Siberia Caribbean Mediterranean
+
+[countries]
+Afghanistan Albania Algeria Andorra Angola Argentina Armenia Austria Azerbaijan Bahamas Bahrain Bangladesh Barbados
+Belarus Belgium Belize Benin Bhutan Bolivia Bosnia Botswana Brazil Britain Brunei Bulgaria Burma Burundi Cambodia
+Cameroon Canada Chile China Colombia Congo Croatia Cuba Cyprus Czechia Denmark Djibouti Ecuador Egypt England
+Eritrea Estonia Ethiopia Fiji Finland France Gabon Gambia Germany Ghana Greece Greenland Grenada Guatemala Guinea
+Guyana Haiti Holland Honduras Hungary Iceland India Indonesia Iran Iraq Ireland Israel Italy Jamaica Japan
+Kazakhstan Kenya Korea Kosovo Kuwait Kyrgyzstan Laos Latvia Lebanon Lesotho Liberia Libya Liechtenstein Lithuania
+Luxembourg Macedonia Madagascar Malawi Malaysia Maldives Mali Malta Mauritania Mauritius Mexico Moldova Monaco
+Mongolia Montenegro Morocco Mozambique Myanmar Namibia Nepal Netherlands Nicaragua Nigeria Norway Oman Pakistan
+Palestine Panama Paraguay Persia Peru Philippines Poland Portugal Prussia Qatar Romania Russia Rwanda Scotland
+Senegal Serbia Singapore Slovakia Slovenia Somalia Spain Sudan Suriname Swaziland Sweden Switzerland Syria Taiwan
+Tajikistan Tanzania Thailand Tibet Tonga Tunisia Turkey Turkmenistan Uganda Ukraine Uruguay Uzbekistan Vatican
+Venezuela Vietnam Wales Yemen Yugoslavia Zambia Zimbabwe Britannia Albion Hibernia Gaul Zealand
+Kingdom States Union Empire Republic
+
+[languages]
+English French German Spanish Italian Portuguese Russian Chinese Mandarin Cantonese Japanese Korean Latin Greek
+Hebrew Arabic Persian Turkish Hindi Urdu Bengali Sanskrit Dutch Flemish Swedish Danish Norwegian Finnish Polish
+Czech Hungarian Romanian Bulgarian Serbian Croatian Welsh Irish Gaelic Scots Yiddish Swahili Thai Vietnamese
+Tagalog Esperanto Cornish
+
+[nationalities]
+American Americans British Briton Britons Englishman Englishmen Englishwoman Scottish Scotsman Scotsmen Scot
+Welshman Irishman Irishmen Irishwoman Frenchman Frenchmen Frenchwoman Germans Spaniard Spaniards Italians Russians
+Indian Indians Pakistani Afghan Persians Arab Arabs Arabian Turk Turks Egyptian Egyptians Greeks Roman Romans
+Hebrews Jew Jews Jewish Dutchman Dutchmen Belgian Swiss Swede Swedes Dane Danes Finn Finns Pole Poles Austrian
+Canadian Canadians Australian Mexican Mexicans Brazilian Argentine Cuban Chilean Peruvian African Africans European
+Europeans Asian Asians Oriental Orientals Chinaman Siberian Prussian Saxon Saxons Norman Normans Celt Celts Celtic
+Gauls Eskimo Eskimos Hindoo Hindu Hindus Muslim Muslims Mohammedan Moor Moors Tartar Tartars Cossack Cossacks
+Hessian Creole Yankee Yankees Cockney Anglo-Saxon
+
+[religion]
+God Gods Goddess Heaven Heavens Hell Christ Christian Christians Christianity Catholic Catholics Protestant
+Protestants Methodist Baptist Quaker Quakers Puritan Puritans Buddhist Buddhists Buddha Bible Gospel Gospels
+Testament Scripture Scriptures Church Providence Almighty Lordship Saviour Savior Satan Devil Amen Sabbath
+
+[titles]
+Mr Mrs Ms Miss Mx Mister Missus Messrs Mme Mlle Madame Mademoiselle Monsieur Madam Dr Doctor Prof Professor Rev
+Reverend Fr Father Hon Honourable Honorable Capt Captain Col Colonel Gen General Lt Lieutenant Maj Major Sgt
+Sergeant Cpl Corporal Pvt Private Adm Admiral Commodore Gov Governor Sen Senator Rep Representative Pres
+President Supt Insp Inspector Det Detective Sir Dame Lady Lord Baron Baroness Count Countess Duke Duchess Earl
+Marquis Marquess Marchioness Viscount Viscountess Baronet Squire Esq Master Mistress Prince Princess King Queen
+Emperor Empress Tsar Czar Sultan Pope Bishop Archbishop Cardinal Deacon Canon Abbot Abbess Sister Brother Mother
+Uncle Aunt Auntie Cousin Grandfather Grandmother Grandpa Grandma Granny Papa Mama Mamma Daddy Mummy Mommy Nurse
+Judge Justice Mayor Chief Saint Sainte Don Dona Donna Senor Senora Senorita Herr Frau Fraulein Signor Signora
+Signorina Sahib Sheikh Rabbi Mt Mount Mountain Ft St
+
+[abbreviations]
+Mr Mrs Ms Mme Mlle Messrs Dr Prof Rev Fr Hon Capt Col Gen Lt Maj Sgt Cpl Pvt Adm Gov Sen Rep Pres Supt Insp Det
+St Mt Ft Vs Viz Cf Esq
+
+[pronouns]
+I Me My Mine Myself We Us Our Ours Ourselves You Your Yours Yourself Yourselves He Him His Himself She Her Hers
+Herself It Its Itself They Them Their Theirs Themselves One Oneself Someone Somebody Something Anyone Anybody
+Anything Everyone Everybody Everything Nobody Nothing None Neither Either Both Few Many Several Such Same Other
+Others Another Whoever Whatever Whichever Whomever
+
+[question words and connectives]
+Who Whom Whose What Which When Where Why How Whether While Whilst Whereas Although Though Because Since Unless Until
+Till Once Before After Than Then Thus Hence Therefore Moreover Furthermore Nevertheless Nonetheless Otherwise
+Still Yet Also Too Even Only Just Ever Never Always Often Sometimes Perhaps Maybe Indeed Certainly Surely Really
+Quite Rather Very Much More Most Less Least Well Now Here There Thence Hither Thither Whence Whither Today
+Tomorrow Yesterday Tonight Presently Suddenly Meanwhile Afterwards Afterward Finally Lastly Besides Instead
+Anyhow Anyway Somehow Somewhat Soon Again Almost Already Ago Hardly Scarcely Nearly Barely Directly Immediately
+Gradually Slowly Quickly
+
+[function words and interjections]
+The A An And But Or Nor For So If In On At As To Of By With From Into Onto Upon Over Under Between Among Through
+During Without Within Behind Beside Beyond Above Below Across Along Around Against About Towards Toward Off Out Up
+Down Near Like Unlike Per Via Not No Yes Nay Aye Oh Ah Alas Ha Hah Hush Hallo Hello Hullo Hi Hey Goodbye Bye
+Thanks Thank Please Pray Come Go Look Let See Listen Wait Stop Take Give Tell Say Ask Remember Consider Behold
+Mind Dear Good Great Poor Old Young Little Big Dead Fair Pretty Sweet Beautiful Whenever Wherever However
+Whereupon Hereupon Thereupon Thereafter Each Every Any All Some Whole Certain Various Enough Mostly Sorry Excuse
+Pardon Welcome Congratulations Beware Attention Silence Quick Right Left Lo Fie Pshaw Pooh Bah Hurrah Hurray
+Bravo Ahoy Ho Hum Hem Humph Tut Pish Psha Egad Zounds Marry Prithee Forsooth Anon Ere Thereby Wherefore Thereof
+Herein Thereto Hereby Albeit Aha Ay Eh Er Erm Um Uh Hmm Mm Mmm Ugh Wow Whoa Whew Yea Yep Yeah Nope Okay OK
+
+[auxiliary verbs, and contractions cut at the apostrophe]
+Is Are Was Were Be Been Being Am Do Does Did Done Doing Have Has Had Having Can Could Shall Should Would Might Must
+Ought Need Dare Doesn Didn Isn Aren Wasn Weren Hasn Haven Hadn Couldn Wouldn Shouldn Mustn Needn Ain Won Shan
+This That These Those
+
+[numbers and ordinals]
+Zero One Two Three Four Five Six Seven Eight Nine Ten Eleven Twelve Thirteen Fourteen Fifteen Sixteen Seventeen
+Eighteen Nineteen Twenty Thirty Forty Fifty Sixty Seventy Eighty Ninety Hundred Thousand Million Dozen Half
+Quarter Double First Second Third Fourth Fifth Sixth Seventh Eighth Ninth Tenth Eleventh Twelfth Last Next
+Previous Former Latter Single Pair Couple
+
+[book structure]
+Chapter Chapters Book Books Part Parts Volume Volumes Section Sections Act Scene Canto Preface Foreword Prologue
+Epilogue Introduction Contents Appendix Index Notes Note Footnote Dedication Acknowledgements Acknowledgments
+Title Verse Psalm Letter Letters Postscript Epigraph Interlude Intermission Finis Fin End Beginning Conclusion
+Summary Argument Story Tale Tales Poem Poems
+
+[directions and seasons]
+North South East West Northern Southern Eastern Western Northwest Northeast Southwest Southeast Spring Summer
+Autumn Fall Winter
