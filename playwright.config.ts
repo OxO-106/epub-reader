@@ -1,8 +1,16 @@
+import { existsSync } from "node:fs";
 import { defineConfig } from "@playwright/test";
 
 // Seam 2: the real browser against the real server, headless. tests/e2e/fixtures.ts starts a fresh server per test.
-// Uses the system Chrome so no browser download is needed; set
-// READER_E2E_CHROME to a different executable if it lives elsewhere.
+// Uses an installed browser so no download is needed: Chrome when present, otherwise Edge. Set
+// READER_E2E_CHROME to a specific Chromium-based executable to override both.
+const chromePaths = [
+  process.env.PROGRAMFILES,
+  process.env["PROGRAMFILES(X86)"],
+  process.env.LOCALAPPDATA,
+].map((dir) => dir && `${dir}\Google\Chrome\Application\chrome.exe`);
+const hasChrome = process.platform !== "win32" || chromePaths.some((path) => path && existsSync(path));
+
 export default defineConfig({
   testDir: "tests/e2e",
   fullyParallel: false,
@@ -12,6 +20,6 @@ export default defineConfig({
     headless: true,
     ...(process.env.READER_E2E_CHROME
       ? { launchOptions: { executablePath: process.env.READER_E2E_CHROME } }
-      : { channel: "chrome" }),
+      : { channel: hasChrome ? "chrome" : "msedge" }),
   },
 });
