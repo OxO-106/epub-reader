@@ -127,3 +127,8 @@ button {
   opacity: 0.75;
   overflow-wrap: anywhere;
 }
+
+.folder-problems h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}

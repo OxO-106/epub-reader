@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
+import { LibraryFolderProblems } from "./LibraryFolderProblems.tsx";
 import { coverUrl, importFile, importableExtensions, listBooks, type BookSummary, type ImportOutcome } from "./api.ts";
 
 type State =
@@ -22,6 +23,9 @@ export function Library() {
 
   useEffect(() => {
     refresh();
+    // Books also arrive through the watched library folder, so look again every few seconds.
+    const timer = setInterval(refresh, 3000);
+    return () => clearInterval(timer);
   }, []);
 
   /** Imports files one after another, so the Library fills in as each one lands. */
@@ -95,6 +99,8 @@ export function Library() {
           ))}
         </ul>
       )}
+
+      <LibraryFolderProblems />
 
       {state.kind === "error" && (
         <p role="alert" class="notice">
