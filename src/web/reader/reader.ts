@@ -17,6 +17,7 @@ import { marginSizes, type DisplaySettings } from "../display-settings.ts";
 import { bookStyles } from "./book-styles.ts";
 import { clickMayTurnPage, createTurnQueue, directionForKey, edgeAt, keyMayTurnPage, type Direction } from "./page-turn.ts";
 import { sha1 } from "./sha1.ts";
+import { resolveLanguage } from "./chinese.ts";
 
 export type { CustomBook } from "./custom-book.ts";
 
@@ -204,6 +205,7 @@ export function createReader(container: HTMLElement): Reader {
       // Key and click events inside the Book's iframes do not reach this page, so listen inside each one too.
       next.addEventListener("load", (event) => {
         const { doc } = (event as CustomEvent<{ doc: Document }>).detail;
+        setChineseLanguage(doc);
         const frameLeft = () => doc.defaultView?.frameElement?.getBoundingClientRect().left ?? 0;
         doc.addEventListener("keydown", onKeyDown);
         doc.addEventListener("click", (click) => onClick(click, frameLeft() + click.clientX, doc));
@@ -317,6 +319,20 @@ async function makeBook(source: BookSource): Promise<FoliateBook> {
     case "custom":
       return makeCustomBook(source.book);
   }
+}
+
+/**
+ * Makes the page's `lang` say which Chinese it is (zh-Hans or zh-Hant, from what the Book declares or from its text),
+ * because the browser picks glyph variants and fonts from it. Books in other languages are left as they are.
+ */
+function setChineseLanguage(doc: Document): void {
+  const root = doc.documentElement;
+  const declared = root.getAttribute("lang") || root.getAttribute("xml:lang");
+  const wantsText = !declared || /^(zh|und)$/i.test(declared);
+  const language = resolveLanguage(declared, wantsText ? (doc.body?.textContent ?? "").slice(0, 5000) : "");
+  if (!language || language === declared) return;
+  root.setAttribute("lang", language);
+  if (root.hasAttribute("xml:lang")) root.setAttributeNS("http://www.w3.org/XML/1998/namespace", "xml:lang", language);
 }
 
 function titleOf(book: FoliateBook): string {

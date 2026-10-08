@@ -32,6 +32,7 @@ import xml from "highlight.js/lib/languages/xml";
 import yaml from "highlight.js/lib/languages/yaml";
 import MarkdownIt, { type Token } from "markdown-it";
 import { stripFrontMatter } from "../../shared/markdown-source.ts";
+import { chineseParagraphClass, chineseParagraphCss, isChineseParagraph } from "./chinese.ts";
 import { guessLanguage, type CustomBook, type CustomSection, type CustomTocEntry } from "./custom-book.ts";
 
 // A small set of common languages keeps the bundle light; a fence in any other language is shown as plain code.
@@ -149,6 +150,10 @@ function finish(html: string, slug: (text: string) => string): { html: string; h
     }
   }
 
+  for (const paragraph of body.querySelectorAll(":scope > p")) {
+    if (isChineseParagraph(paragraph.textContent ?? "")) paragraph.classList.add(chineseParagraphClass);
+  }
+
   const anchors = [...body.querySelectorAll("[id]")].map((element) => element.id);
   return { html: body.innerHTML, headings, anchors, text: body.textContent ?? "" };
 }
@@ -224,6 +229,7 @@ img { max-width: 100%; height: auto; }
 table { border-collapse: collapse; max-width: 100%; display: block; overflow-x: auto; }
 th, td { border: 1px solid color-mix(in srgb, currentColor 30%, transparent); padding: .3em .7em; }
 th { background: color-mix(in srgb, currentColor 8%, transparent); }
+${chineseParagraphCss}
 blockquote { margin-inline: 0; padding-inline-start: 1em; border-inline-start: 3px solid color-mix(in srgb, currentColor 30%, transparent); opacity: .85; }
 hr { border: 0; border-top: 1px solid color-mix(in srgb, currentColor 30%, transparent); }
 code, pre { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .9em; }

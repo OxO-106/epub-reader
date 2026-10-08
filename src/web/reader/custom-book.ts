@@ -59,13 +59,7 @@ function decode(fragment: string): string {
   }
 }
 
-/** Marks a text as Chinese when most of its letters are Han characters; undefined when it is not clearly so. */
-export function guessLanguage(text: string): string | undefined {
-  const sample = text.slice(0, 5000);
-  const han = sample.match(/\p{Script=Han}/gu)?.length ?? 0;
-  const letters = sample.match(/\p{L}/gu)?.length ?? 0;
-  return letters > 0 && han / letters > 0.3 ? "zh" : undefined;
-}
+export { guessLanguage } from "./chinese.ts";
 
 /** Turns a `CustomBook` into the object foliate-js's view opens. */
 export function makeCustomBook(book: CustomBook): FoliateBook {

@@ -6,6 +6,7 @@
  * inject markup however it is written.
  */
 import { isChapterHeading } from "../../shared/text-source.ts";
+import { chineseParagraphClass, chineseParagraphCss, isChineseParagraph } from "./chinese.ts";
 import { guessLanguage, type CustomBook, type CustomSection, type CustomTocEntry } from "./custom-book.ts";
 
 /** A section longer than this (in characters) is cut into pieces; a text with no headings longer than this gets parts. */
@@ -86,7 +87,13 @@ function pieces(items: Item[]): Item[][] {
 }
 
 const sectionHtml = (items: Item[]) =>
-  items.map((item) => (item.kind === "heading" ? `<h2>${escapeHtml(item.text)}</h2>` : `<p>${escapeHtml(item.text)}</p>`)).join("\n");
+  items
+    .map((item) =>
+      item.kind === "heading"
+        ? `<h2>${escapeHtml(item.text)}</h2>`
+        : `<p${isChineseParagraph(item.text) ? ` class="${chineseParagraphClass}"` : ""}>${escapeHtml(item.text)}</p>`,
+    )
+    .join("\n");
 
 /**
  * Renders plain text as a Book. `title` is the Book's title from the Library.
@@ -141,4 +148,5 @@ const textCss = `
 body { overflow-wrap: break-word; }
 h2 { font-size: 1.3em; margin: 1.4em 0 .9em; }
 p { margin: 0 0 .9em; }
+${chineseParagraphCss}
 `;

@@ -23,13 +23,50 @@ export interface DisplaySettings {
 export const fontSizeRange = { min: 12, max: 36, step: 1 };
 export const lineSpacingRange = { min: 1.1, max: 2.2, step: 0.1 };
 
-export const fontFamilies: { value: FontFamily; label: string; stack: string | null }[] = [
-  { value: "book", label: "The Book's own", stack: null },
-  { value: "serif", label: "Serif", stack: 'Georgia, "Times New Roman", "Noto Serif", "Songti SC", "SimSun", "Noto Serif CJK SC", serif' },
-  { value: "sans", label: "Sans-serif", stack: 'system-ui, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif' },
-  { value: "cjk-serif", label: "Chinese serif (宋体)", stack: '"Songti SC", "STSong", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", serif' },
-  { value: "cjk-sans", label: "Chinese sans (黑体)", stack: '"PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif' },
+/**
+ * Font stacks. System fonts only: the app works offline, so nothing is downloaded. Each stack lists Latin fonts first
+ * (so English in a Chinese paragraph looks right), then the Chinese fonts of every platform: macOS and iOS (PingFang,
+ * Songti, Hiragino), Windows (Microsoft YaHei, SimSun, FangSong, KaiTi), Linux and Android (Noto and Source Han
+ * CJK, WenQuanYi, Droid Sans Fallback), ending in a generic family. The browser skips a font that is not installed.
+ * Simplified and Traditional Chinese have their own stacks, chosen by the document's `lang`, because a Simplified
+ * font draws many shared characters in the Simplified form.
+ */
+const latinSerif = 'Georgia, "Times New Roman", "Noto Serif"';
+const latinSans = 'system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial';
+const hansSerif =
+  '"Songti SC", "STSong", "SimSun", "NSimSun", "Noto Serif CJK SC", "Source Han Serif SC", "Noto Serif SC", "FangSong", "STFangsong", "KaiTi", "AR PL UMing CN"';
+const hantSerif =
+  '"Songti TC", "PMingLiU", "MingLiU", "Noto Serif CJK TC", "Source Han Serif TC", "Noto Serif TC", "AR PL UMing TW"';
+const hansSans =
+  '"PingFang SC", "Hiragino Sans GB", "STHeiti", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "Noto Sans SC", "WenQuanYi Micro Hei", "Droid Sans Fallback"';
+const hantSans =
+  '"PingFang TC", "Heiti TC", "Microsoft JhengHei", "Noto Sans CJK TC", "Source Han Sans TC", "Noto Sans TC", "WenQuanYi Micro Hei"';
+
+export interface FontChoice {
+  value: FontFamily;
+  label: string;
+  /** Applied to the whole Book; null leaves the Book's own fonts alone. */
+  stack: string | null;
+  /** The same for documents in Traditional Chinese (`lang` zh-Hant, zh-TW, zh-HK). */
+  hantStack: string | null;
+}
+
+export const fontFamilies: FontChoice[] = [
+  { value: "book", label: "The Book's own", stack: null, hantStack: null },
+  { value: "serif", label: "Serif", stack: `${latinSerif}, ${hansSerif}, serif`, hantStack: `${latinSerif}, ${hantSerif}, serif` },
+  { value: "sans", label: "Sans-serif", stack: `${latinSans}, ${hansSans}, sans-serif`, hantStack: `${latinSans}, ${hantSans}, sans-serif` },
+  { value: "cjk-serif", label: "Chinese serif (宋体)", stack: `${latinSerif}, ${hansSerif}, serif`, hantStack: `${latinSerif}, ${hantSerif}, serif` },
+  { value: "cjk-sans", label: "Chinese sans (黑体)", stack: `${latinSans}, ${hansSans}, sans-serif`, hantStack: `${latinSans}, ${hantSans}, sans-serif` },
 ];
+
+/**
+ * What Chinese text uses when the Book names no font of its own (and the reader has not chosen one): a Chinese serif
+ * font after the Latin ones, so that the browser never has to guess. A Book's own font-family always wins over this.
+ */
+export const chineseDefaultStacks = {
+  hans: `${latinSerif}, ${hansSerif}, serif`,
+  hant: `${latinSerif}, ${hantSerif}, serif`,
+};
 
 /** How wide the margins are: the gap at the sides of the text (percent) and the widest a line of text may be (px). */
 export const marginSizes: Record<Margins, { label: string; gap: number; maxLine: number }> = {
