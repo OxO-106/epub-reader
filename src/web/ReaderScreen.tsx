@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { getBookFile } from "./api.ts";
+import { getBookFile, getReadingPosition } from "./api.ts";
 import { createReader, type Reader, type TocEntry } from "./reader/reader.ts";
+import { ReadingProgress } from "./ReadingProgress.tsx";
+import { trackReadingPosition } from "./reading-position.ts";
 import { SearchPanel } from "./SearchPanel.tsx";
 
 type State =
@@ -13,6 +15,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [tocOpen, setTocOpen] = useState(false);
   const [chapterId, setChapterId] = useState<number | null>(null);
+  const [fraction, setFraction] = useState<number | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   // The contents and the search panel share one place beside (or over) the text, so only one is open at a time.
   useEffect(() => {
@@ -27,18 +30,27 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     reader.current = instance;
     setState({ kind: "loading" });
     setChapterId(null);
-    const stopListening = instance.onLocation((location) => setChapterId(location.chapterId));
+    setFraction(null);
+    let stopTracking = () => {};
+    const stopListening = instance.onLocation((location) => {
+      setChapterId(location.chapterId);
+      setFraction(location.fraction);
+    });
 
-    getBookFile(bookId).then(
-      (file) =>
-        instance.open({ kind: "epub", file }).then(
+    Promise.all([getBookFile(bookId), getReadingPosition(bookId)]).then(
+      ([file, saved]) => {
+        if (cancelled) return;
+        if (saved.fraction !== null) setFraction(saved.fraction);
+        stopTracking = trackReadingPosition(bookId, instance, saved.position);
+        return instance.open({ kind: "epub", file }, { position: saved.position ?? undefined }).then(
           ({ title, toc }) => {
             if (!cancelled) setState({ kind: "ready", title, toc });
           },
           () => {
             if (!cancelled) setState({ kind: "error", message: "This Book could not be opened. Its file may be damaged." });
           },
-        ),
+        );
+      },
       () => {
         if (!cancelled) {
           setState({ kind: "error", message: "Cannot reach the server, or the Book is no longer in the Library." });
@@ -48,6 +60,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
 
     return () => {
       cancelled = true;
+      stopTracking();
       stopListening();
       instance.close();
       reader.current = null;
@@ -137,6 +150,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         <button type="button" onClick={() => reader.current?.prev()} disabled={state.kind !== "ready"}>
           Previous
         </button>
+        <ReadingProgress fraction={fraction} />
         <button type="button" onClick={() => reader.current?.next()} disabled={state.kind !== "ready"}>
           Next
         </button>
