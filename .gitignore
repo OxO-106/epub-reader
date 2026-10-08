@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.sqlite
+*.sqlite-journal
+data/
+library/
+test-results/
+playwright-report/
+.claude/worktrees/
