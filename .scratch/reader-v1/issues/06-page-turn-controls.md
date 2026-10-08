@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Keyboard keys move forward and back, including across chapter boundaries
-- [ ] Clicking the page edges turns pages in paginated mode
-- [ ] Nothing needed to read depends on hover
-- [ ] Playwright test covers keyboard and edge clicks
+- [x] Keyboard keys move forward and back, including across chapter boundaries
+- [x] Clicking the page edges turns pages in paginated mode
+- [x] Nothing needed to read depends on hover
+- [x] Playwright test covers keyboard and edge clicks

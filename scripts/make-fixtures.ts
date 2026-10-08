@@ -49,9 +49,12 @@ interface EpubOptions {
   version?: "2.0" | "3.0";
   /** Extra files, keyed by path inside the zip. */
   files?: Record<string, Uint8Array>;
+  /** Number of chapters, c1.xhtml onward. Chapters beyond the second get a one-line body unless `files` replaces them. */
+  chapterCount?: number;
 }
 
-function epub({ metadata, manifest = "", version = "3.0", files = {} }: EpubOptions): Uint8Array {
+function epub({ metadata, manifest = "", version = "3.0", files = {}, chapterCount = 2 }: EpubOptions): Uint8Array {
+  const numbers = Array.from({ length: chapterCount }, (_, i) => i + 1);
   const entries: Zippable = {
     // "mimetype" must be the first entry and stored uncompressed.
     mimetype: [strToU8("application/epub+zip"), { level: 0 }],
@@ -63,17 +66,17 @@ function epub({ metadata, manifest = "", version = "3.0", files = {} }: EpubOpti
       `${xml}<package xmlns="http://www.idpf.org/2007/opf" version="${version}" unique-identifier="id">` +
         `<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">${metadata}</metadata>` +
         `<manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>` +
-        `<item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/>` +
-        `<item id="c2" href="c2.xhtml" media-type="application/xhtml+xml"/>${manifest}</manifest>` +
-        `<spine><itemref idref="c1"/><itemref idref="c2"/></spine></package>`,
+        numbers.map((n) => `<item id="c${n}" href="c${n}.xhtml" media-type="application/xhtml+xml"/>`).join("") +
+        `${manifest}</manifest><spine>${numbers.map((n) => `<itemref idref="c${n}"/>`).join("")}</spine></package>`,
     ),
     "OEBPS/nav.xhtml": strToU8(
       `${xml}<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head>` +
-        `<body><nav epub:type="toc"><ol><li><a href="c1.xhtml">Chapter 1</a></li><li><a href="c2.xhtml">Chapter 2</a></li></ol></nav></body></html>`,
+        `<body><nav epub:type="toc"><ol>${numbers.map((n) => `<li><a href="c${n}.xhtml">Chapter ${n}</a></li>`).join("")}</ol></nav></body></html>`,
     ),
     "OEBPS/c1.xhtml": strToU8(chapter(1, "It was a quiet morning in the sample library.")),
     "OEBPS/c2.xhtml": strToU8(chapter(2, "The second chapter is only here so there is a table of contents.")),
   };
+  for (const n of numbers.slice(2)) entries[`OEBPS/c${n}.xhtml`] = strToU8(chapter(n, `Chapter ${n} has a single paragraph.`));
   for (const [path, data] of Object.entries(files)) entries[path] = data;
   return zipSync(entries, { mtime: fixedTime });
 }
@@ -180,3 +183,26 @@ writeFileSync(
 );
 
 writeFileSync(join(out, "sample.txt"), "Sample text\n\nA short plain-text file.\nIt has two paragraphs.\n");
+
+// Three chapters of 60 numbered paragraphs each, so a window shows several pages per chapter. Used to test turning
+// pages: every paragraph says which chapter and paragraph it is, so a test can tell what is on screen.
+{
+  const paragraphs = (n: number) =>
+    Array.from(
+      { length: 60 },
+      (_, i) => `<p>Chapter ${n}, paragraph ${i + 1}. The lamp burned low while the long story went on and on through the night.</p>`,
+    ).join("");
+  const longChapter = (n: number) => xhtml(`<h1>Chapter ${n}</h1>${paragraphs(n)}`);
+  writeFileSync(
+    join(out, "long.epub"),
+    epub({
+      chapterCount: 3,
+      metadata: `${id(6)}<dc:title>Long Book</dc:title><dc:creator>Test Author</dc:creator><dc:language>en</dc:language>${modified}`,
+      files: {
+        "OEBPS/c1.xhtml": strToU8(longChapter(1)),
+        "OEBPS/c2.xhtml": strToU8(longChapter(2)),
+        "OEBPS/c3.xhtml": strToU8(longChapter(3)),
+      },
+    }),
+  );
+}

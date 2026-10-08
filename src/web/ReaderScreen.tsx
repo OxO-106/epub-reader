@@ -52,6 +52,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
 
   function openChapter(entry: TocEntry) {
     reader.current?.goTo(entry.target);
+    reader.current?.focus(); // so the page-turn keys work straight after choosing
     // On a narrow window the contents cover the text, so get out of the way once a chapter is chosen.
     if (window.matchMedia("(max-width: 45rem)").matches) setTocOpen(false);
   }

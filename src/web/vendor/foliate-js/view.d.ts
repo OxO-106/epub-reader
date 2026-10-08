@@ -23,6 +23,8 @@ export interface RelocateDetail {
 }
 
 export class View extends HTMLElement {
+  /** The page view. A paginated or scrolled Book's has `scrolled`; a fixed-layout Book's does not. */
+  renderer: HTMLElement & { scrolled?: boolean };
   open(book: FoliateBook): Promise<void>;
   init(options: { lastLocation?: string | null; showTextStart?: boolean }): Promise<void>;
   goTo(target: string | number): Promise<unknown>;

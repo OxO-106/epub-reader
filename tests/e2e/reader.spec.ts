@@ -69,11 +69,9 @@ test("next and previous move through the Book", async ({ page }) => {
   await expect(toc.getByRole("button", { name: "Chapter 2" })).toHaveAttribute("aria-current", "location");
   await expect.poll(() => bookText(page)).toContain("second chapter");
 
-  // The page view ignores a turn while it is still settling from the last one, so a click may need repeating.
-  await expect(async () => {
-    await page.getByRole("button", { name: "Previous" }).click();
-    await expect(toc.getByRole("button", { name: "Chapter 1" })).toHaveAttribute("aria-current", "location", { timeout: 1000 });
-  }).toPass();
+  // No waiting for the page to settle: the Reader makes this turn once the last one is done.
+  await page.getByRole("button", { name: "Previous" }).click();
+  await expect(toc.getByRole("button", { name: "Chapter 1" })).toHaveAttribute("aria-current", "location");
 });
 
 test("a way back to the Library, and the browser's back button works too", async ({ page }) => {
