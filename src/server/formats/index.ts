@@ -1,12 +1,13 @@
 import { extname } from "node:path";
 import { epub } from "./epub.ts";
+import { markdown } from "./markdown.ts";
 import type { BookFormat } from "./types.ts";
 
 export { CorruptBookError } from "./types.ts";
 export type { BookFormat, ExtractedMetadata } from "./types.ts";
 
-/** Every format Reader can import. Add the Markdown and plain-text formats here. */
-export const formats: BookFormat[] = [epub];
+/** Every format Reader can import. Add the plain-text format here. */
+export const formats: BookFormat[] = [epub, markdown];
 
 /** Looks a format up by the id stored in the database. */
 export function formatById(id: string): BookFormat | undefined {

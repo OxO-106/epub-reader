@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { getBookFile, getReadingPosition, HttpError } from "./api.ts";
+import { getReadingPosition, HttpError } from "./api.ts";
+import { loadBookSource } from "./bookSource.ts";
 import { checkConnection, heartbeatMs } from "./connection.ts";
 import { ConnectionNotice } from "./ConnectionNotice.tsx";
 import { applyTheme, loadDisplay, saveDisplay, type DisplaySettings } from "./display-settings.ts";
@@ -48,12 +49,12 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       setFraction(location.fraction);
     });
 
-    Promise.all([getBookFile(bookId), getReadingPosition(bookId)]).then(
-      ([file, saved]) => {
+    Promise.all([loadBookSource(bookId), getReadingPosition(bookId)]).then(
+      ([source, saved]) => {
         if (cancelled) return;
         if (saved.fraction !== null) setFraction(saved.fraction);
         stopTracking = trackReadingPosition(bookId, instance, saved.position);
-        return instance.open({ kind: "epub", file }, { position: saved.position ?? undefined }).then(
+        return instance.open(source, { position: saved.position ?? undefined }).then(
           ({ title, toc }) => {
             if (!cancelled) setState({ kind: "ready", title, toc });
           },

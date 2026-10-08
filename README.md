@@ -2,7 +2,7 @@
 
 A personal ebook reader that runs on your own PC and is used through a web browser. A small local server keeps your Library (the Books and your Reading positions), so the same Library and place in each Book are there on every device that connects to it. Nothing leaves your machine and no internet connection is needed. Terms are defined in [GLOSSARY.md](GLOSSARY.md).
 
-Formats: EPUB today; Markdown and plain text are planned for v1.
+Formats: EPUB and Markdown; plain text is planned for v1.
 
 ## Requirements
 

@@ -211,6 +211,70 @@ writeFileSync(
 
 writeFileSync(join(out, "sample.txt"), "Sample text\n\nA short plain-text file.\nIt has two paragraphs.\n");
 
+// A Markdown Book that uses everything the Reader renders. Four top-level headings make four sections; "Code Samples"
+// is the second one, so the link to it crosses a section. The last lines are hostile and must do nothing.
+{
+  const fence = "```";
+  const dot = Buffer.from(png(2, 3, [40, 160, 40])).toString("base64");
+  const long = Array.from({ length: 200 }, (_, i) => `Paragraph ${i + 1} of the long section, with enough words to take up some room.`);
+  writeFileSync(
+    join(out, "notes.md"),
+    [
+      "# Field Notes",
+      "",
+      "Welcome. Skip to [the code samples](#code-samples) or read the [Markdown guide](https://example.com/guide).",
+      "",
+      "## Checklist",
+      "",
+      "- [x] Pack the bag",
+      "- [ ] Find the map",
+      "",
+      "## Weather",
+      "",
+      "| Day | Outlook |",
+      "|-----|---------|",
+      "| Mon | Rain |",
+      "| Tue | Sun |",
+      "",
+      "# Code Samples",
+      "",
+      `${fence}js`,
+      "const answer = 42;",
+      `${fence}`,
+      "",
+      "Inline `code` too.",
+      "",
+      `![Green dot](data:image/png;base64,${dot})`,
+      "",
+      "![Local diagram](images/diagram.png)",
+      "",
+      "![Remote picture](https://example.com/picture.png)",
+      "",
+      "# Long Section",
+      "",
+      ...long.flatMap((line) => [line, ""]),
+      "# The End",
+      "",
+      "Back to [Field Notes](#field-notes).",
+      "",
+      "<script>document.title = 'pwned'</script>",
+      '<img src="https://example.com/trap.png" onerror="document.title = \'pwned\'">',
+      "",
+      "[Dangerous link](javascript:document.title='pwned')",
+      "",
+    ].join("\n"),
+  );
+}
+
+// Chinese Markdown whose headings contain no ASCII.
+writeFileSync(
+  join(out, "chinese.md"),
+  "# 红楼梦读书笔记\n\n甄士隐梦幻识通灵，贾雨村风尘怀闺秀。\n\n## 第一回\n\n此开卷第一回也。\n\n## 第二回\n\n贾夫人仙逝扬州城。\n",
+);
+
+// No heading at all, so the file name becomes the title.
+writeFileSync(join(out, "no-heading.md"), "Just a few words, with no heading anywhere.\n\nA second paragraph.\n");
+
 // Three chapters of 60 numbered paragraphs each, so a window shows several pages per chapter. Used to test turning
 // pages: every paragraph says which chapter and paragraph it is, so a test can tell what is on screen.
 {

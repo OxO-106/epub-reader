@@ -48,7 +48,11 @@ export function trackReadingPosition(
   };
 
   const stopListening = reader.onLocation((location) => {
-    if (location.position === lastSent) return;
+    if (location.position === lastSent) {
+      // Back at the saved place (a restore reports a transient place first, then the right one): drop the transient one.
+      waiting = null;
+      return;
+    }
     waiting = location;
     timer ??= setTimeout(send, saveDelayMs);
   });

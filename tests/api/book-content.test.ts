@@ -72,4 +72,21 @@ describe("Content-Security-Policy", () => {
       expect(directives["object-src"], path).toEqual(["'none'"]);
     }
   });
+
+  it("lets Markdown show images from the web and inline images, and loosens nothing else", async () => {
+    server = await startTestServer();
+
+    const policy = (await fetch(`${server.url}/`)).headers.get("content-security-policy")!;
+    const directives = Object.fromEntries(
+      policy.split(";").map((d) => {
+        const [name, ...values] = d.trim().split(/\s+/);
+        return [name, values];
+      }),
+    );
+
+    expect(directives["img-src"]).toEqual(["'self'", "data:", "blob:", "https:", "http:"]);
+    expect(directives["connect-src"]).toEqual(["'self'", "blob:"]);
+    expect(directives["frame-src"]).toEqual(["blob:"]);
+    expect(directives["default-src"]).toEqual(["'self'"]);
+  });
 });

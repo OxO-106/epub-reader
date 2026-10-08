@@ -6,11 +6,11 @@
 
 **Status:** ready-for-agent
 
-- [ ] Importing a .md adds a Book titled from its first heading, or its filename if it has none
-- [ ] Table of contents is built from headings
-- [ ] Tables, task lists and highlighted code blocks render
-- [ ] Missing relative image shows a placeholder; http(s) and inline images display
-- [ ] External links open in a new tab; in-Book heading links jump within the Book
-- [ ] Reading position restores exactly for a Markdown Book
-- [ ] Duplicate Markdown imports are detected
-- [ ] API test covers import; Playwright covers rendering and position restore
+- [x] Importing a .md adds a Book titled from its first heading, or its filename if it has none
+- [x] Table of contents is built from headings
+- [x] Tables, task lists and highlighted code blocks render
+- [x] Missing relative image shows a placeholder; http(s) and inline images display
+- [x] External links open in a new tab; in-Book heading links jump within the Book
+- [x] Reading position restores exactly for a Markdown Book
+- [x] Duplicate Markdown imports are detected
+- [x] API test covers import; Playwright covers rendering and position restore

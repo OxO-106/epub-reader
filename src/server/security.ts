@@ -5,13 +5,15 @@ import type { MiddlewareHandler } from "hono";
  * scripts, and the Reader shows its pages in iframes that share the app's origin. Only scripts
  * served by the app itself may run, which also covers those iframes (blob: documents inherit this
  * policy). The rest is the narrowest set the Reader needs: foliate-js turns a Book's pages,
- * stylesheets, images and fonts into blob: URLs, and Books use inline styles.
+ * stylesheets, images and fonts into blob: URLs, and Books use inline styles. Markdown Books may show
+ * images from the web, so `img-src` (and nothing else) also allows http: and https:. An image cannot run
+ * code, but loading one tells that site the Book was opened.
  */
 export const contentSecurityPolicy = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline' blob:",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: https: http:",
   "font-src 'self' data: blob:",
   "media-src 'self' data: blob:",
   "connect-src 'self' blob:",
