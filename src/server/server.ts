@@ -1,26 +1,34 @@
 import { mkdirSync } from "node:fs";
-import type { Server } from "node:http";
 import { join } from "node:path";
-import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
 import { resolveConfig, type Config, type ConfigOverrides } from "./config.ts";
 import { openDb } from "./db.ts";
 import { importBook } from "./import.ts";
 import { watchLibraryFolder } from "./library-folder.ts";
+import { listenOnAddresses, selectListenAddresses, type NetworkInterfaces } from "./listen.ts";
 import { openStorage } from "./storage.ts";
 
-export type ServerOptions = ConfigOverrides;
+export interface ServerOptions extends ConfigOverrides {
+  /** Where to look for the Tailscale address. Defaults to this PC's real network interfaces; tests inject their own. */
+  networkInterfaces?: NetworkInterfaces;
+}
 
 export interface RunningServer {
   config: Config;
-  /** Base URL, e.g. http://127.0.0.1:5174 */
+  /** Base URL on the first address, e.g. http://127.0.0.1:5174 */
   url: string;
+  /** Every address the server listens on: the base address, plus the Tailscale address when asked for. */
+  addresses: string[];
   close(): Promise<void>;
 }
 
 /** Starts the Reader server. Used by `main.ts` and, unchanged, by the tests. */
 export async function startServer(options: ServerOptions = {}): Promise<RunningServer> {
-  const config = resolveConfig(options);
+  const { networkInterfaces, ...overrides } = options;
+  const config = resolveConfig(overrides);
+  // Before anything is created: asking for Tailscale on a PC without it is a startup error, never a quiet fallback.
+  const addresses = selectListenAddresses({ host: config.host, tailscale: config.tailscale, networkInterfaces });
+
   mkdirSync(config.dataDir, { recursive: true });
   mkdirSync(config.libraryDir, { recursive: true });
 
@@ -34,34 +42,30 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   });
   const app = createApp({ db, storage, libraryFolder, webDir: config.webDir });
 
-  const httpServer = await new Promise<Server>((resolve, reject) => {
-    // Plain HTTP/1.1, so the returned server is a node:http Server.
-    const s = serve({ fetch: app.fetch, hostname: config.host, port: config.port }, () => resolve(s as Server)) as Server;
-    s.once("error", reject);
-  });
+  /** The folder watcher imports through the database, so it stops first. */
+  const stopBackgroundWork = async () => {
+    await libraryFolder.close();
+    db.close();
+  };
 
-  const address = httpServer.address();
-  const port = typeof address === "object" && address ? address.port : config.port;
-  const resolved: Config = { ...config, port };
+  let listener;
+  try {
+    listener = await listenOnAddresses(app.fetch, { addresses, port: config.port });
+  } catch (error) {
+    await stopBackgroundWork();
+    throw error;
+  }
+
+  const resolved: Config = { ...config, port: listener.port };
+  const base = config.host.includes(":") ? `[${config.host}]` : config.host;
 
   return {
     config: resolved,
-    url: `http://${config.host.includes(":") ? `[${config.host}]` : config.host}:${port}`,
-    close() {
-      return new Promise<void>((resolve, reject) => {
-        httpServer.close((err) => {
-          // The folder watcher imports through the database, so it stops first.
-          libraryFolder.close().then(
-            () => {
-              db.close();
-              if (err) reject(err);
-              else resolve();
-            },
-            reject,
-          );
-        });
-        httpServer.closeAllConnections();
-      });
+    url: `http://${base}:${listener.port}`,
+    addresses,
+    async close() {
+      await listener.close();
+      await stopBackgroundWork();
     },
   };
 }
