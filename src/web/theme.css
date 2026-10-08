@@ -63,7 +63,12 @@ input[type="text"] {
   background: color-mix(in srgb, var(--fg) 16%, transparent);
 }
 
+.book-search-match[aria-current="location"] {
+  background: color-mix(in srgb, var(--fg) 16%, transparent);
+}
+
 .toc,
+.book-search,
 .display-settings,
 dialog {
   background: var(--bg);
@@ -83,6 +88,16 @@ dialog {
   background: var(--danger);
   border-color: var(--danger);
   color: var(--bg);
+}
+
+/* Four buttons and a title do not fit one row on a phone, so the bar wraps instead of squeezing the title away. */
+.reader-bar {
+  flex-wrap: wrap;
+}
+
+.reader-title {
+  flex: 1 1 6rem;
+  min-width: 6rem;
 }
 
 /* The display settings float over the text, so the text does not reflow when they open. */

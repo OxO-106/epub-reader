@@ -54,7 +54,7 @@ export const themes: Record<Theme, Palette> = {
 export function defaultDisplay(): DisplaySettings {
   const prefersDark = typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: dark)").matches;
   return {
-    fontFamily: "serif",
+    fontFamily: "book", // leave the Book's own fonts alone until the reader picks one
     fontSize: 18,
     lineSpacing: 1.5,
     margins: "medium",
