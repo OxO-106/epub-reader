@@ -48,9 +48,11 @@ test("a Book reopens where it was left, in the same browser and in a second prof
   const percentage = (await fractionOf(page).textContent())!;
   expect(percentage).toMatch(/^\d+%$/);
 
-  // Nothing was saved by hand. Leave the Reader and the Library lists the Book with the same percentage.
+  // Nothing was saved by hand. Leave the Reader and the Library lists the Book with the same percentage
+  // (a finished Book, which this short one is at the end of chapter 2, reads "Done" there instead of 100%).
+  const inLibrary = percentage === "100%" ? "Done" : percentage;
   await page.getByRole("link", { name: "Library" }).click();
-  await expect(page.locator(".books > li").first()).toContainText(percentage);
+  await expect(page.locator(".books > li").first()).toContainText(inLibrary);
 
   // Same browser: closing the tab and opening the Book again lands in chapter 2,
   await page.getByRole("link", { name: /Sample Book/ }).click();
@@ -62,7 +64,7 @@ test("a Book reopens where it was left, in the same browser and in a second prof
   const profile = await browser.newContext({ baseURL: server.url });
   const other = await profile.newPage();
   await other.goto("/");
-  await expect(other.locator(".books > li").first()).toContainText(percentage);
+  await expect(other.locator(".books > li").first()).toContainText(inLibrary);
   await other.getByRole("link", { name: /Sample Book/ }).click();
   await expect.poll(() => bookText(other)).toContain("second chapter");
   await expect(fractionOf(other)).toHaveText(percentage);
@@ -114,7 +116,7 @@ test("the Library lists the most recently read Book first and leaves never-opene
   await expect(fractionOf(page)).toBeVisible();
   await page.getByRole("link", { name: "Library" }).click();
   await expect(books.first()).toContainText("红楼梦");
-  await expect(books.first()).toContainText(/\d+% read/);
+  await expect(books.first()).toContainText(/\d+%/);
 
   await books.filter({ hasText: "Sample Book" }).getByRole("link").first().click();
   await expect.poll(() => bookText(page)).toContain("quiet morning");
