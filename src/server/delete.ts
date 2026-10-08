@@ -1,4 +1,5 @@
 import { rm } from "node:fs/promises";
+import { withBookLock } from "./book-lock.ts";
 import type { Db } from "./db.ts";
 import { formats } from "./formats/index.ts";
 import type { Storage } from "./storage.ts";
@@ -21,10 +22,13 @@ import type { Storage } from "./storage.ts";
  * Returns false when there is no such Book.
  */
 export async function deleteBook({ db, storage }: { db: Db; storage: Storage }, hash: string): Promise<boolean> {
-  const book = db.getBook(hash);
-  if (!book || !db.deleteBook(hash)) return false;
-  await removeStoredFiles(storage, book);
-  return true;
+  // Not interleaved with an import of the same content (see `withBookLock`).
+  return withBookLock(hash, async () => {
+    const book = db.getBook(hash);
+    if (!book || !db.deleteBook(hash)) return false;
+    await removeStoredFiles(storage, book);
+    return true;
+  });
 }
 
 async function removeStoredFiles(

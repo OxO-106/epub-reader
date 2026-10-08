@@ -6,6 +6,7 @@ import { Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { BookRow, Db } from "./db.ts";
 import { CorruptBookError, detectFormat, formats } from "./formats/index.ts";
+import { withBookLock } from "./book-lock.ts";
 import type { Storage } from "./storage.ts";
 
 /** Largest Book file accepted, in bytes. */
@@ -65,33 +66,37 @@ export async function importBook({ db, storage }: ImportContext, input: ImportIn
       return rejected("corrupt", `${quoted} is not a valid ${format.label} file, or it is damaged, so it was not added.`);
     }
 
-    const existing = db.getBook(hash);
-    if (existing) return { status: "duplicate", book: existing };
+    // Everything from the duplicate check to the database insert happens one import at a time per Book: two imports of
+    // the same content would otherwise move files onto the same stored path at once (EPERM on Windows), and a
+    // deletion of the Book must not land between storing its files and listing it.
+    return await withBookLock(hash, async (): Promise<ImportResult> => {
+      const existing = db.getBook(hash);
+      if (existing) return { status: "duplicate", book: existing };
 
-    let metadata;
-    try {
-      metadata = await format.extract(temp);
-    } catch (error) {
-      if (!(error instanceof CorruptBookError)) throw error;
-      return rejected("corrupt", `${quoted} is not a valid ${format.label} file, or it is damaged, so it was not added.`);
-    }
+      let metadata;
+      try {
+        metadata = await format.extract(temp);
+      } catch (error) {
+        if (!(error instanceof CorruptBookError)) throw error;
+        return rejected("corrupt", `${quoted} is not a valid ${format.label} file, or it is damaged, so it was not added.`);
+      }
 
-    const cover = metadata.cover ? `${hash}${metadata.cover.extension}` : null;
-    await rename(temp, storage.bookFile(hash, format.extensions[0]!));
-    if (metadata.cover && cover) await writeFile(storage.coverFile(cover), metadata.cover.data);
+      const cover = metadata.cover ? `${hash}${metadata.cover.extension}` : null;
+      await rename(temp, storage.bookFile(hash, format.extensions[0]!));
+      if (metadata.cover && cover) await writeFile(storage.coverFile(cover), metadata.cover.data);
 
-    const book: BookRow = {
-      hash,
-      title: metadata.title ?? fallbackTitle(filename),
-      author: metadata.author ?? null,
-      format: format.id,
-      cover,
-      added_at: Date.now(),
-      last_read_at: null,
-    };
-    // A concurrent import of the same content may have won the race; it stored identical files.
-    if (!db.addBook(book)) return { status: "duplicate", book: db.getBook(hash)! };
-    return { status: "added", book };
+      const book: BookRow = {
+        hash,
+        title: metadata.title ?? fallbackTitle(filename),
+        author: metadata.author ?? null,
+        format: format.id,
+        cover,
+        added_at: Date.now(),
+        last_read_at: null,
+      };
+      db.addBook(book);
+      return { status: "added", book };
+    });
   } finally {
     await rm(temp, { force: true });
   }

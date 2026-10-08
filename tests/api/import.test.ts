@@ -116,6 +116,17 @@ describe("importing an EPUB by upload", () => {
     expect(await listBooks(server)).toHaveLength(1);
   });
 
+  it("adds exactly one Book when many identical uploads arrive at once, and none of them fails", async () => {
+    server = await startTestServer();
+
+    const responses = await Promise.all(Array.from({ length: 12 }, () => uploadFixture(server!, "sample.epub")));
+
+    const statuses = responses.map((r) => r.status);
+    expect(statuses.filter((s) => s === 201)).toHaveLength(1);
+    expect(statuses.filter((s) => s === 200)).toHaveLength(11);
+    expect(await listBooks(server)).toHaveLength(1);
+  });
+
   it("falls back to the file name when the EPUB has no title", async () => {
     server = await startTestServer();
     const untitled = zipSync({
