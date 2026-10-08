@@ -108,13 +108,50 @@ export interface Palette {
   background: string;
   text: string;
   link: string;
+  /** The Chinese gloss of a Translation: its ink, the tint behind it and the bars of its waiting skeleton (--gloss-* in theme.css). */
+  glossInk: string;
+  glossBackground: string;
+  glossBar: string;
+  /** A Translation that failed: the warning ink and its tint (--danger and --alert-soft in theme.css). */
+  alertInk: string;
+  alertBackground: string;
 }
 
 /** What a Book's page is painted with: the theme's ground, the text colour used for reading (a little softer than the interface's ink) and the accent for links. Keep in step with theme.css. */
 export const themes: Record<Theme, Palette> = {
-  light: { label: "Light", background: "#f5f5f1", text: "#23282a", link: "#2e6b58" },
-  dark: { label: "Dark", background: "#14171a", text: "#d9dcd6", link: "#86c7ab" },
-  sepia: { label: "Sepia", background: "#f3e9d2", text: "#3a3023", link: "#8a5a2b" },
+  light: {
+    label: "Light",
+    background: "#f5f5f1",
+    text: "#23282a",
+    link: "#2e6b58",
+    glossInk: "#3f4743",
+    glossBackground: "#ebf2ee",
+    glossBar: "#d6e5de",
+    alertInk: "#b3261e",
+    alertBackground: "#ecd8d3",
+  },
+  dark: {
+    label: "Dark",
+    background: "#14171a",
+    text: "#d9dcd6",
+    link: "#86c7ab",
+    glossInk: "#c3cdc7",
+    glossBackground: "#1c2622",
+    glossBar: "#2a3a33",
+    alertInk: "#ff8f85",
+    alertBackground: "#352829",
+  },
+  sepia: {
+    label: "Sepia",
+    background: "#f3e9d2",
+    text: "#3a3023",
+    link: "#8a5a2b",
+    glossInk: "#4b3f2e",
+    glossBackground: "#ece0c4",
+    glossBar: "#dccfa9",
+    alertInk: "#9c2a1b",
+    alertBackground: "#e7ceb8",
+  },
 };
 
 export function defaultDisplay(): DisplaySettings {

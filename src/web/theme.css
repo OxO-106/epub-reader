@@ -13,6 +13,9 @@
  *   --accent      the one colour of emphasis (progress, primary buttons, links); --accent-ink the same colour as text
  *                 on --accent-soft (selected rows); --on-accent text and icons on --accent
  *   --mark        search match highlight; --scrim the dim layer behind a modal; --danger destructive actions
+ *   --alert-soft  the tint behind --danger text that is a warning rather than a button (a failed translation)
+ *   --gloss-ink, --gloss-bg, --gloss-bar   the Chinese translation under an English paragraph: its text (7:1 or more on
+ *                 its tint), the tint, and the bars of the skeleton that stands in for a paragraph still waiting
  */
 :root {
   --font-sans: system-ui, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "WenQuanYi Micro Hei", sans-serif;
@@ -42,6 +45,10 @@
   --link: #2e6b58;
   --danger: #b3261e;
   --mark: #f6de8e;
+  --alert-soft: #ecd8d3;
+  --gloss-ink: #3f4743;
+  --gloss-bg: #ebf2ee;
+  --gloss-bar: #d6e5de;
   --scrim: rgb(42 36 16 / 0.5);
   --shadow-card: 0 1px 2px rgb(20 30 25 / 0.04), 0 12px 32px rgb(20 30 25 / 0.06);
   --shadow-panel: 0 1px 2px rgb(20 30 25 / 0.14), 0 10px 22px rgb(20 30 25 / 0.12);
@@ -63,6 +70,10 @@
   --danger: #ff8f85;
   /* The dark and sepia highlights are not in the mockups; chosen to read like the light one. */
   --mark: #5b4b1c;
+  --alert-soft: #352829;
+  --gloss-ink: #c3cdc7;
+  --gloss-bg: #1c2622;
+  --gloss-bar: #2a3a33;
   --scrim: rgb(6 8 10 / 0.58);
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2), 0 12px 32px rgb(0 0 0 / 0.3);
   --shadow-panel: 0 12px 40px rgb(0 0 0 / 0.35);
@@ -84,6 +95,10 @@
   --link: #8a5a2b;
   --danger: #9c2a1b;
   --mark: #ebd28a;
+  --alert-soft: #e7ceb8;
+  --gloss-ink: #4b3f2e;
+  --gloss-bg: #ece0c4;
+  --gloss-bar: #dccfa9;
   --scrim: rgb(60 40 10 / 0.5);
   --shadow-card: 0 2px 4px rgb(60 40 10 / 0.06), 0 12px 32px rgb(60 40 10 / 0.1);
   --shadow-panel: 0 2px 4px rgb(60 40 10 / 0.06), 0 24px 56px rgb(60 40 10 / 0.2);
