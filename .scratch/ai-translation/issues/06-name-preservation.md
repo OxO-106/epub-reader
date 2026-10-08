@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] Names in the paragraph and context are masked before the backend sees them: capitalised words that are not sentence-initial, adjacent ones joined as phrases, sentence-initial words only when known (from the caller's list or earlier in the same request), minus a stop-list of weekdays, months, countries, languages, nationalities, titles, pronouns and common sentence starters kept in a plain data file; "Mr." and similar abbreviations do not count as sentence ends
-- [ ] The backend never receives the names themselves (assert on the stand-in's request log) and receives placeholders in a consistent numbering within a request
-- [ ] Names are restored in the streamed output, including when a placeholder is split across stream chunks (stream-safe), whatever the chunk boundaries
-- [ ] A placeholder the model drops is tolerated; a leftover or mangled token (e.g. `[[` or `[[3` at the end of the stream) is never shown to the browser
-- [ ] The optional `names` request field is validated (array of short strings, bounded count) and merged with the names detected in the paragraph
-- [ ] The prompt module follows the benchmark: no system prompt, plain template without context, Background Information template with context, sampling from the model card; the existing API tests are updated, not weakened
-- [ ] Tests with the model stand-in cover the cases above, including 'England' and 'Monday' not being masked, 'Mr. Bennet' being masked, and a name only known from the caller's list; `npm run test:all` passes
+- [x] Names in the paragraph and context are masked before the backend sees them: capitalised words that are not sentence-initial, adjacent ones joined as phrases, sentence-initial words only when known (from the caller's list or earlier in the same request), minus a stop-list of weekdays, months, countries, languages, nationalities, titles, pronouns and common sentence starters kept in a plain data file; "Mr." and similar abbreviations do not count as sentence ends
+- [x] The backend never receives the names themselves (assert on the stand-in's request log) and receives placeholders in a consistent numbering within a request
+- [x] Names are restored in the streamed output, including when a placeholder is split across stream chunks (stream-safe), whatever the chunk boundaries
+- [x] A placeholder the model drops is tolerated; a leftover or mangled token (e.g. `[[` or `[[3` at the end of the stream) is never shown to the browser
+- [x] The optional `names` request field is validated (array of short strings, bounded count) and merged with the names detected in the paragraph
+- [x] The prompt module follows the benchmark: no system prompt, plain template without context, Background Information template with context, sampling from the model card; the existing API tests are updated, not weakened
+- [x] Tests with the model stand-in cover the cases above, including 'England' and 'Monday' not being masked, 'Mr. Bennet' being masked, and a name only known from the caller's list; `npm run test:all` passes

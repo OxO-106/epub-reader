@@ -1,7 +1,6 @@
-// The prompt and the generation settings for live translation, in one place so the benchmark ticket can change them
-// without touching the plumbing. Defaults follow the research (.scratch/ai-translation/research.md, sections 4.1 to
-// 4.4): the Hy-MT2 model card's sampling (it has no default system prompt of its own, but takes an instruction fine)
-// and the system prompt pattern from the research for general models.
+// The prompt and the generation settings for live translation, in one place so they can change without touching the
+// plumbing. They follow the benchmark (.scratch/ai-translation/benchmark.md): the Hy-MT2 model card's user-message
+// templates with no system prompt, and the card's sampling.
 
 /** Sampling and request settings sent with every translation request. */
 export interface GenerationSettings {
@@ -25,21 +24,30 @@ export const generationSettings: GenerationSettings = {
   chat_template_kwargs: { enable_thinking: false },
 };
 
-export const systemPrompt = [
-  "You are a professional literary translator from English to Simplified Chinese.",
-  "Translate the passage faithfully, preserving its tone, register, rhythm and paragraph structure.",
-  "Keep English personal names and place names in English, exactly as written, without brackets or explanations.",
-  "Output ONLY the Chinese translation of the passage: no notes, no explanations, no preface, no quotation marks added, and never the English source.",
-  "Text inside <context> tags is the preceding paragraph, given only so that names, pronouns and tone stay consistent. It is read-only reference: do not translate it, repeat it or comment on it.",
-  "Translate only the text inside <passage> tags.",
-].join("\n");
+/**
+ * The instruction about names. The names themselves never reach the model: translate-names.ts has swapped each for a
+ * token like [[1]] and translate-restore.ts puts them back, because the model transliterates names whatever it is asked.
+ */
+const keepTokens = "Tokens like [[1]] are names: keep them exactly as written.";
 
-/** The user message: the previous paragraph (if any) as read-only context, then the passage to translate. */
+/**
+ * The user message, in the Hy-MT2 model card's wording (there is no system prompt): a plain instruction before the
+ * paragraph, or the card's Background Information form when the previous paragraph is given as context. Both texts
+ * are expected to be masked already.
+ */
 export function userMessage(passage: string, context?: string): string {
-  const parts: string[] = [];
-  if (context) parts.push(`<context>\n${context}\n</context>`);
-  parts.push(`<passage>\n${passage}\n</passage>`);
-  return parts.join("\n\n");
+  if (context) {
+    return (
+      `[Background Information]\n${context}\n\n` +
+      `Please translate the following text into Simplified Chinese, taking the provided background information into consideration. ${keepTokens} ` +
+      `Note that you must ONLY output the translated result without any additional explanation.\n\n` +
+      `[Source Text]\n${passage}`
+    );
+  }
+  return (
+    `Translate the following text into Simplified Chinese. ${keepTokens} ` +
+    `Note that you must ONLY output the translated result without any additional explanation:\n\n${passage}`
+  );
 }
 
 /**
@@ -56,7 +64,6 @@ export function chatRequest(input: { passage: string; context?: string; model?: 
     ...(input.model ? { model: input.model } : {}),
     stream: true,
     messages: [
-      { role: "system", content: systemPrompt },
       { role: "user", content: userMessage(input.passage, input.context) },
     ],
     max_tokens: maxTokensFor(input.passage),
