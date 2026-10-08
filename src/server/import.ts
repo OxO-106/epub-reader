@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { createWriteStream } from "node:fs";
+import { createReadStream, createWriteStream } from "node:fs";
 import { rename, rm, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { Writable } from "node:stream";
@@ -50,9 +50,19 @@ export async function importBook({ db, storage }: ImportContext, input: ImportIn
 
   const temp = join(storage.tmpDir, randomUUID());
   try {
-    const { hash, tooLarge } = await receive(input.content, temp);
-    if (tooLarge) {
+    const received = await receive(input.content, temp);
+    if (received.tooLarge) {
       return rejected("too-large", `${quoted} is larger than the 200 MB limit, so it was not added.`);
+    }
+    let hash = received.hash;
+
+    // Some formats store a different file than they receive (plain text is re-encoded as UTF-8). A Book's id is the
+    // hash of what is stored, so the same text sent in two encodings is one Book.
+    try {
+      if (await format.normalize?.(temp)) hash = await hashFile(temp);
+    } catch (error) {
+      if (!(error instanceof CorruptBookError)) throw error;
+      return rejected("corrupt", `${quoted} is not a valid ${format.label} file, or it is damaged, so it was not added.`);
     }
 
     const existing = db.getBook(hash);
@@ -85,6 +95,12 @@ export async function importBook({ db, storage }: ImportContext, input: ImportIn
   } finally {
     await rm(temp, { force: true });
   }
+}
+
+async function hashFile(path: string): Promise<string> {
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(path)) hash.update(chunk as Buffer);
+  return hash.digest("hex");
 }
 
 function rejected(code: RejectionCode, message: string): ImportResult {

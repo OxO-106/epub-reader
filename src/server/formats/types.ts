@@ -19,6 +19,12 @@ export interface BookFormat {
   /** Lower-case file extensions with the dot, e.g. [".epub"]. */
   extensions: string[];
   /**
+   * Optional. Rewrites the received file at `path` into the form that is stored, before the Book's identity is
+   * computed, so the same content in different encodings is one Book. Returns whether it changed the file.
+   * Throws `CorruptBookError` when the file is not a readable Book of this format.
+   */
+  normalize?(path: string): Promise<boolean>;
+  /**
    * Reads metadata from the stored file at `path`. Throws `CorruptBookError` when the file is
    * not a readable Book of this format, so nothing is added to the Library.
    */

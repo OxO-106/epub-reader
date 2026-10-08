@@ -45,6 +45,7 @@ const rejectionStatus: Record<RejectionCode, 413 | 415 | 422> = {
 const bookTypes: Record<string, string> = {
   epub: "application/epub+zip",
   markdown: "text/markdown; charset=utf-8",
+  text: "text/plain; charset=utf-8",
 };
 
 const coverTypes: Record<string, string> = {

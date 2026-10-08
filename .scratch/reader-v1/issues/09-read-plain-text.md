@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] A UTF-8 file, a UTF-8 file with a byte-order mark and a GBK file all display correctly
-- [ ] The decoded text is stored as UTF-8
-- [ ] A long file gets a table of contents of sections
-- [ ] Title falls back to the filename
-- [ ] Reading position restores exactly
-- [ ] API tests cover each encoding; Playwright confirms a GBK file shows readable Chinese in the Reader
+- [x] A UTF-8 file, a UTF-8 file with a byte-order mark and a GBK file all display correctly
+- [x] The decoded text is stored as UTF-8
+- [x] A long file gets a table of contents of sections
+- [x] Title falls back to the filename
+- [x] Reading position restores exactly
+- [x] API tests cover each encoding; Playwright confirms a GBK file shows readable Chinese in the Reader

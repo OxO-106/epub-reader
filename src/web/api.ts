@@ -80,7 +80,7 @@ export async function getBookFile(id: string): Promise<Blob> {
 }
 
 /** File types the file picker offers. The server decides what it accepts; add formats here as they arrive. */
-export const importableExtensions = [".epub", ".md", ".markdown"];
+export const importableExtensions = [".epub", ".md", ".markdown", ".txt"];
 
 export interface ImportOutcome {
   fileName: string;

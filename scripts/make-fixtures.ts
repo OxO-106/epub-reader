@@ -1,11 +1,12 @@
 // Regenerates tests/fixtures. Output is committed; run `npm run fixtures` only when changing a fixture.
-// Later tickets add a GBK .txt here. The oversized file used by the import tests is created on the fly in the test.
+// The oversized file used by the import tests is created on the fly in the test.
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { crc32, deflateSync } from "node:zlib";
 import { zipSync, strToU8, type Zippable } from "fflate";
+import iconv from "iconv-lite";
 
 const out = join(dirname(fileURLToPath(import.meta.url)), "../tests/fixtures");
 mkdirSync(out, { recursive: true });
@@ -313,4 +314,59 @@ writeFileSync(join(out, "no-heading.md"), "Just a few words, with no heading any
       },
     }),
   );
+}
+// Plain text. The same Chinese excerpt is saved as UTF-8, UTF-8 with a byte-order mark and GBK (Node cannot encode GBK,
+// so iconv-lite does it here; it is a devDependency used only by this script). Windows line endings, full-width
+// indents and chapter headings are what old Chinese ebooks look like. Chapter 2 is padded with numbered lines so a test
+// can scroll and tell where it is.
+{
+  const chapters = [
+    {
+      heading: "第一回 甄士隐梦幻识通灵 贾雨村风尘怀闺秀",
+      lines: [
+        "此开卷第一回也。作者自云：因曾历过一番梦幻之后，故将真事隐去，而借通灵之说，撰此《石头记》一书也。",
+        "当日地陷东南，这东南一隅有处曰姑苏，有城曰阊门者，最是红尘中一二等富贵风流之地。",
+      ],
+    },
+    {
+      heading: "第二回 贾夫人仙逝扬州城 冷子兴演说荣国府",
+      lines: [
+        "却说封肃因听见公差传唤，忙出来陪笑启问。",
+        ...Array.from({ length: 60 }, (_, i) => `闲话第${i + 1}段，说的是荣国府里的寻常日子，与要找的词无关。`),
+        "黛玉听了，心中暗暗记下，只是不敢多言一句。",
+      ],
+    },
+    { heading: "第三回 托内兄如海荐西宾 接外孙贾母惜孤女", lines: ["谁知这林黛玉常听得母亲说过，他外祖母家与别家不同。"] },
+  ];
+  const indent = "　　";
+  const text =
+    "红楼梦（节选）\r\n\r\n曹雪芹\r\n\r\n" +
+    chapters.map((c) => `${c.heading}\r\n\r\n${c.lines.map((l) => `${indent}${l}\r\n`).join("")}\r\n`).join("");
+  writeFileSync(join(out, "chinese-utf8.txt"), text);
+  writeFileSync(join(out, "chinese-utf8-bom.txt"), Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(text)]));
+  writeFileSync(join(out, "chinese-gbk.txt"), iconv.encode(text, "gbk"));
+  // The first line is a chapter heading, not a title, so the Book is named after the file.
+  writeFileSync(join(out, "no-title.txt"), `${chapters[2]!.heading}\r\n\r\n${indent}${chapters[2]!.lines[0]}\r\n`);
+}
+
+// A long Western text hard-wrapped at 72 columns with blank lines between paragraphs and no chapter headings, so it is
+// cut into fixed-size parts. Every paragraph says which one it is.
+{
+  const sentence = "The lamplighter walked the length of the quiet street while the rain kept time on the slates above him";
+  const wrap = (text: string, width = 72) => {
+    const lines: string[] = [];
+    let line = "";
+    for (const word of text.split(" ")) {
+      if (line && line.length + 1 + word.length > width) {
+        lines.push(line);
+        line = word;
+      } else line = line ? `${line} ${word}` : word;
+    }
+    return [...lines, line].join("\n");
+  };
+  const paragraphs = Array.from(
+    { length: 150 },
+    (_, i) => wrap(`Paragraph ${i + 1}. ${`${sentence}, and nobody on the street thought it strange. `.repeat(6).trim()}`),
+  );
+  writeFileSync(join(out, "latin-long.txt"), `The Lamplighter\n\n${paragraphs.join("\n\n")}\n`);
 }
