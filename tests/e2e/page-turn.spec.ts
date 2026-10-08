@@ -48,10 +48,19 @@ async function openLongBook(page: Page) {
   await expect.poll(() => firstVisible(page)).toBe("Chapter 1, paragraph 1.");
 }
 
-/** Waits for the Reader to settle on a place other than `from`, and returns it. */
+/**
+ * Waits for the Reader to settle on a place other than `from`, and returns it. "Nowhere" (no paragraph fully on
+ * screen, which is what a page view between two chapters reads as) is not a place, so it is waited out too.
+ */
 async function settledAwayFrom(page: Page, from: string): Promise<string> {
-  await expect.poll(() => firstVisible(page)).not.toBe(from);
-  return firstVisible(page);
+  let place = "";
+  await expect
+    .poll(async () => {
+      place = await firstVisible(page);
+      return place !== "" && place !== from;
+    })
+    .toBe(true);
+  return place;
 }
 
 /** Turns forward one page at a time, waiting for each, and returns every place visited, the start included. */

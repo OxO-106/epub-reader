@@ -34,6 +34,13 @@ Both folders are created on first start, relative to the folder you start the se
 
 Books can also be dragged onto the Library page or picked with its Choose files button. Deleting a Book removes only the app's copy, never your original file.
 
+### The library folder is the source of truth
+
+If the original of a deleted Book is still in the library folder, what happens depends on whether the server has been restarted:
+
+- **While the server keeps running**, the Book stays deleted. The server remembers the files it has handled and the content of Books you deleted, so neither a rescan nor a slow copy brings the Book back. It is added again only if the file in the folder changes (a new version, or even just a new modification time), or if you add it yourself with Choose files.
+- **After a restart**, the server imports everything in the folder again, so a Book whose original is still there returns. To get rid of a Book for good, remove its original from the library folder (or move it out) as well as deleting the Book.
+
 Other settings, all optional:
 
 | Variable          | Default       | What it is                                                               |
