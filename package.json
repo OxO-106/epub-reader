@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:e2e": "npm run build && playwright test",
     "test:all": "npm run typecheck && npm test && npm run test:e2e",
-    "fixtures": "node scripts/make-fixtures.ts"
+    "fixtures": "node scripts/make-fixtures.ts",
+    "translate:server": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-translation-server.ps1"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.3",
