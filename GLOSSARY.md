@@ -19,3 +19,7 @@ _Avoid_: Progress, bookmark, cursor
 **Reader**:
 The screen where one Book is read.
 _Avoid_: Viewer, player
+
+**Translation**:
+The Chinese rendering of one paragraph of an English Book, produced on demand by a model and held only in memory while it is near the Reading position.
+_Avoid_: Subtitle, gloss file, cache

@@ -12,6 +12,8 @@ import { securityHeaders } from "./security.ts";
 import type { LibraryFolder } from "./library-folder.ts";
 import type { Storage } from "./storage.ts";
 import { serveFrontEnd } from "./static.ts";
+import { translateRoutes } from "./translate-routes.ts";
+import type { Translator } from "./translate.ts";
 
 /** Everything the HTTP layer needs. Later tickets add more modules here. */
 export interface AppContext {
@@ -21,6 +23,8 @@ export interface AppContext {
   libraryFolder: LibraryFolder;
   /** Folder holding the built front end. */
   webDir: string;
+  /** Live translation through the configured model server. */
+  translator: Translator;
 }
 
 const toSummary = (row: BookRow & { fraction?: number | null }) => ({
@@ -53,7 +57,7 @@ const isBookId = (id: string) => /^[0-9a-f]{64}$/.test(id);
 
 const notFound = (c: Context) => c.json({ error: "Not found" }, 404);
 
-export function createApp({ db, storage, libraryFolder, webDir }: AppContext): Hono {
+export function createApp({ db, storage, libraryFolder, webDir, translator }: AppContext): Hono {
   const app = new Hono();
   app.use(securityHeaders);
 
@@ -149,6 +153,8 @@ export function createApp({ db, storage, libraryFolder, webDir }: AppContext): H
 
   // Files in the watched library folder that could not be imported, so the front end can show them.
   app.get("/api/library-folder", (c) => c.json({ failures: libraryFolder.failures() }));
+
+  app.route("/api/translate", translateRoutes(translator));
 
   app.all("/api/*", (c) => c.json({ error: "Not found" }, 404));
 

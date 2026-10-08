@@ -35,7 +35,8 @@ export async function startTestServer(options: ServerOptions = {}): Promise<Test
   const root = await mkdtemp(join(tmpdir(), "reader-test-"));
   const dataDir = join(root, "data");
   const libraryDir = join(root, "library");
-  const server = await startServer({ dataDir, libraryDir, port: 0, ...options });
+  // Translation is off unless the test asks for it, whatever READER_TRANSLATE_* says in the developer's shell.
+  const server = await startServer({ dataDir, libraryDir, port: 0, ...options, translate: { url: undefined, ...options.translate } });
   return {
     ...server,
     dataDir,
@@ -59,4 +60,29 @@ export const fastLibraryFolder = { librarySettleMs: 150, libraryRescanMs: 300 };
 export function eventually<T>(assertion: () => T | Promise<T>): Promise<T> {
   const worstCase = fastLibraryFolder.libraryRescanMs + 2 * fastLibraryFolder.librarySettleMs;
   return vi.waitFor(assertion, { timeout: 8 * worstCase, interval: 50 });
+}
+
+/** One line of the translate stream as the browser sees it. */
+export type StreamedEvent = { delta: string } | { done: true } | { error: { code: string; message: string } };
+
+/** POSTs a paragraph to the translate endpoint and reads the whole newline-delimited JSON answer. */
+export async function translate(
+  server: RunningServer,
+  body: { text: string; context?: string },
+  init: { signal?: AbortSignal } = {},
+): Promise<{ status: number; events: StreamedEvent[]; text: string }> {
+  const response = await fetch(`${server.url}/api/translate`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+    signal: init.signal,
+  });
+  const raw = await response.text();
+  if (!response.ok) return { status: response.status, events: [], text: raw };
+  const events = raw
+    .split("\n")
+    .filter((line) => line !== "")
+    .map((line) => JSON.parse(line) as StreamedEvent);
+  const text = events.map((event) => ("delta" in event ? event.delta : "")).join("");
+  return { status: response.status, events, text };
 }

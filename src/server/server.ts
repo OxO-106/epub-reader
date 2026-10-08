@@ -7,6 +7,7 @@ import { importBook } from "./import.ts";
 import { watchLibraryFolder } from "./library-folder.ts";
 import { listenOnAddresses, selectListenAddresses, type NetworkInterfaces } from "./listen.ts";
 import { openStorage } from "./storage.ts";
+import { createTranslator } from "./translate.ts";
 
 export interface ServerOptions extends ConfigOverrides {
   /** Where to look for the Tailscale address. Defaults to this PC's real network interfaces; tests inject their own. */
@@ -40,7 +41,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     settleMs: config.librarySettleMs,
     rescanMs: config.libraryRescanMs,
   });
-  const app = createApp({ db, storage, libraryFolder, webDir: config.webDir });
+  const app = createApp({ db, storage, libraryFolder, webDir: config.webDir, translator: createTranslator(config.translate) });
 
   /** The folder watcher imports through the database, so it stops first. */
   const stopBackgroundWork = async () => {

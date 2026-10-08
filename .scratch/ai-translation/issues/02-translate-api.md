@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] With a model stand-in (a real tiny HTTP server in the tests speaking the streaming protocol) the endpoint streams chunks in order and ends with a done marker
-- [ ] The previous paragraph is sent to the backend as context only; the system prompt demands Simplified Chinese, English names kept without brackets, translation only
-- [ ] The status endpoint reports not configured, unreachable and ready (with the backend's model name)
-- [ ] At most N backend requests run at once (default 1) and the rest wait in order; a request abandoned by the browser while queued or running is dropped and the upstream request aborted
-- [ ] Backend errors, refusals, timeouts and malformed streams become clean errors for the browser, never hangs or crashes
-- [ ] No Book text appears in logs, in the data folder or in the database (tests assert on them)
-- [ ] Configuration is read from the environment and documented in README and CLAUDE.md; API tests pass through the HTTP seam with no mocks of the app
+- [x] With a model stand-in (a real tiny HTTP server in the tests speaking the streaming protocol) the endpoint streams chunks in order and ends with a done marker
+- [x] The previous paragraph is sent to the backend as context only; the system prompt demands Simplified Chinese, English names kept without brackets, translation only
+- [x] The status endpoint reports not configured, unreachable and ready (with the backend's model name)
+- [x] At most N backend requests run at once (default 1) and the rest wait in order; a request abandoned by the browser while queued or running is dropped and the upstream request aborted
+- [x] Backend errors, refusals, timeouts and malformed streams become clean errors for the browser, never hangs or crashes
+- [x] No Book text appears in logs, in the data folder or in the database (tests assert on them)
+- [x] Configuration is read from the environment and documented in README and CLAUDE.md; API tests pass through the HTTP seam with no mocks of the app

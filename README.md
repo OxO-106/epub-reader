@@ -55,6 +55,19 @@ On Windows PowerShell set a variable for one run like this (in a POSIX shell, `R
 $env:READER_PORT = "8080"; npm start
 ```
 
+## Translation (optional)
+
+The Reader can show a Chinese translation under each English paragraph, produced on your own machines by a local model; nothing is sent to a cloud service. Translation is off until you point the app at a model server that speaks the OpenAI-style streaming API (`llama-server` from llama.cpp, Ollama, LM Studio, vLLM). The set-up guide for the model and the machines is a separate document; this section only lists the settings.
+
+| Variable                       | Default | What it is                                                                                         |
+| ------------------------------ | ------- | -------------------------------------------------------------------------------------------------- |
+| `READER_TRANSLATE_URL`         | unset   | Base address of the model server, for example `http://127.0.0.1:8080`. Unset means "not set up".   |
+| `READER_TRANSLATE_MODEL`       | unset   | Model name to ask for; servers that serve one model can ignore it.                                 |
+| `READER_TRANSLATE_API_KEY`     | unset   | Sent to the model server as a Bearer token, for servers that need one.                             |
+| `READER_TRANSLATE_CONCURRENCY` | `1`     | How many paragraphs the model server works on at once; the rest wait in the order they arrived.    |
+
+The browser never talks to the model; the app server does, so a phone reaching the app over Tailscale needs nothing else. The app adds two endpoints: `POST /api/translate` (one English paragraph, optionally the previous paragraph as context, answered as a stream of newline-delimited JSON events) and `GET /api/translate/status` (`{"configured", "reachable", "model"}`, checked against the model server with a short timeout and cached for a few seconds). A browser that disconnects stops the work on the model. The text being translated is never logged or stored. The request is JSON, `{"text": "...", "context": "..."}`; the answer is `application/x-ndjson`, one JSON event per line: `{"delta": "..."}` for each piece of the translation, then `{"done": true}` or `{"error": {"code", "message"}}`. Trouble before any text is sent is a plain JSON error with an HTTP status (`503` not set up, `400` bad request). The details are in `src/server/translate-routes.ts`.
+
 ## Reaching it from other devices (Tailscale)
 
 By default the server accepts connections from this PC only. There is no login, so only open it to a network you trust. To also reach it from your other devices over [Tailscale](https://tailscale.com):
