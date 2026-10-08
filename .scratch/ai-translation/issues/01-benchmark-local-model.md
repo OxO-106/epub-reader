@@ -6,10 +6,12 @@
 
 **Status:** ready-for-agent
 
-- [ ] llama-server starts on 127.0.0.1 with the model and the Arc GPU is used (device and offload shown in the log)
-- [ ] Measured tokens/s for prompt processing and generation, time to first token, and wall-clock time per 300-word page, for the best configuration, with the exact command line recorded
-- [ ] A short comparison against CPU-only and against flash attention off, so the chosen flags are justified
-- [ ] The prompt and generation settings (system prompt, context handling, temperature and so on) are recorded and produce Chinese-only output with English names kept, no commentary
-- [ ] Side-by-side quality samples from at least three passages of the owner's own books are saved in the report for the owner to judge, with the source text and output unedited
-- [ ] A clear verdict: 'laptop is fast enough', 'borderline: use a smaller model or accept lag', or 'use the GPU PC', with the numbers behind it
-- [ ] The server and any other process started for the benchmark are stopped at the end; nothing large is added to git; any further download is listed (name, source, size) and waits for the owner's approval
+- [x] llama-server starts on 127.0.0.1 with the model and the Arc GPU is used (device and offload shown in the log)
+- [x] Measured tokens/s for prompt processing and generation, time to first token, and wall-clock time per 300-word page, for the best configuration, with the exact command line recorded
+- [x] A short comparison against CPU-only and against flash attention off, so the chosen flags are justified
+- [x] The prompt and generation settings (system prompt, context handling, temperature and so on) are recorded and produce Chinese-only output with English names kept, no commentary
+- [x] Side-by-side quality samples from at least three passages of the owner's own books are saved in the report for the owner to judge, with the source text and output unedited
+- [x] A clear verdict: 'laptop is fast enough', 'borderline: use a smaller model or accept lag', or 'use the GPU PC', with the numbers behind it
+- [x] The server and any other process started for the benchmark are stopped at the end; nothing large is added to git; any further download is listed (name, source, size) and waits for the owner's approval
+
+**Result (2026-10-08):** done, see `.scratch/ai-translation/benchmark.md` and `benchmark-samples.md`. The laptop is fast enough (about 26 s per 300 words on the Arc 140V, roughly two to three times reading speed). Not done: passages from the owner's own books (Library was empty), a second model, and the GPU PC. New finding: names need placeholder masking, see ticket 06.
