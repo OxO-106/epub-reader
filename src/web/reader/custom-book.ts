@@ -6,7 +6,8 @@
  * The caller supplies a `CustomBook`: sections of already-safe HTML and a table of contents that points
  * into them. Nothing here knows about Markdown, so the plain-text format can reuse it unchanged.
  *
- * This file does not import foliate-js (only `reader.ts` may), it only builds the object foliate-js reads:
+ * This file does not import foliate-js at runtime (only `reader.ts` may); it imports the vendored typings as types
+ * only, and builds the object foliate-js reads:
  * - Every section carries a base CFI, `epubcfi(/6/N)` with N = 2 × (index + 1). foliate-js uses the
  *   same numbering when a Book has no package document, so Reading positions (`epubcfi(/6/4!/4/2/1:0)`)
  *   resolve back to a section by `N / 2 - 1` and then to a place inside it, with no resolver of our own.
