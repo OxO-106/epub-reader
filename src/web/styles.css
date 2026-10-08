@@ -127,3 +127,51 @@ button {
   opacity: 0.75;
   overflow-wrap: anywhere;
 }
+
+.search {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+}
+
+/* Always visible (never hover-only) and kept to the bottom of its card. */
+.delete-book {
+  margin-top: auto;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.9em;
+}
+
+.confirm {
+  box-sizing: border-box;
+  width: min(28rem, calc(100% - 2rem));
+  padding: 1rem 1.25rem;
+  border: 1px solid currentColor;
+  border-radius: 0.75rem;
+}
+
+.confirm h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+
+.confirm .error {
+  color: #c0392b;
+}
+
+.confirm .actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.confirm .danger {
+  background: #c0392b;
+  border: 1px solid #c0392b;
+  color: white;
+}

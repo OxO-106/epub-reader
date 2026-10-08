@@ -3,7 +3,9 @@ import { extname } from "node:path";
 import { Readable } from "node:stream";
 import { Hono } from "hono";
 import type { BookRow, Db } from "./db.ts";
+import { deleteBook } from "./delete.ts";
 import { importBook, type RejectionCode } from "./import.ts";
+import { searchBooks } from "./search.ts";
 import type { Storage } from "./storage.ts";
 import { serveFrontEnd } from "./static.ts";
 
@@ -44,7 +46,8 @@ const isBookId = (id: string) => /^[0-9a-f]{64}$/.test(id);
 export function createApp({ db, storage, webDir }: AppContext): Hono {
   const app = new Hono();
 
-  app.get("/api/books", (c) => c.json({ books: db.listBooks().map(toSummary) }));
+  // `?q=` narrows the list by title and author.
+  app.get("/api/books", (c) => c.json({ books: searchBooks(db.listBooks(), c.req.query("q") ?? "").map(toSummary) }));
 
   // Import one file: the request body is the file itself, `name` is its file name.
   // The body is streamed to disk; to add several files the client sends several requests.
@@ -79,7 +82,14 @@ export function createApp({ db, storage, webDir }: AppContext): Hono {
     });
   });
 
-  app.all("/api/*", (c) => c.json({ error: "Not found" }, 404));
+  // Deletes the app's copy of a Book. Never touches the original file it was imported from.
+  app.delete("/api/books/:id", async (c) => {
+    const id = c.req.param("id");
+    if (!isBookId(id) || !(await deleteBook({ db, storage }, id))) return c.json({ error: "Not found" }, 404);
+    return c.body(null, 204);
+  });
+
+  app.all("/api/*",(c) => c.json({ error: "Not found" }, 404));
 
   app.get("*", serveFrontEnd(webDir));
 
