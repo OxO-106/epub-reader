@@ -1,3 +1,5 @@
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Frame, Page } from "@playwright/test";
 import { standInCharacters } from "../support/stand-in-font.ts";
 import { expect, test } from "./fixtures.ts";
@@ -213,6 +215,26 @@ test.describe("with the Chinese font on the server (a stand-in with the same fam
       const chinese = await drawnWith(page, "中文汉");
       expect(chinese.filter((font) => font.isCustomFont).map((font) => font.familyName)).toContain("KingHwa Web");
       expect(problems).toEqual([]);
+    });
+  }
+
+  // The Reader module is the one place Book documents are styled, whatever the format.
+  const formats = [
+    { name: "an EPUB", file: join(dirname(fileURLToPath(import.meta.url)), "../fixtures/sample.epub"), title: /Sample/ },
+    { name: "a plain text file", file: { name: "plain.txt", mimeType: "text/plain", buffer: Buffer.from("Plain Title\n\n中文汉 and some English.\n", "utf8") }, title: /Plain Title/ },
+  ];
+  for (const { name, file, title } of formats) {
+    test(`is declared inside the document of ${name}`, async ({ page }) => {
+      await page.addInitScript(() =>
+        localStorage.setItem("reader.display", JSON.stringify({ fontFamily: "serif", fontSize: 24, lineSpacing: 1.5, margins: "medium", theme: "light", flow: "paginated" })),
+      );
+      await page.goto("/");
+      await page.locator("input[type=file]").setInputFiles(file);
+      await page.getByRole("link", { name: title }).first().click();
+      await expect.poll(() => bookFrame(page)?.evaluate(() => document.body?.childElementCount ?? 0).catch(() => 0)).toBeGreaterThan(0);
+
+      await expect.poll(() => bookFrame(page)!.evaluate(declaredFamilies)).toContain("KingHwa Web");
+      expect(await bookFrame(page)!.evaluate(declaredFamilies)).toContain("Libertinus Serif");
     });
   }
 

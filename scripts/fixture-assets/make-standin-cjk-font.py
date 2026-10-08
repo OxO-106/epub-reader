@@ -1,8 +1,9 @@
 """Builds standin-cjk.woff2, a tiny font that stands in for the real Chinese font (京华老宋体) in tests.
 
-It has the family name KingHwa Web (what the real font is declared as for the web, see display-settings.ts) and three glyphs (U+4E2D, U+6587, U+6C49), each a solid square that is only
-half an em wide. Real Chinese fonts are one em wide, so a test can tell from the width of a character whether this font
-was used. It is generated here, so it carries no third-party license. The output is committed; rerun (needs
+It has the family name KingHwa Web (the name the real font's pieces are declared under, see display-settings.ts) and
+three glyphs (U+4E2D, U+6587, U+6C49), each a solid square that is only half an em wide. Real Chinese fonts are one em
+wide, so a test can tell from the width of a character whether this font was used. It is also the input of the
+build-script test (tests/api/fonts-build.test.ts). It is generated here, so it carries no third-party license. The output is committed; rerun (needs
 `pip install fonttools brotli`) only when changing the font:
 
     python scripts/fixture-assets/make-standin-cjk-font.py

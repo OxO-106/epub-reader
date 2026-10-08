@@ -55,6 +55,23 @@ On Windows PowerShell set a variable for one run like this (in a POSIX shell, `R
 $env:READER_PORT = "8080"; npm start
 ```
 
+## Fonts
+
+English text is set in Libertinus Serif, which is installed with `npm install` (the package `@fontsource/libertinus-serif`, SIL Open Font License; the notice is in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)) and bundled into the front end. The interface itself is set in the system sans-serif font.
+
+Chinese text is set in 京华老宋体 (KingHwa_OldSong). Its licence is not stated, so **it is not in this repository** and must never be committed. If you have it installed on your PC, cut it into web pieces once; the server then serves them to every device that opens the Reader, the phone included, and the Library and every Book use the font for Chinese. Without it, everything still works and Chinese falls back to the system's Chinese serif font.
+
+```
+pip install fonttools brotli       # once; needs Python 3.9 or newer
+npm run fonts:build                # about four minutes; finds the installed font by itself
+```
+
+The script looks for the font in the usual font folders (on Windows `%LOCALAPPDATA%\Microsoft\Windows\Fonts` and `C:\Windows\Fonts`) and says what to do if it cannot find it; or give the file: `npm run fonts:build -- "C:\path\to\京華老宋体.ttf"`. It writes about 120 woff2 pieces of roughly 150 KB (18 MB in all) with a style sheet and a manifest to the fonts folder, which git ignores, and refuses to write anywhere git would track. The result is the same every time. A browser downloads only the pieces its text needs (a page of common characters takes about 2 MB, once, then they are cached for good). No restart is needed after building.
+
+| Variable           | Default    | What it is                                                                      |
+| ------------------ | ---------- | ------------------------------------------------------------------------------- |
+| `READER_FONTS_DIR` | `./fonts`  | The cut pieces of the Chinese font, served read-only at `/fonts/`. May be missing. |
+
 ## Reaching it from other devices (Tailscale)
 
 By default the server accepts connections from this PC only. There is no login, so only open it to a network you trust. To also reach it from your other devices over [Tailscale](https://tailscale.com):
