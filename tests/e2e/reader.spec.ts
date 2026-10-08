@@ -34,29 +34,31 @@ test("import a Book, open it from the Library, see its text and table of content
   await expect(chapter1).toHaveAttribute("aria-current", "location");
   await expect(chapter2).not.toHaveAttribute("aria-current", "location");
 
-  await chapter2.click();
+  await chapter2.click(); // closes the drawer
 
   await expect.poll(() => bookText(page)).toContain("second chapter");
+  await page.getByRole("button", { name: "Contents", exact: true }).click();
   await expect(chapter2).toHaveAttribute("aria-current", "location");
   await expect(chapter1).not.toHaveAttribute("aria-current", "location");
 });
 
 test("opening and closing the table of contents keeps the place", async ({ page }) => {
   await importAndOpen(page, "sample.epub", "Sample Book");
-  const contents = page.getByRole("button", { name: "Contents" });
+  const contents = page.getByRole("button", { name: "Contents", exact: true });
   const toc = page.getByRole("navigation", { name: "Table of contents" });
   await expect(toc).toBeHidden();
 
   await contents.click();
   await toc.getByRole("button", { name: "Chapter 2" }).click();
   await expect.poll(() => bookText(page)).toContain("second chapter");
-
-  await contents.click();
-  await expect(toc).toBeHidden();
-  await expect.poll(() => bookText(page)).toContain("second chapter");
+  await expect(toc).toBeHidden(); // choosing a chapter closes the drawer
 
   await contents.click();
   await expect(toc.getByRole("button", { name: "Chapter 2" })).toHaveAttribute("aria-current", "location");
+
+  await contents.click(); // the top bar stays usable: its button closes the drawer too
+  await expect(toc).toBeHidden();
+  await expect.poll(() => bookText(page)).toContain("second chapter");
 });
 
 test("next and previous move through the Book", async ({ page }) => {

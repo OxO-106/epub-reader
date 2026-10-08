@@ -41,7 +41,14 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     settleMs: config.librarySettleMs,
     rescanMs: config.libraryRescanMs,
   });
-  const app = createApp({ db, storage, libraryFolder, webDir: config.webDir, translator: createTranslator(config.translate) });
+  const app = createApp({
+    db,
+    storage,
+    libraryFolder,
+    webDir: config.webDir,
+    fontsDir: config.fontsDir,
+    translator: createTranslator(config.translate),
+  });
 
   /** The folder watcher imports through the database, so it stops first. */
   const stopBackgroundWork = async () => {

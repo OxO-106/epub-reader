@@ -118,8 +118,7 @@ test.describe("a plain-text Book", () => {
 
     await expect.poll(() => bookText(page)).toContain("Paragraph 1.");
     await page.getByRole("button", { name: "Contents" }).click();
-    await toc(page).getByRole("button", { name: "Part 3" }).click();
-    await page.getByRole("button", { name: "Contents" }).click();
+    await toc(page).getByRole("button", { name: "Part 3" }).click(); // closes the drawer
     for (let turn = 0; turn < 2; turn++) {
       const before = await fraction.textContent();
       await expect(async () => {

@@ -148,8 +148,12 @@ test("keys cross from the end of a chapter into the next, and back", async ({ pa
   expect(place).toBe("Chapter 2, paragraph 1.");
   await page.getByRole("button", { name: "Contents" }).click();
   await expect(page.getByRole("button", { name: "Chapter 2" })).toHaveAttribute("aria-current", "location");
+  // The open drawer owns the keyboard (focus is inside it); Escape closes it and hands focus back to the Contents button.
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("navigation", { name: "Table of contents" })).toBeHidden();
 
   await page.keyboard.press("PageUp");
+  await page.getByRole("button", { name: "Contents" }).click();
   await expect(page.getByRole("button", { name: "Chapter 1" })).toHaveAttribute("aria-current", "location");
   // It lands on the last page of chapter 1, not the first.
   await expect.poll(async () => paragraphOf(await firstVisible(page))).toBeGreaterThan(40);

@@ -37,6 +37,8 @@ export interface Config {
   libraryRescanMs: number;
   /** Built front end (Vite output). Served when it exists. */
   webDir: string;
+  /** Chinese font pieces made by `npm run fonts:build` (READER_FONTS_DIR). Served read-only; the folder may not exist. */
+  fontsDir: string;
   /** Base address to listen on. Localhost only unless explicitly changed (READER_HOST). */
   host: string;
   /** Also listen on this PC's Tailscale address (READER_TAILSCALE=1). Off by default. */
@@ -112,6 +114,7 @@ export function resolveConfig(
     librarySettleMs: overrides.librarySettleMs ?? 1000,
     libraryRescanMs: overrides.libraryRescanMs ?? 60_000,
     webDir: resolve(overrides.webDir ?? env.READER_WEB_DIR ?? resolve(repoRoot, "dist/web")),
+    fontsDir: resolve(overrides.fontsDir ?? env.READER_FONTS_DIR ?? "fonts"),
     host: overrides.host ?? env.READER_HOST ?? "127.0.0.1",
     tailscale: overrides.tailscale ?? ["1", "true"].includes(env.READER_TAILSCALE?.toLowerCase() ?? ""),
     port: overrides.port ?? Number(env.READER_PORT ?? 5174),

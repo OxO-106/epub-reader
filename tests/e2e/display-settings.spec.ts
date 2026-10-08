@@ -78,6 +78,13 @@ async function openSettings(page: Page) {
   return page.getByRole("region", { name: "Display settings" });
 }
 
+/** Presses one of the panel's choice buttons (theme, font, margins, layout) and checks that it reports being pressed. */
+async function choose(settings: Locator, name: string) {
+  const choice = settings.getByRole("button", { name, exact: true });
+  await choice.click();
+  await expect(choice).toHaveAttribute("aria-pressed", "true");
+}
+
 test("a larger font size changes the text at once", async ({ page }) => {
   await openLongBook(page);
   const settings = await openSettings(page);
@@ -94,7 +101,7 @@ for (const flow of ["Paginated", "Scrolling"] as const) {
     test("changing font size, line spacing, margins and font keeps the reader at the same place", async ({ page }) => {
       await openLongBook(page);
       const settings = await openSettings(page);
-      await settings.getByLabel(flow).check();
+      await choose(settings, flow);
       await expect.poll(() => visibleParagraphs(page)).toContain("C1 P001");
       const place = await readDeeper(page, 6);
       expect(place).not.toBe("C1 P001");
@@ -102,8 +109,8 @@ for (const flow of ["Paginated", "Scrolling"] as const) {
       const changes = [
         () => settings.getByLabel("Text size").fill("30"),
         () => settings.getByLabel("Line spacing").fill("2"),
-        () => settings.getByLabel("Margins").selectOption("wide"),
-        () => settings.getByLabel("Font").selectOption("sans"),
+        () => choose(settings, "Wide"),
+        () => choose(settings, "Sans-serif"),
         () => settings.getByLabel("Text size").fill("14"),
       ];
       for (const change of changes) {
@@ -121,10 +128,10 @@ test("switching between scrolling and paginated keeps the reader at the same pla
   const place = await readDeeper(page, 5);
   expect(place).not.toBe("C1 P001");
 
-  await settings.getByLabel("Scrolling").check();
+  await choose(settings, "Scrolling");
   await expect.poll(() => visibleParagraphs(page)).toContain(place);
 
-  await settings.getByLabel("Paginated").check();
+  await choose(settings, "Paginated");
   await expect.poll(() => visibleParagraphs(page)).toContain(place);
 });
 
@@ -135,7 +142,7 @@ test("a Chinese-capable font can be chosen and is applied to a Chinese Book", as
   await expect.poll(() => bookFrame(page)?.evaluate(() => document.body.innerText).catch(() => "")).toContain("Chapter 1");
   const settings = await openSettings(page);
 
-  await settings.getByLabel("Font").selectOption({ label: "Chinese serif (宋体)" });
+  await choose(settings, "Chinese serif (宋体)");
 
   await expect
     .poll(() => bookFrame(page)!.evaluate(() => getComputedStyle(document.querySelector("p, h1")!).fontFamily))
@@ -148,20 +155,20 @@ test.describe("remembering the settings on this device", () => {
     const settings = await openSettings(page);
     await settings.getByLabel("Text size").fill("26");
     await settings.getByLabel("Line spacing").fill("1.9");
-    await settings.getByLabel("Margins").selectOption("narrow");
-    await settings.getByLabel("Font").selectOption("sans");
-    await settings.getByLabel("Dark", { exact: true }).check();
-    await settings.getByLabel("Scrolling").check();
+    await choose(settings, "Narrow");
+    await choose(settings, "Sans-serif");
+    await choose(settings, "Dark");
+    await choose(settings, "Scrolling");
 
     await page.reload();
     await expect.poll(() => visibleParagraphs(page)).toContain("C1 P001");
     const reopened = await openSettings(page);
     await expect(reopened.getByLabel("Text size")).toHaveValue("26");
     await expect(reopened.getByLabel("Line spacing")).toHaveValue("1.9");
-    await expect(reopened.getByLabel("Margins")).toHaveValue("narrow");
-    await expect(reopened.getByLabel("Font")).toHaveValue("sans");
-    await expect(reopened.getByLabel("Dark", { exact: true })).toBeChecked();
-    await expect(reopened.getByLabel("Scrolling")).toBeChecked();
+    await expect(reopened.getByRole("button", { name: "Narrow", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(reopened.getByRole("button", { name: "Sans-serif", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(reopened.getByRole("button", { name: "Dark", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(reopened.getByRole("button", { name: "Scrolling", exact: true })).toHaveAttribute("aria-pressed", "true");
     expect(await textSize(page)).toBe(26);
 
     // A different Book gets the same look.
@@ -183,7 +190,7 @@ test.describe("remembering the settings on this device", () => {
     await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
     expect(await page.locator("html").getAttribute("data-theme")).toBe("sepia");
     await expectLegible(page.locator("body"), 7);
-    expect(parseColor(await page.locator("body").evaluate((el) => getComputedStyle(el).backgroundColor))).toEqual([0xf4, 0xec, 0xd8]);
+    expect(parseColor(await page.locator("body").evaluate((el) => getComputedStyle(el).backgroundColor))).toEqual([0xf3, 0xe9, 0xd2]);
   });
 
   test("the Reader works when browser storage is unavailable", async ({ page }) => {
@@ -213,7 +220,7 @@ test("journey: change the font size, close the Book, reopen it: same Reading pos
   expect(place).not.toBe("C1 P001");
   const settings = await openSettings(page);
   await settings.getByLabel("Text size").fill("26");
-  await settings.getByLabel("Dark", { exact: true }).check();
+  await choose(settings, "Dark");
   await expect.poll(() => visibleParagraphs(page)).toContain(place);
   const onScreen = await visibleParagraphs(page);
 
@@ -245,11 +252,12 @@ test("the display controls fit and work in a narrow window, without hover", asyn
   expect(box.x + box.width).toBeLessThanOrEqual(360);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   // Every control can be scrolled to and used with a plain click.
-  await settings.getByLabel("Sepia", { exact: true }).scrollIntoViewIfNeeded();
-  await settings.getByLabel("Sepia", { exact: true }).click();
-  await settings.getByLabel("Scrolling").click();
-  await expect(settings.getByLabel("Sepia", { exact: true })).toBeChecked();
-  await expect(settings.getByLabel("Scrolling")).toBeChecked();
+  const sepia = settings.getByRole("button", { name: "Sepia", exact: true });
+  await sepia.scrollIntoViewIfNeeded();
+  await sepia.click();
+  await choose(settings, "Scrolling");
+  await expect(sepia).toHaveAttribute("aria-pressed", "true");
+  await expect(settings.getByRole("button", { name: "Scrolling", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
 
 test.describe("with a dark system preference and nothing saved", () => {
@@ -326,7 +334,7 @@ async function expectLegible(target: Locator, minimum = 4.5) {
 async function chooseTheme(page: Page, label: "Light" | "Dark" | "Sepia") {
   const settings = page.getByRole("region", { name: "Display settings" });
   if (!(await settings.isVisible())) await page.getByRole("button", { name: "Display" }).click();
-  await settings.getByLabel(label, { exact: true }).check();
+  await choose(settings, label);
 }
 
 for (const theme of ["Dark", "Sepia"] as const) {

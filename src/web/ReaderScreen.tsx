@@ -1,38 +1,47 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { getReadingPosition, HttpError } from "./api.ts";
 import { loadBookSource } from "./bookSource.ts";
+import { chapterProgress } from "./chapter-progress.ts";
 import { checkConnection, heartbeatMs } from "./connection.ts";
 import { ConnectionNotice } from "./ConnectionNotice.tsx";
+import { ContentsDrawer } from "./ContentsDrawer.tsx";
 import { applyTheme, loadDisplay, saveDisplay, type DisplaySettings } from "./display-settings.ts";
 import { DisplaySettingsPanel } from "./DisplaySettingsPanel.tsx";
+import { fontFaceCss } from "./fonts.ts";
 import { createReader, type Reader, type TocEntry } from "./reader/reader.ts";
-import { ReadingFraction } from "./ReadingFraction.tsx";
+import { ReaderBottomBar, ReaderTopBar, type Panel } from "./ReaderBars.tsx";
 import { trackReadingPosition } from "./reading-position.ts";
 import { SearchPanel } from "./SearchPanel.tsx";
+import "./reader-chrome.css";
 
 type State =
   | { kind: "loading" }
   | { kind: "error"; message: string }
   | { kind: "ready"; title: string; toc: TocEntry[] };
 
-/** The Reader screen: one Book, its table of contents, and simple page controls. */
+/** The Search panel is docked beside the text from this width up, and covers the text below it (see reader-chrome.css). */
+const searchOverlays = () => !window.matchMedia("(min-width: 60rem)").matches;
+
+/**
+ * The Reader screen: one Book, a top bar (Library, title and chapter, and the Contents, Search and Display buttons), the
+ * text, and a bottom bar. At most one of the three panels is open at a time; Escape closes it and gives focus back to its button.
+ */
 export function ReaderScreen({ bookId }: { bookId: string }) {
   const [state, setState] = useState<State>({ kind: "loading" });
-  const [tocOpen, setTocOpen] = useState(false);
+  const [panel, setPanel] = useState<Panel | null>(null);
   const [chapterId, setChapterId] = useState<number | null>(null);
   const [fraction, setFraction] = useState<number | null>(null);
   const [display, setDisplay] = useState(loadDisplay);
-  const [displayOpen, setDisplayOpen] = useState(false);
   const displayNow = useRef(display);
-  const [searchOpen, setSearchOpen] = useState(false);
   // Bumped to open the Book again after the server could not be reached.
   const [attempt, setAttempt] = useState(0);
-  // The contents and the search panel share one place beside (or over) the text, so only one is open at a time.
-  useEffect(() => {
-    if (tocOpen) setSearchOpen(false);
-  }, [tocOpen]);
   const viewport = useRef<HTMLDivElement>(null);
   const reader = useRef<Reader | null>(null);
+  const buttons = {
+    contents: useRef<HTMLButtonElement>(null),
+    search: useRef<HTMLButtonElement>(null),
+    display: useRef<HTMLButtonElement>(null),
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -51,9 +60,10 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       setFraction(location.fraction);
     });
 
-    Promise.all([loadBookSource(bookId), getReadingPosition(bookId)]).then(
-      ([source, saved]) => {
+    Promise.all([loadBookSource(bookId), getReadingPosition(bookId), fontFaceCss()]).then(
+      ([source, saved, fontFaces]) => {
         if (cancelled) return;
+        instance.setFontFaces(fontFaces); // before the Book opens, so its first page already has the fonts
         if (saved.fraction !== null) setFraction(saved.fraction);
         stopTracking = trackReadingPosition(bookId, instance, saved.position);
         return instance.open(source, { position: saved.position ?? undefined }).then(
@@ -88,7 +98,33 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     };
   }, [bookId, attempt]);
 
+  /** Escape closes the open panel and puts focus back on the button that opened it. */
+  // Registered once and reading the latest `closePanel`, so a key pressed right after a panel opens is never missed.
+  const escape = useRef<() => void>(() => {});
+  escape.current = () => {
+    if (panel) closePanel();
+  };
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      escape.current();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const toc = state.kind === "ready" ? state.toc : [];
+  const ready = state.kind === "ready";
+  const chapter = toc.find((entry) => entry.id === chapterId);
+
+  /** Closes the open panel; focus goes back to its button unless the caller hands it to the Book. */
+  function closePanel(focus: "button" | "book" = "button") {
+    const was = panel;
+    setPanel(null);
+    if (focus === "book") reader.current?.focus();
+    else if (was) buttons[was].current?.focus();
+  }
 
   function changeDisplay(next: DisplaySettings) {
     displayNow.current = next;
@@ -100,96 +136,58 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
 
   function openChapter(entry: TocEntry) {
     reader.current?.goTo(entry.target);
-    reader.current?.focus(); // so the page-turn keys work straight after choosing
-    // On a narrow window the contents cover the text, so get out of the way once a chapter is chosen.
-    if (window.matchMedia("(max-width: 45rem)").matches) setTocOpen(false);
+    closePanel("book"); // the page-turn keys work straight after choosing
   }
 
   return (
     <div class="reader-screen">
-      <header class="reader-bar">
-        <a class="button" href="#/">
-          Library
-        </a>
-        <button type="button" aria-expanded={tocOpen} aria-controls="toc" onClick={() => setTocOpen(!tocOpen)}>
-          Contents
-        </button>
-        <button
-          type="button"
-          aria-expanded={searchOpen}
-          aria-controls="book-search"
-          disabled={state.kind !== "ready"}
-          onClick={() => {
-            setSearchOpen(!searchOpen);
-            setTocOpen(false);
-          }}
-        >
-          Search
-        </button>
-        <h1 class="reader-title">{state.kind === "ready" ? state.title : ""}</h1>
-        <button type="button" aria-expanded={displayOpen} aria-controls="display-settings" onClick={() => setDisplayOpen(!displayOpen)}>
-          Display
-        </button>
-      </header>
+      <div class="reader-main">
+        <ReaderTopBar
+          title={ready ? state.title : ""}
+          chapter={chapter?.label || null}
+          open={panel}
+          searchReady={ready}
+          buttons={buttons}
+          onToggle={(next) => setPanel(panel === next ? null : next)}
+        />
 
-      <ConnectionNotice />
+        <ConnectionNotice />
 
-      <div class="reader-body">
-        {tocOpen && (
-          <nav id="toc" class="toc" aria-label="Table of contents">
-            {toc.length === 0 ? (
-              <p class="empty">This Book has no table of contents.</p>
-            ) : (
-              <ol>
-                {toc.map((entry) => (
-                  <li key={entry.id} style={{ paddingInlineStart: `${entry.depth}rem` }}>
-                    <button
-                      type="button"
-                      class="toc-item"
-                      aria-current={entry.id === chapterId ? "location" : undefined}
-                      onClick={() => openChapter(entry)}
-                    >
-                      {entry.label}
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </nav>
-        )}
-        {searchOpen && state.kind === "ready" && reader.current && (
-          <SearchPanel
-            reader={reader.current}
-            onClose={() => setSearchOpen(false)}
-            onPicked={() => {
-              // On a narrow window the panel covers the text, so get out of the way once a match is chosen.
-              if (window.matchMedia("(max-width: 45rem)").matches) setSearchOpen(false);
-            }}
-          />
-        )}
-        <div class="reader-view" ref={viewport} />
-        {displayOpen && <DisplaySettingsPanel settings={display} onChange={changeDisplay} />}
-        {state.kind === "loading" && (
-          <p role="status" class="reader-message">
-            Opening…
-          </p>
-        )}
-        {state.kind === "error" && (
-          <p role="alert" class="reader-message notice">
-            {state.message}
-          </p>
-        )}
+        <div class="reader-body">
+          <div class="reader-view" ref={viewport} />
+          {panel === "contents" && <ContentsDrawer toc={toc} chapterId={chapterId} onPick={openChapter} onClose={() => closePanel()} />}
+          {panel === "display" && <DisplaySettingsPanel settings={display} onChange={changeDisplay} onClose={() => closePanel()} />}
+          {state.kind === "loading" && (
+            <p role="status" class="reader-message">
+              Opening…
+            </p>
+          )}
+          {state.kind === "error" && (
+            <p role="alert" class="reader-message notice">
+              {state.message}
+            </p>
+          )}
+        </div>
+
+        <ReaderBottomBar
+          fraction={fraction}
+          chapter={chapterProgress(toc, chapterId)}
+          ready={ready}
+          onPrev={() => reader.current?.prev()}
+          onNext={() => reader.current?.next()}
+        />
       </div>
 
-      <footer class="reader-bar">
-        <button type="button" onClick={() => reader.current?.prev()} disabled={state.kind !== "ready"}>
-          Previous
-        </button>
-        <ReadingFraction fraction={fraction} />
-        <button type="button" onClick={() => reader.current?.next()} disabled={state.kind !== "ready"}>
-          Next
-        </button>
-      </footer>
+      {panel === "search" && ready && reader.current && (
+        <SearchPanel
+          reader={reader.current}
+          onClose={() => closePanel()}
+          onPicked={() => {
+            // Where the panel covers the text, get out of the way once a match is chosen.
+            if (searchOverlays()) closePanel("book");
+          }}
+        />
+      )}
     </div>
   );
 }

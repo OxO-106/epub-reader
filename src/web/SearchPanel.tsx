@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { Reader, SearchChapter, SearchMatch } from "./reader/reader.ts";
+import { CloseIcon, SearchIcon } from "./ReaderIcons.tsx";
 
 type Status =
   | { kind: "idle" }
@@ -8,9 +9,10 @@ type Status =
   | { kind: "failed" };
 
 /**
- * Search inside the open Book: a form, and the matches grouped by chapter as they are found (a whole-Book search is
- * slow, so chapters appear one by one). Mounted only while open; unmounting cancels the search and removes the
- * outlines the Reader drew on the pages.
+ * Search inside the open Book: a field, and the matches grouped by chapter as they are found (a whole-Book search is
+ * slow, so chapters appear one by one). Beside the text on a wide window, over it on a narrow one (see reader-chrome.css).
+ * Mounted only while open; unmounting cancels the search and removes the outlines the Reader drew on the pages.
+ * The parent closes it on Escape.
  */
 export function SearchPanel({
   reader,
@@ -18,7 +20,7 @@ export function SearchPanel({
   onPicked,
 }: {
   reader: Reader;
-  /** The user asked to close the panel (Escape or the Close button). */
+  /** The user asked to close the panel with its Close button. */
   onClose: () => void;
   /** The user jumped to a match. */
   onPicked: () => void;
@@ -85,62 +87,83 @@ export function SearchPanel({
   const count = chapters.reduce((sum, chapter) => sum + chapter.matches.length, 0);
 
   return (
-    <section
-      id="book-search"
-      class="book-search"
-      role="search"
-      aria-label="Search in this Book"
-      onKeyDown={(event) => {
-        if (event.key === "Escape") onClose();
-      }}
-    >
-      <form class="book-search-form" onSubmit={submit}>
-        <input
-          ref={input}
-          type="search"
-          aria-label="Search in this Book"
-          placeholder="Search this Book"
-          value={query}
-          onInput={(event) => setQuery(event.currentTarget.value)}
-        />
-        <button type="submit">Find</button>
-        <button type="button" onClick={clear} disabled={!query && status.kind === "idle"}>
-          Clear
+    <aside id="book-search" class="reader-panel reader-search" role="search" aria-label="Search in this Book" data-no-page-turn>
+      <div class="panel-head">
+        <h2>Search</h2>
+        <button type="button" class="icon-button" aria-label="Close search" onClick={onClose}>
+          <CloseIcon />
         </button>
-        <button type="button" onClick={onClose}>
-          Close
-        </button>
-      </form>
+      </div>
 
-      <p role="status" class="book-search-status">
-        {statusText(status, searched, count)}
-      </p>
+      <div class="search-top">
+        <form class="search-field" onSubmit={submit}>
+          <span class="search-glyph">
+            <SearchIcon />
+          </span>
+          <input
+            ref={input}
+            type="search"
+            aria-label="Search in this Book"
+            placeholder="Search this Book"
+            enterkeyhint="search"
+            value={query}
+            onInput={(event) => setQuery(event.currentTarget.value)}
+          />
+          {(query || status.kind !== "idle") && (
+            <button type="button" class="icon-button search-clear" aria-label="Clear search" onClick={clear}>
+              <CloseIcon size={16} />
+            </button>
+          )}
+        </form>
+        <div class="search-summary">
+          <p role="status">{statusText(status, searched, count)}</p>
+          {status.kind === "searching" && (
+            <span
+              class="search-progress"
+              role="progressbar"
+              aria-label="Search progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(status.progress * 100)}
+            >
+              <span style={{ width: `${Math.round(status.progress * 100)}%` }} />
+            </span>
+          )}
+        </div>
+      </div>
 
-      {chapters.map((chapter, index) => {
-        const heading = `book-search-chapter-${index}`;
-        return (
-          <div key={index} role="group" aria-labelledby={heading} class="book-search-chapter">
-            <h3 id={heading}>{chapter.label || "Untitled section"}</h3>
-            <ol>
-              {chapter.matches.map((match) => (
-                <li key={match.target}>
-                  <button
-                    type="button"
-                    class="book-search-match"
-                    aria-current={match.target === picked ? "location" : undefined}
-                    onClick={() => pick(match)}
-                  >
-                    {match.before}
-                    <mark>{match.match}</mark>
-                    {match.after}
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </div>
-        );
-      })}
-    </section>
+      <div class="panel-scroll search-results">
+        {chapters.map((chapter, index) => {
+          const heading = `book-search-chapter-${index}`;
+          return (
+            <div key={index} role="group" aria-labelledby={heading} class="search-chapter">
+              <div class="search-chapter-head">
+                <h3 id={heading}>{chapter.label || "Untitled section"}</h3>
+                <span class="search-chapter-count" aria-hidden="true">
+                  {chapter.matches.length}
+                </span>
+              </div>
+              <ol>
+                {chapter.matches.map((match) => (
+                  <li key={match.target}>
+                    <button
+                      type="button"
+                      class="search-match"
+                      aria-current={match.target === picked ? "location" : undefined}
+                      onClick={() => pick(match)}
+                    >
+                      {match.before}
+                      <mark>{match.match}</mark>
+                      {match.after}
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          );
+        })}
+      </div>
+    </aside>
   );
 }
 

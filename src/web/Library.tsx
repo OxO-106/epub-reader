@@ -1,17 +1,21 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { BookCover } from "./BookCover.tsx";
+import { BookProgress } from "./BookProgress.tsx";
 import { ConnectionNotice } from "./ConnectionNotice.tsx";
 import { DeleteBook } from "./DeleteBook.tsx";
 import { LibraryFolderProblems } from "./LibraryFolderProblems.tsx";
-import { formatFraction } from "./reading-position.ts";
 import {
-  coverUrl,
-  HttpError,
-  importFile,
-  importableExtensions,
-  listBooks,
-  type BookSummary,
-  type ImportOutcome,
-} from "./api.ts";
+  ChevronDownIcon,
+  ChevronRightIcon,
+  LogoIcon,
+  PlusIcon,
+  SearchIcon,
+  ShelfIllustration,
+  UploadIcon,
+} from "./library-icons.tsx";
+import { formatName, loadSort, pickContinueReading, saveSort, sortBooks, sortOptions, type SortKey } from "./library-model.ts";
+import { HttpError, importFile, importableExtensions, listBooks, type BookSummary, type ImportOutcome } from "./api.ts";
+import "./library.css";
 
 type State =
   | { kind: "loading" }
@@ -24,6 +28,7 @@ export function Library() {
   const [importing, setImporting] = useState<{ done: number; total: number } | null>(null);
   const [outcomes, setOutcomes] = useState<ImportOutcome[]>([]);
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortKey>(loadSort);
   const picker = useRef<HTMLInputElement>(null);
   const latestRequest = useRef(0);
   const currentQuery = useRef(query);
@@ -76,9 +81,31 @@ export function Library() {
     input.value = ""; // so picking the same file again still fires
   }
 
+  function onSort(key: SortKey) {
+    setSort(key);
+    saveSort(key);
+  }
+
+  const searching = query.trim() !== "";
+  const books = state.kind === "ready" ? state.books : [];
+  const shown = useMemo(() => sortBooks(books, sort), [state, sort]);
+  // While the Library is searched the list is only part of it, so it is not the place to look for the Book read last.
+  const resume = searching ? null : pickContinueReading(books);
+  // Nothing at all in the Library (not merely nothing matching a search): the welcome screen replaces the list.
+  const empty = state.kind === "ready" && books.length === 0 && !searching;
+  const pickerBusy = importing !== null;
+
+  const formats = (
+    <span class="formats">
+      <span class="chip">EPUB</span>
+      <span class="chip">Markdown</span>
+      <span class="chip">TXT</span>
+    </span>
+  );
+
   return (
     <main
-      class="page"
+      class="library"
       onDragOver={(event) => {
         event.preventDefault();
         setDragging(true);
@@ -89,27 +116,100 @@ export function Library() {
       }}
       onDrop={onDrop}
     >
-      <h1>Library</h1>
+      {!empty && <h1 class="visually-hidden">Library</h1>}
+      <header class="library-header">
+        <div class="wordmark">
+          <span class="wordmark-mark">
+            <LogoIcon />
+          </span>
+          <span class="wordmark-name">Reader</span>
+        </div>
+        <div class="library-tools">
+          {!empty && (
+            <div class="search-field">
+              <SearchIcon />
+              <input
+                type="search"
+                class="search"
+                placeholder="Search by title or author"
+                aria-label="Search the Library"
+                value={query}
+                onInput={(event) => setQuery(event.currentTarget.value)}
+              />
+            </div>
+          )}
+          <button type="button" class="button-primary" onClick={() => picker.current?.click()} disabled={pickerBusy}>
+            <PlusIcon />
+            <span class="button-label">Add books</span>
+          </button>
+        </div>
+      </header>
+      <input
+        ref={picker}
+        type="file"
+        multiple
+        accept={importableExtensions.join(",")}
+        onChange={onPick}
+        hidden
+        aria-label="Choose files to import"
+      />
       <ConnectionNotice />
 
-      <section class={`dropzone${dragging ? " dragging" : ""}`} data-testid="dropzone">
-        <p>Drag EPUB, Markdown or text files here to add them to your Library.</p>
-        <button type="button" onClick={() => picker.current?.click()} disabled={importing !== null}>
-          Choose files
-        </button>
-        <input
-          ref={picker}
-          type="file"
-          multiple
-          accept={importableExtensions.join(",")}
-          onChange={onPick}
-          hidden
-          aria-label="Choose files to import"
-        />
-      </section>
+      {empty ? (
+        <section class="library-empty" aria-label="Add your first books">
+          <ShelfIllustration />
+          <h1>Your Library is empty</h1>
+          <p class="lede">Add an EPUB, Markdown or text file to start reading. Your books stay on your computer.</p>
+          <div class={`dropzone large${dragging ? " dragging" : ""}`} data-testid="dropzone">
+            <span class="dropzone-icon">
+              <UploadIcon size={24} />
+            </span>
+            <div class="dropzone-title">Drop files here</div>
+            {formats}
+            <button type="button" class="button-dark" onClick={() => picker.current?.click()} disabled={pickerBusy}>
+              Choose files
+            </button>
+          </div>
+          <p class="folder-note">
+            You can also copy files into the <code>library</code> folder next to the app. They appear here by themselves.
+          </p>
+        </section>
+      ) : (
+        <>
+          {resume && (
+            <section class="continue" aria-label="Continue reading">
+              {/* One link for the whole card, so a tap anywhere on it opens the Book. */}
+              <a class="continue-link" href={`#/read/${resume.id}`} aria-label="Continue reading" aria-describedby="continue-title">
+                <div class="continue-cover">
+                  <BookCover book={resume} />
+                </div>
+                <div class="continue-body">
+                  <div class="eyebrow">Continue reading</div>
+                  <h2 id="continue-title">{resume.title}</h2>
+                  {resume.author && <div class="continue-author">{resume.author}</div>}
+                  <BookProgress fraction={resume.fraction} large />
+                </div>
+                <span class="button-dark">
+                  Continue
+                  <ChevronRightIcon />
+                </span>
+              </a>
+            </section>
+          )}
+
+          <section class={`dropzone${dragging ? " dragging" : ""}`} data-testid="dropzone" aria-label="Add books">
+            <UploadIcon />
+            <span>Drop files anywhere on this page to add them</span>
+            {formats}
+            <button type="button" class="button-quiet" onClick={() => picker.current?.click()} disabled={pickerBusy}>
+              Choose files
+            </button>
+          </section>
+        </>
+      )}
 
       {importing && (
-        <p role="status" class="progress">
+        <p role="status" class="import-status">
           Importing {Math.min(importing.done + 1, importing.total)} of {importing.total}…
         </p>
       )}
@@ -130,40 +230,41 @@ export function Library() {
           The server could not list your Library. Reload this page to try again.
         </p>
       )}
-      <input
-        type="search"
-        class="search"
-        placeholder="Search by title or author"
-        aria-label="Search the Library"
-        value={query}
-        onInput={(event) => setQuery(event.currentTarget.value)}
-      />
-      {state.kind === "ready" && state.books.length === 0 && query.trim() === "" && (
-        <p class="empty">Your Library is empty. Books you add will appear here.</p>
-      )}
-      {state.kind === "ready" && state.books.length === 0 && query.trim() !== "" && (
-        <p class="empty">No Books match “{query.trim()}”.</p>
-      )}
-      {state.kind === "ready" && state.books.length > 0 && (
-        <ul class="books">
-          {state.books.map((book) => (
-            <li key={book.id} class="book">
-              <a class="book-link" href={`#/read/${book.id}`}>
-                {book.hasCover ? (
-                  <img class="cover" src={coverUrl(book)} alt={`Cover of ${book.title}`} loading="lazy" />
-                ) : (
-                  <div class="cover placeholder" aria-hidden="true">
-                    {[...book.title][0]}
+
+      {!empty && (
+        <section class="your-books" aria-label="Your Books">
+          <div class="section-head">
+            <h2>Your Books</h2>
+            <label class="sort">
+              <select aria-label="Sort Books" value={sort} onChange={(event) => onSort(event.currentTarget.value as SortKey)}>
+                {sortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDownIcon />
+            </label>
+          </div>
+          {state.kind === "ready" && books.length === 0 && <p class="empty">No Books match “{query.trim()}”.</p>}
+          {shown.length > 0 && (
+            <ul class="books">
+              {shown.map((book) => (
+                <li key={book.id} class="book">
+                  <a class="book-link" href={`#/read/${book.id}`}>
+                    <BookCover book={book} />
+                    <span class="title">{book.title}</span>
+                  </a>
+                  <div class="book-meta">
+                    <span class="author">{book.author ?? formatName(book.format)}</span>
+                    <DeleteBook book={book} onDeleted={refresh} />
                   </div>
-                )}
-                <span class="title">{book.title}</span>
-                {book.author && <span class="author">{book.author}</span>}
-                {book.fraction !== null && <span class="fraction-label">{formatFraction(book.fraction)} read</span>}
-              </a>
-              <DeleteBook book={book} onDeleted={refresh} />
-            </li>
-          ))}
-        </ul>
+                  <BookProgress fraction={book.fraction} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
     </main>
   );

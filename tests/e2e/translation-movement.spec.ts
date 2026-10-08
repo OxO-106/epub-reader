@@ -29,7 +29,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function jumpBySearch(page: Page, query: string) {
-  const search = page.getByRole("button", { name: "Search" });
+  const search = page.getByRole("button", { name: "Search", exact: true });
   if ((await search.getAttribute("aria-expanded")) !== "true") await search.click();
   const panel = page.getByRole("search", { name: "Search in this Book" });
   await panel.getByRole("searchbox").fill(query);

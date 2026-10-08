@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { deleteBook, type BookSummary } from "./api.ts";
+import { TrashIcon } from "./library-icons.tsx";
 
-/** A Delete button for one Book that asks for confirmation in a dialog before anything is removed. */
+/**
+ * A Delete button for one Book that asks for confirmation in a dialog before anything is removed. The button is an icon,
+ * always visible, with a 44 px target (see library.css); the dialog is the native one, so Escape and focus work as usual.
+ */
 export function DeleteBook({ book, onDeleted }: { book: BookSummary; onDeleted: () => void }) {
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -32,7 +36,7 @@ export function DeleteBook({ book, onDeleted }: { book: BookSummary; onDeleted: 
   return (
     <>
       <button type="button" class="delete-book" aria-label={`Delete ${book.title}`} onClick={() => setAsking(true)}>
-        Delete
+        <TrashIcon />
       </button>
       {asking && (
         <dialog ref={dialog} class="confirm" aria-labelledby={`delete-${book.id}`} onClose={close}>
@@ -47,7 +51,7 @@ export function DeleteBook({ book, onDeleted }: { book: BookSummary; onDeleted: 
             </p>
           )}
           <div class="actions">
-            <button type="button" onClick={() => dialog.current?.close()} autofocus>
+            <button type="button" class="cancel" onClick={() => dialog.current?.close()} autofocus>
               Cancel
             </button>
             <button type="button" class="danger" onClick={confirm} disabled={busy}>

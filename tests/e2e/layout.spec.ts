@@ -1,126 +1,23 @@
-// Narrow-window layout: at 900 px and at 360 px the Library and the Reader scroll only vertically, every control is
-// fully on screen, controls do not overlap, and nothing needed to read is revealed by hovering.
+// Narrow-window layout: at 900 px, 390 px (a phone) and 360 px the Library and the Reader scroll only vertically, every
+// control is fully on screen and at least 44 px, controls do not overlap, and nothing needed to read is revealed by hovering.
 //
-// Written generically so features that add screens, panels or buttons are covered without editing it:
-//   - it looks at every visible button, link, field and select it finds, not at a list of known ones;
-//   - in the Reader it also opens every top-bar button that toggles a panel (aria-expanded), one at a time.
+// Written generically so features that add screens, panels or buttons are covered without editing it (the checks are in
+// tests/support/layout.ts): they look at every visible button, link, field and select they find, not at a list of known
+// ones; in the Reader the test also opens every top-bar button that toggles a panel (aria-expanded), one at a time, and
+// searches the Book when the panel has a search field so the results are on screen too.
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Locator, Page } from "@playwright/test";
+import { expectLayoutFits, expectNoHoverOnlyContent } from "../support/layout.ts";
 import { expect, test } from "./fixtures.ts";
 
 const fixture = (name: string) => join(dirname(fileURLToPath(import.meta.url)), "../fixtures", name);
 
 const sizes = [
   { width: 900, height: 800 },
+  { width: 390, height: 844 },
   { width: 360, height: 640 },
 ];
-
-const controls = "button, a[href], input:not([type=hidden]), select, textarea, summary, [role=button], [tabindex]:not([tabindex='-1'])";
-
-/** Fails with a readable list of everything that does not fit: horizontal page scroll, controls off screen, clipped or overlapping. */
-async function expectLayoutFits(page: Page, where: string) {
-  const problems = await page.evaluate((selector) => {
-    const found: string[] = [];
-    const doc = document.documentElement;
-    if (doc.scrollWidth > doc.clientWidth) found.push(`the page scrolls sideways (${doc.scrollWidth} > ${doc.clientWidth})`);
-    if (document.body.scrollWidth > doc.clientWidth) found.push(`the body is wider than the window (${document.body.scrollWidth})`);
-
-    const describe = (el: Element) => {
-      const text = (el.getAttribute("aria-label") || (el as HTMLElement).innerText || el.getAttribute("placeholder") || "").trim().slice(0, 30);
-      return `<${el.tagName.toLowerCase()}${el.className && typeof el.className === "string" ? "." + el.className.split(" ")[0] : ""}> "${text}"`;
-    };
-    const visible = [...document.querySelectorAll<HTMLElement>(selector)].filter((el) => {
-      const style = getComputedStyle(el);
-      const rect = el.getBoundingClientRect();
-      return style.visibility !== "hidden" && style.display !== "none" && rect.width > 0 && rect.height > 0 && !el.closest("[hidden]");
-    });
-    // The part of a control that can be seen: cut to the scrolling panels (and clipping boxes) it sits in. A control
-    // scrolled out of view inside a scrolling panel is reachable by scrolling it, so it is left out of the overlap
-    // checks; one cut off by a box that does not scroll is a real problem.
-    const seen = (el: HTMLElement) => {
-      const own = el.getBoundingClientRect();
-      let { left, top, right, bottom } = own;
-      for (let parent = el.parentElement; parent && parent !== document.body && parent !== doc; parent = parent.parentElement) {
-        const style = getComputedStyle(parent);
-        const cuts = [style.overflowX, style.overflowY].some((value) => value !== "visible");
-        if (!cuts) continue;
-        const box = parent.getBoundingClientRect();
-        left = Math.max(left, box.left);
-        top = Math.max(top, box.top);
-        right = Math.min(right, box.right);
-        bottom = Math.min(bottom, box.bottom);
-        const scrolls = [style.overflowX, style.overflowY].every((value) => value === "auto" || value === "scroll" || value === "visible");
-        if (!scrolls && (right - left < own.width - 1 || bottom - top < own.height - 1)) {
-          found.push(`${describe(el)} is cut off by ${describe(parent)}`);
-        }
-      }
-      return { left, top, right, bottom, width: right - left, height: bottom - top };
-    };
-    const everything = visible.map((el) => ({ el, rect: el.getBoundingClientRect(), shown: seen(el) }));
-    const boxes = everything.filter(({ shown }) => shown.width > 0 && shown.height > 0).map(({ el, shown }) => ({ el, rect: shown }));
-
-    for (const { el, rect } of everything) {
-      if (rect.left < -0.5 || rect.right > doc.clientWidth + 0.5) {
-        found.push(`${describe(el)} is outside the window horizontally (${Math.round(rect.left)}..${Math.round(rect.right)} of ${doc.clientWidth})`);
-      }
-      if (rect.top < -0.5 && getComputedStyle(el).position !== "fixed") {
-        found.push(`${describe(el)} is above the top of the page`);
-      }
-      // A control whose own content is cut off (a label wider than its button, text hidden by overflow).
-      if (el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX !== "visible" && el.tagName !== "INPUT") {
-        found.push(`${describe(el)} clips its own content (${el.scrollWidth} > ${el.clientWidth})`);
-      }
-    }
-    for (let i = 0; i < boxes.length; i++) {
-      for (let j = i + 1; j < boxes.length; j++) {
-        const a = boxes[i]!;
-        const b = boxes[j]!;
-        if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
-        const overlapX = Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left);
-        const overlapY = Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top);
-        if (overlapX > 1 && overlapY > 1) found.push(`${describe(a.el)} overlaps ${describe(b.el)}`);
-      }
-    }
-    // A control hidden under something else (e.g. a panel drawn over a bar): its centre must hit itself.
-    for (const { el, rect } of boxes) {
-      const x = Math.min(Math.max(rect.left + rect.width / 2, 0), doc.clientWidth - 1);
-      const y = Math.min(Math.max(rect.top + rect.height / 2, 0), window.innerHeight - 1);
-      if (rect.top >= window.innerHeight || rect.bottom <= 0) continue; // off the bottom of a scrolling page is fine
-      const top = document.elementFromPoint(x, y);
-      if (top && top !== el && !el.contains(top) && !top.contains(el)) found.push(`${describe(el)} is covered by ${describe(top)}`);
-    }
-    return found;
-  }, controls);
-
-  expect(problems, `layout problems ${where}`).toEqual([]);
-}
-
-/** Nothing may appear, or become usable, only on hover: no :hover rule may show, hide, move or resize anything. */
-async function expectNoHoverOnlyContent(page: Page) {
-  const offenders = await page.evaluate(() => {
-    const changing = ["display", "visibility", "opacity", "transform", "width", "height", "max-height", "clip", "clip-path", "position", "left", "right", "top", "bottom"];
-    const found: string[] = [];
-    const walk = (rules: CSSRuleList) => {
-      for (const rule of rules) {
-        if (rule instanceof CSSStyleRule && rule.selectorText.includes(":hover")) {
-          for (const property of changing) if (rule.style.getPropertyValue(property)) found.push(`${rule.selectorText} { ${property} }`);
-        } else if ("cssRules" in rule) {
-          walk((rule as CSSGroupingRule).cssRules);
-        }
-      }
-    };
-    for (const sheet of document.styleSheets) {
-      try {
-        walk(sheet.cssRules);
-      } catch {
-        // A cross-origin sheet cannot be read; the app serves all of its own styles.
-      }
-    }
-    return found;
-  });
-  expect(offenders, "rules that change what is visible on hover").toEqual([]);
-}
 
 /** Opens every top-bar button that toggles a panel, checks the layout with it open, and closes it again. */
 async function checkEachPanel(page: Page, where: string) {
@@ -134,6 +31,17 @@ async function checkEachPanel(page: Page, where: string) {
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
     await expectLayoutFits(page, `${where} with "${name}" open`);
     await expectNoHoverOnlyContent(page);
+
+    // A panel with a search field is looked at again with results in it.
+    const field = page.locator("[role=search] input[type=search]:visible");
+    if ((await field.count()) > 0) {
+      await field.fill("黛玉");
+      await field.press("Enter");
+      await expect(page.locator(".search-match").first()).toBeVisible();
+      await expect(page.getByRole("status").filter({ hasText: /matches/ })).toBeVisible();
+      await expectLayoutFits(page, `${where} with "${name}" open and showing results`);
+    }
+
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
   }
@@ -147,6 +55,7 @@ for (const size of sizes) {
       await page.goto("/");
       await expect(page.getByText("Your Library is empty")).toBeVisible();
       await expectLayoutFits(page, "in the empty Library");
+      await expectNoHoverOnlyContent(page);
 
       await page.locator("input[type=file]").setInputFiles(["sample.epub", "chinese.epub", "corrupt.epub", "sample.pdf"].map(fixture));
       await expect(page.locator(".books > li")).toHaveCount(2);
@@ -164,17 +73,40 @@ for (const size of sizes) {
       await page.unroute("**/api/**");
     });
 
+    test("the Library fits with the Continue reading card and with the delete dialog open", async ({ page }) => {
+      await page.goto("/");
+      await page.locator("input[type=file]").setInputFiles(["sample.epub", "chinese.epub"].map(fixture));
+      await expect(page.locator(".books > li")).toHaveCount(2);
+
+      // Opening a Book gives the Library its Continue reading card.
+      await page.getByRole("link", { name: /红楼梦/ }).click();
+      await expect(page.getByRole("button", { name: "Next" })).toBeEnabled();
+      await page.getByRole("link", { name: "Library" }).click();
+      await expect(page.getByRole("region", { name: "Continue reading" })).toBeVisible();
+      await expectLayoutFits(page, "in the Library with the Continue reading card");
+      await expectNoHoverOnlyContent(page);
+
+      await page.getByRole("button", { name: /Delete 红楼梦/ }).click();
+      await expect(page.getByRole("dialog")).toBeVisible();
+      await expectLayoutFits(page, "with the delete dialog open", "dialog");
+      const dialog = (await page.getByRole("dialog").boundingBox())!;
+      expect(dialog.x).toBeGreaterThanOrEqual(0);
+      expect(dialog.x + dialog.width).toBeLessThanOrEqual(size.width);
+      await page.getByRole("button", { name: "Cancel" }).click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+    });
+
     test("the Reader fits: with a Book open, with each panel open, and with the unreachable notice", async ({ page }) => {
       await page.goto("/");
-      await page.locator("input[type=file]").setInputFiles(fixture("chinese.epub"));
-      await page.getByRole("link", { name: /红楼梦/ }).click();
+      await page.locator("input[type=file]").setInputFiles(fixture("chinese-search.epub"));
+      await page.getByRole("link", { name: /石头记/ }).click();
       await expect(page.getByRole("button", { name: "Next" })).toBeEnabled();
       await expect(page.locator(".reader-view")).toBeVisible();
 
       await expectLayoutFits(page, "in the Reader");
       await expectNoHoverOnlyContent(page);
       // The Book's title is not squeezed to nothing between the buttons.
-      await expect(page.getByRole("heading", { level: 1 })).toContainText("红楼梦");
+      await expect(page.getByRole("heading", { level: 1 })).toContainText("石头记");
       expect((await page.getByRole("heading", { level: 1 }).boundingBox())!.width).toBeGreaterThan(100);
       await checkEachPanel(page, "in the Reader");
 
