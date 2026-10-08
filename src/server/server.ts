@@ -5,6 +5,7 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
 import { resolveConfig, type Config, type ConfigOverrides } from "./config.ts";
 import { openDb } from "./db.ts";
+import { openStorage } from "./storage.ts";
 
 export type ServerOptions = ConfigOverrides;
 
@@ -22,7 +23,8 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   mkdirSync(config.libraryDir, { recursive: true });
 
   const db = openDb(join(config.dataDir, "reader.sqlite"));
-  const app = createApp({ db, webDir: config.webDir });
+  const storage = openStorage(config.dataDir);
+  const app = createApp({ db, storage, webDir: config.webDir });
 
   const httpServer = await new Promise<Server>((resolve, reject) => {
     // Plain HTTP/1.1, so the returned server is a node:http Server.

@@ -1,0 +1,128 @@
+import { createHash, randomUUID } from "node:crypto";
+import { createWriteStream } from "node:fs";
+import { rename, rm, writeFile } from "node:fs/promises";
+import { basename, extname, join } from "node:path";
+import { Writable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { BookRow, Db } from "./db.ts";
+import { CorruptBookError, detectFormat, formats } from "./formats/index.ts";
+import type { Storage } from "./storage.ts";
+
+/** Largest Book file accepted, in bytes. */
+export const maxBookBytes = 200 * 1024 * 1024;
+
+export interface ImportContext {
+  db: Db;
+  storage: Storage;
+}
+
+export interface ImportInput {
+  /** Name the file had where it came from. Used to pick the format and as a fallback title. */
+  filename: string;
+  /** The file's bytes. A Node stream, a web stream and an array of chunks all work. */
+  content: AsyncIterable<Uint8Array>;
+}
+
+/** Why a file was not added. */
+export type RejectionCode = "unsupported" | "too-large" | "corrupt";
+
+export type ImportResult =
+  | { status: "added"; book: BookRow }
+  /** The same content is already in the Library; nothing changed. */
+  | { status: "duplicate"; book: BookRow }
+  | { status: "rejected"; code: RejectionCode; message: string };
+
+/**
+ * The one way a Book enters the Library: detect the format, enforce the size cap, hash the content,
+ * skip duplicates, extract metadata and store the Book. Every source of files (upload today, the
+ * watched folder later) calls this. The content is streamed to disk, never held whole in memory.
+ */
+export async function importBook({ db, storage }: ImportContext, input: ImportInput): Promise<ImportResult> {
+  const { filename } = input;
+  const quoted = `"${basename(filename)}"`;
+
+  const format = detectFormat(filename);
+  if (!format) {
+    await receive(input.content, null);
+    const supported = formats.map((f) => f.label).join(", ");
+    return rejected("unsupported", `${quoted} is not a supported file type. Reader can import: ${supported}.`);
+  }
+
+  const temp = join(storage.tmpDir, randomUUID());
+  try {
+    const { hash, tooLarge } = await receive(input.content, temp);
+    if (tooLarge) {
+      return rejected("too-large", `${quoted} is larger than the 200 MB limit, so it was not added.`);
+    }
+
+    const existing = db.getBook(hash);
+    if (existing) return { status: "duplicate", book: existing };
+
+    let metadata;
+    try {
+      metadata = await format.extract(temp);
+    } catch (error) {
+      if (!(error instanceof CorruptBookError)) throw error;
+      return rejected("corrupt", `${quoted} is not a valid ${format.label} file, or it is damaged, so it was not added.`);
+    }
+
+    const cover = metadata.cover ? `${hash}${metadata.cover.extension}` : null;
+    await rename(temp, storage.bookFile(hash, format.extensions[0]!));
+    if (metadata.cover && cover) await writeFile(storage.coverFile(cover), metadata.cover.data);
+
+    const book: BookRow = {
+      hash,
+      title: metadata.title ?? fallbackTitle(filename),
+      author: metadata.author ?? null,
+      format: format.id,
+      cover,
+      added_at: Date.now(),
+      last_read_at: null,
+    };
+    // A concurrent import of the same content may have won the race; it stored identical files.
+    if (!db.addBook(book)) return { status: "duplicate", book: db.getBook(hash)! };
+    return { status: "added", book };
+  } finally {
+    await rm(temp, { force: true });
+  }
+}
+
+function rejected(code: RejectionCode, message: string): ImportResult {
+  return { status: "rejected", code, message };
+}
+
+function fallbackTitle(filename: string): string {
+  const name = basename(filename);
+  return name.slice(0, name.length - extname(name).length).trim() || "Untitled";
+}
+
+/**
+ * Streams `content` into the file at `destination` (or nowhere, when null), hashing as it goes.
+ * Past the size cap nothing more is hashed, and the caller must discard the file; the rest of the
+ * upload is still read so the sender gets an answer instead of a dropped connection.
+ */
+async function receive(
+  content: AsyncIterable<Uint8Array>,
+  destination: string | null,
+): Promise<{ hash: string; tooLarge: boolean }> {
+  const hash = createHash("sha256");
+  let size = 0;
+  let tooLarge = false;
+  const sink = destination
+    ? createWriteStream(destination)
+    : new Writable({ write: (_chunk, _encoding, done) => done() });
+  await pipeline(
+    content,
+    async function* (source: AsyncIterable<Uint8Array>) {
+      for await (const chunk of source) {
+        size += chunk.length;
+        if (size > maxBookBytes) tooLarge = true;
+        if (tooLarge) continue;
+        hash.update(chunk);
+        yield chunk;
+      }
+    },
+    sink,
+  );
+  return { hash: hash.digest("hex"), tooLarge };
+}

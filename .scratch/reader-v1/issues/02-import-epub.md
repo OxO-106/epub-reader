@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] Uploading an EPUB adds one Book with correct title and author (CJK metadata included)
-- [ ] Cover is shown when the EPUB has one
-- [ ] Importing the same EPUB twice results in one Book
-- [ ] Unsupported file type, corrupt EPUB and a file over 200 MB each produce a clear message and add nothing
-- [ ] Multi-file upload works
-- [ ] The Library and its Books are intact after restarting the server
-- [ ] API tests cover these through the HTTP seam; one Playwright journey covers drag-and-drop to Library
+- [x] Uploading an EPUB adds one Book with correct title and author (CJK metadata included)
+- [x] Cover is shown when the EPUB has one
+- [x] Importing the same EPUB twice results in one Book
+- [x] Unsupported file type, corrupt EPUB and a file over 200 MB each produce a clear message and add nothing
+- [x] Multi-file upload works
+- [x] The Library and its Books are intact after restarting the server
+- [x] API tests cover these through the HTTP seam; one Playwright journey covers drag-and-drop to Library

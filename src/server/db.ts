@@ -28,6 +28,9 @@ export interface BookRow {
 
 export interface Db {
   listBooks(): BookRow[];
+  getBook(hash: string): BookRow | undefined;
+  /** Adds a Book. Returns false, changing nothing, when a Book with the same hash already exists. */
+  addBook(book: BookRow): boolean;
   close(): void;
 }
 
@@ -47,6 +50,18 @@ export function openDb(path: string): Db {
       return db
         .prepare("SELECT * FROM books ORDER BY last_read_at DESC, added_at DESC")
         .all() as unknown as BookRow[];
+    },
+    getBook(hash) {
+      return db.prepare("SELECT * FROM books WHERE hash = ?").get(hash) as unknown as BookRow | undefined;
+    },
+    addBook(book) {
+      const result = db
+        .prepare(
+          `INSERT INTO books (hash, title, author, format, cover, added_at, last_read_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(hash) DO NOTHING`,
+        )
+        .run(book.hash, book.title, book.author, book.format, book.cover, book.added_at, book.last_read_at);
+      return result.changes > 0;
     },
     close() {
       db.close();
