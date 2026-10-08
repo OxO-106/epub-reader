@@ -18,6 +18,13 @@ export async function listBooks(query = ""): Promise<BookSummary[]> {
   return body.books;
 }
 
+/** One Book's summary. Rejects when the Book is not in the Library or the server cannot be reached. */
+export async function getBook(id: string): Promise<BookSummary> {
+  const response = await fetch(`/api/books/${id}`);
+  if (!response.ok) throw new Error(`Server answered ${response.status}`);
+  return (await response.json()) as BookSummary;
+}
+
 /** Deletes the app's copy of a Book. Resolves true when it is gone (including when it already was). */
 export async function deleteBook(book: BookSummary): Promise<boolean> {
   try {
@@ -38,7 +45,7 @@ export async function getBookFile(id: string): Promise<Blob> {
 }
 
 /** File types the file picker offers. The server decides what it accepts; add formats here as they arrive. */
-export const importableExtensions = [".epub"];
+export const importableExtensions = [".epub", ".md", ".markdown"];
 
 export interface ImportOutcome {
   fileName: string;

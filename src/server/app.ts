@@ -41,6 +41,7 @@ const rejectionStatus: Record<RejectionCode, 413 | 415 | 422> = {
 /** Content type of each Book format's stored file. */
 const bookTypes: Record<string, string> = {
   epub: "application/epub+zip",
+  markdown: "text/markdown; charset=utf-8",
 };
 
 const coverTypes: Record<string, string> = {
@@ -91,6 +92,13 @@ export function createApp({ db, storage, libraryFolder, webDir }: AppContext): H
         "cache-control": "public, max-age=31536000, immutable",
       },
     });
+  });
+
+  // One Book's summary, so the Reader knows its format and title before it fetches the file.
+  app.get("/api/books/:id", (c) => {
+    const id = c.req.param("id");
+    const book = isBookId(id) ? db.getBook(id) : undefined;
+    return book ? c.json(toSummary(book)) : c.json({ error: "Not found" }, 404);
   });
 
   // The Book file as stored, streamed. A Book's id is its content hash, so the bytes behind a URL never change.

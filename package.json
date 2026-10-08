@@ -18,8 +18,11 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.3",
+    "dompurify": "^3.4.16",
     "fast-xml-parser": "^5.11.2",
+    "highlight.js": "^11.12.0",
     "hono": "^4.13.13",
+    "markdown-it": "^15.0.2",
     "preact": "^11.0.0",
     "yauzl": "^3.4.0"
   },

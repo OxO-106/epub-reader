@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { getBookFile } from "./api.ts";
+import { loadBookSource } from "./bookSource.ts";
 import { createReader, type Reader, type TocEntry } from "./reader/reader.ts";
 
 type State =
@@ -23,9 +23,9 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     setChapterId(null);
     const stopListening = instance.onLocation((location) => setChapterId(location.chapterId));
 
-    getBookFile(bookId).then(
-      (file) =>
-        instance.open({ kind: "epub", file }).then(
+    loadBookSource(bookId).then(
+      (source) =>
+        instance.open(source).then(
           ({ title, toc }) => {
             if (!cancelled) setState({ kind: "ready", title, toc });
           },

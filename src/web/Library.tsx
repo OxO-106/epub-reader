@@ -77,7 +77,7 @@ export function Library() {
       <h1>Library</h1>
 
       <section class={`dropzone${dragging ? " dragging" : ""}`} data-testid="dropzone">
-        <p>Drag EPUB files here to add them to your Library.</p>
+        <p>Drag EPUB or Markdown files here to add them to your Library.</p>
         <button type="button" onClick={() => picker.current?.click()} disabled={importing !== null}>
           Choose files
         </button>

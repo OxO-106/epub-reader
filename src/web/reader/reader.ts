@@ -12,11 +12,16 @@
  * foliate-js book object built by an adapter and are passed to the same view (08, 09).
  */
 import type { FoliateBook, RelocateDetail, TocItem, View } from "../vendor/foliate-js/view.js";
+import { makeCustomBook, type CustomBook } from "./custom-book.ts";
 import { sha1 } from "./sha1.ts";
+
+export type { CustomBook } from "./custom-book.ts";
 
 export type BookSource =
   /** An EPUB file, as downloaded from the server. */
-  { kind: "epub"; file: Blob };
+  | { kind: "epub"; file: Blob }
+  /** A Book that is not an EPUB (Markdown, plain text), already turned into HTML sections; see `custom-book.ts`. */
+  | { kind: "custom"; book: CustomBook };
 
 export interface TocEntry {
   /** Stable within one opened Book; matches `ReaderLocation.chapterId` while the reader is in this chapter. */
@@ -86,6 +91,14 @@ export function createReader(container: HTMLElement): Reader {
         for (const listener of listeners) listener(location);
       });
 
+      // Links to other sites open in a new tab that cannot reach back into this one. foliate-js would
+      // open them itself, with the opener left attached and any scheme allowed.
+      next.addEventListener("external-link", (event) => {
+        event.preventDefault();
+        const href = (event as CustomEvent<{ href_: string }>).detail.href_;
+        if (/^(https?:|mailto:|tel:)/i.test(href)) window.open(href, "_blank", "noopener,noreferrer");
+      });
+
       await next.open(book);
       await next.init({ lastLocation: options.position ?? null, showTextStart: false });
       return { title: titleOf(book), toc: flattenToc(book.toc ?? []) };
@@ -125,6 +138,8 @@ async function makeBook(source: BookSource): Promise<FoliateBook> {
         sha1,
       }).init();
     }
+    case "custom":
+      return makeCustomBook(source.book);
   }
 }
 
