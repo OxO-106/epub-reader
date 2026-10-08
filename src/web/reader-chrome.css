@@ -11,6 +11,11 @@
 
 .reader-screen {
   --reader-bar: 64px;
+  /* The bottom bar's row of controls; taller on a phone. */
+  --reader-nav: 64px;
+  /* Whole bars, with the safe areas a phone keeps clear (notch above, home indicator below): where the panels start and stop. */
+  --bar-top: calc(var(--reader-bar) + env(safe-area-inset-top, 0px));
+  --bar-bottom: calc(var(--reader-nav) + 4px + env(safe-area-inset-bottom, 0px));
   display: flex;
   height: 100vh;
   height: 100dvh;
@@ -39,8 +44,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  height: var(--reader-bar);
-  padding: 0 20px;
+  height: var(--bar-top);
+  padding: env(safe-area-inset-top, 0px) 20px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -100,6 +105,7 @@
 
 .reader-screen .reader-title {
   margin: 0;
+  font-family: var(--font-serif);
   font-size: 16px;
   font-weight: 600;
   white-space: nowrap;
@@ -149,6 +155,7 @@
 }
 
 .reader-screen .reader-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   border-top: 1px solid var(--border);
 }
 
@@ -164,11 +171,12 @@
 }
 
 .reader-screen .reader-nav {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  height: var(--reader-bar);
+  height: var(--reader-nav);
   padding: 0 20px;
 }
 
@@ -365,8 +373,8 @@
   .reader-screen .reader-search {
     position: fixed;
     z-index: 5;
-    top: var(--reader-bar);
-    bottom: calc(var(--reader-bar) + 3px);
+    top: var(--bar-top);
+    bottom: var(--bar-bottom);
     inset-inline-end: 0;
     flex: none;
     width: min(400px, 100%);
@@ -382,39 +390,54 @@
   padding: 20px 24px 12px;
 }
 
+/* The form is the pill (glyph, field, Clear button side by side), so no control is drawn on top of another. */
 .reader-screen .search-field {
-  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 48px;
   margin: 0;
+  padding-inline: 16px 2px;
+  border: 2px solid var(--accent);
+  border-radius: 24px;
+  background: var(--surface);
+}
+
+.reader-screen .search-field:focus-within {
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .reader-screen .search-glyph {
-  position: absolute;
-  inset-inline-start: 16px;
-  top: 14px;
   display: flex;
+  flex: none;
+  padding-inline-end: 8px;
   color: var(--muted);
   pointer-events: none;
 }
 
 .reader-screen .search-field input[type="search"] {
   box-sizing: border-box;
-  display: block;
-  width: 100%;
-  height: 46px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
   margin: 0;
-  padding: 0 48px 0 44px;
-  border: 2px solid var(--accent);
-  border-radius: 23px;
-  background: var(--surface);
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--fg);
   font: inherit;
   font-size: 16px;
+  /* The pill shows the focus (see above) and the Clear button is ours, not the browser's. */
+  outline: 0;
+}
+
+.reader-screen .search-field input[type="search"]::-webkit-search-cancel-button {
+  appearance: none;
+  display: none;
 }
 
 .reader-screen .search-clear {
-  position: absolute;
-  inset-inline-end: 2px;
-  top: 1px;
   color: var(--muted);
 }
 
@@ -534,6 +557,11 @@
 
 .reader-screen .display-panel > * {
   flex: none;
+}
+
+/* Only the sheet on a phone has a head of its own (see the phone rules at the end). */
+.reader-screen .sheet-head {
+  display: none;
 }
 
 .reader-screen .setting-name,
@@ -704,4 +732,179 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* ---- Status of a background task in the top bar (translation, later): a pill on a wide bar, a dot on a phone ---- */
+
+.reader-screen .reader-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin-inline-end: 6px;
+  padding: 0 12px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.reader-screen .reader-status-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/*
+ * ---- Phone (the MobileReader mockup, 390 px; the same rules serve anything narrower than 40rem) ----
+ *  - the top bar is one row of 44 px icon buttons (the words stay for screen readers) and the title and chapter in the
+ *    middle. It is built to hold one more button and a status dot (Translate, later) at 360 px without wrapping;
+ *  - the bottom bar has large icon Previous and Next buttons, with "Chapter X of Y" stacked over the percentage;
+ *  - Contents and Search are full-width sheets between the bars; Display is a bottom sheet that leaves the top of the
+ *    text in view, so a change can be seen; each has its own Close button (Escape works as everywhere);
+ *  - the bars keep clear of the notch, the home indicator and, in landscape, the rounded sides (safe-area insets).
+ */
+@media (max-width: 40rem) {
+  .reader-screen {
+    --reader-bar: 60px;
+    --reader-nav: 72px;
+  }
+
+  .reader-screen .reader-top {
+    gap: 4px;
+    padding-inline: max(4px, env(safe-area-inset-left, 0px)) max(4px, env(safe-area-inset-right, 0px));
+  }
+
+  .reader-screen .reader-tools {
+    gap: 0;
+  }
+
+  .reader-screen .reader-title {
+    font-size: 15px;
+  }
+
+  /* The status shrinks to its dot; its words are still there for screen readers. */
+  .reader-screen .reader-status {
+    width: 10px;
+    height: 10px;
+    margin: 0;
+    padding: 0;
+    background: none;
+  }
+
+  .reader-screen .reader-status-dot {
+    width: 10px;
+    height: 10px;
+  }
+
+  .reader-screen .reader-status-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .reader-screen .reader-nav {
+    padding: 0 max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
+  }
+
+  /* Previous and Next: 56 x 48 buttons with just the arrow. */
+  .reader-screen .nav-button,
+  .reader-screen .nav-next {
+    justify-content: center;
+    width: 56px;
+    height: 48px;
+    padding: 0;
+  }
+
+  .reader-screen .nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Two short lines, on purpose: the chapter, then the percentage a size larger. */
+  .reader-screen .reader-position {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.3;
+  }
+
+  .reader-screen .position-chapter {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .reader-screen .position-sep {
+    display: none;
+  }
+
+  .reader-screen .reader-position .reading-fraction {
+    font-size: 15px;
+  }
+
+  /* Contents: the whole space between the bars. */
+  .reader-screen .contents-drawer {
+    width: 100%;
+    border-inline-end: 0;
+    box-shadow: none;
+  }
+
+  .reader-screen .panel-head {
+    padding-inline: 20px 8px;
+  }
+
+  .reader-screen .panel-head h2 {
+    font-size: 20px;
+  }
+
+  /* Search: the same, between the bars (it already covers the text below 60rem). */
+  .reader-screen .reader-search {
+    inset-inline: 0;
+    width: auto;
+    border-inline-start: 0;
+    box-shadow: none;
+  }
+
+  .reader-screen .search-top {
+    padding: 16px 20px 8px;
+  }
+
+  .reader-screen .search-results {
+    padding-inline: 8px;
+  }
+
+  /* Display: a sheet that rests on the bottom bar, as tall as its settings up to two thirds of the text area, then it scrolls. */
+  .reader-screen .display-panel {
+    inset-inline: 0;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    max-height: 68%;
+    padding: 0 20px 24px;
+    border-width: 1px 0 0;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .reader-screen .sheet-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    margin: 0 -20px -8px;
+    padding-inline: 20px 8px;
+    border-bottom: 0;
+    background: var(--surface);
+  }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
+import { CloseIcon } from "./ReaderIcons.tsx";
 import {
   defaultDisplay,
   fontFamilies,
@@ -20,14 +21,17 @@ const flows: { value: Flow; label: string }[] = [
 interface Props {
   settings: DisplaySettings;
   onChange(settings: DisplaySettings): void;
+  /** The sheet's Close button was used. */
+  onClose(): void;
 }
 
 /**
- * The Reader's display controls, as one compact popover under the Display button. Every control is always visible once
+ * The Reader's display controls, as one compact popover under the Display button (a full-width sheet with its own Close
+ * button on a phone, see reader-chrome.css). Every control is always visible once
  * the panel is open; none needs hover. Choices are buttons that say whether they are `aria-pressed`. Changes apply
  * at once (the parent passes them to the Reader, which keeps the reader at the same place).
  */
-export function DisplaySettingsPanel({ settings, onChange }: Props) {
+export function DisplaySettingsPanel({ settings, onChange, onClose }: Props) {
   const set = (change: Partial<DisplaySettings>) => onChange({ ...settings, ...change });
   const panel = useRef<HTMLElement>(null);
 
@@ -38,6 +42,14 @@ export function DisplaySettingsPanel({ settings, onChange }: Props) {
 
   return (
     <section ref={panel} id="display-settings" class="reader-panel display-panel" aria-label="Display settings" data-no-page-turn>
+      {/* Drawn only where the panel is a full-width sheet (a phone); the popover is closed by its button in the top bar. */}
+      <div class="panel-head sheet-head">
+        <h2>Display</h2>
+        <button type="button" class="icon-button" aria-label="Close display settings" onClick={onClose}>
+          <CloseIcon />
+        </button>
+      </div>
+
       <div class="setting">
         <div class="setting-name" id="display-theme">
           Theme

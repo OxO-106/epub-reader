@@ -56,7 +56,11 @@ interface TopBarProps {
 
 /**
  * The Reader's top bar: a way back to the Library, the Book's title with the chapter under it, and the panel buttons.
- * Translation (a later ticket) adds its button and a status pill to the group of tools between Search and Display.
+ *
+ * Room for translation (a later ticket) is reserved in the group of tools between Search and Display: one more
+ * `bar-button` for Translate, followed by a `reader-status` (a `role="status"` span holding a `reader-status-dot` and
+ * a `reader-status-text`). On a phone the status shrinks to its dot (the words stay for screen readers) and the title
+ * gives up the width, so the bar never wraps; tests/e2e/phone-layouts.spec.ts checks it with both added.
  */
 export function ReaderTopBar({ title, chapter, open, searchReady, buttons, onToggle }: TopBarProps) {
   return (
@@ -109,15 +113,16 @@ export function ReaderBottomBar({
       <div class="reader-nav">
         <button type="button" class="nav-button" onClick={onPrev} disabled={!ready}>
           <ChevronLeft />
-          Previous
+          <span class="nav-label">Previous</span>
         </button>
+        {/* One line on a wide bar; on a phone the chapter is stacked over the percentage and the dot goes (reader-chrome.css). */}
         <p class="reader-position">
-          {chapter && <span>{`Chapter ${chapter.number} of ${chapter.total}`}</span>}
-          {chapter && fraction !== null && " · "}
+          {chapter && <span class="position-chapter">{`Chapter ${chapter.number} of ${chapter.total}`}</span>}
+          {chapter && fraction !== null && <span class="position-sep"> · </span>}
           <ReadingFraction fraction={fraction} />
         </p>
         <button type="button" class="nav-button nav-next" onClick={onNext} disabled={!ready}>
-          Next
+          <span class="nav-label">Next</span>
           <ChevronRight />
         </button>
       </div>

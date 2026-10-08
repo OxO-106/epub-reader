@@ -153,7 +153,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         <div class="reader-body">
           <div class="reader-view" ref={viewport} />
           {panel === "contents" && <ContentsDrawer toc={toc} chapterId={chapterId} onPick={openChapter} onClose={() => closePanel()} />}
-          {panel === "display" && <DisplaySettingsPanel settings={display} onChange={changeDisplay} />}
+          {panel === "display" && <DisplaySettingsPanel settings={display} onChange={changeDisplay} onClose={() => closePanel()} />}
           {state.kind === "loading" && (
             <p role="status" class="reader-message">
               Opening…
