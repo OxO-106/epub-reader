@@ -11,7 +11,7 @@ const fold = (text: string) => text.normalize("NFKC").toLowerCase();
  * small enough that filtering it in a loop is instant. Chinese needs no word splitting: a substring
  * of the title or author matches.
  */
-export function searchBooks(books: BookRow[], query: string): BookRow[] {
+export function searchBooks<T extends BookRow>(books: T[], query: string): T[] {
   const words = fold(query).split(/\s+/).filter(Boolean);
   if (words.length === 0) return books;
   return books.filter((book) => {

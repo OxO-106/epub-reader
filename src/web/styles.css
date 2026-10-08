@@ -381,3 +381,16 @@ button {
   margin: 0 0 0.5rem;
   font-size: 1rem;
 }
+
+/* How far through the Book: in the Reader's top bar and under each Book in the Library. */
+.reading-progress {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: 0.75;
+}
+
+.book .progress-label {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
