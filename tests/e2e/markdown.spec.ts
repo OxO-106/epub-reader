@@ -56,10 +56,11 @@ test.describe("a Markdown Book", () => {
     // Whichever heading the page has reached is marked; the whole first section fits one page, so the last of its headings is.
     await expect(toc(page).locator("[aria-current=location]")).toHaveCount(1);
 
-    await toc(page).getByRole("button", { name: "Weather" }).click();
+    await toc(page).getByRole("button", { name: "Weather" }).click(); // closes the drawer
 
-    await expect(toc(page).getByRole("button", { name: "Weather" })).toHaveAttribute("aria-current", "location");
     await expect.poll(() => bookText(page)).toContain("Outlook");
+    await page.getByRole("button", { name: "Contents", exact: true }).click();
+    await expect(toc(page).getByRole("button", { name: "Weather" })).toHaveAttribute("aria-current", "location");
 
     await toc(page).getByRole("button", { name: "The End" }).click();
 
@@ -85,6 +86,7 @@ test.describe("a Markdown Book", () => {
     // The marker is gone from the text.
     expect(await bookText(page)).not.toContain("[x]");
 
+    await page.getByRole("button", { name: "Contents", exact: true }).click(); // choosing a chapter closed the drawer
     await toc(page).getByRole("button", { name: "Code Samples" }).click();
     const code = (await bookFrame(page)).locator("pre code.language-js");
     await expect(code).toContainText("const answer = 42;");
@@ -195,8 +197,7 @@ test.describe("a Markdown Book", () => {
     // Into the middle of the long section, a page at a time (a turn can be ignored while the last one settles).
     await expect.poll(() => bookText(page)).toContain("Welcome. Skip to");
     await page.getByRole("button", { name: "Contents" }).click();
-    await toc(page).getByRole("button", { name: "Long Section" }).click();
-    await page.getByRole("button", { name: "Contents" }).click();
+    await toc(page).getByRole("button", { name: "Long Section" }).click(); // closes the drawer
     for (let turn = 0; turn < 2; turn++) {
       const before = await fraction(page).textContent();
       await expect(async () => {

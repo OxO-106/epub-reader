@@ -26,8 +26,7 @@ async function importBooks(page: Page, ...names: string[]) {
 async function openChapter2(page: Page) {
   await page.getByRole("button", { name: "Contents" }).click();
   await page.getByRole("navigation", { name: "Table of contents" }).getByRole("button", { name: "Chapter 2" }).click();
-  await expect.poll(() => bookText(page)).toContain("second chapter");
-  await page.getByRole("button", { name: "Contents" }).click();
+  await expect.poll(() => bookText(page)).toContain("second chapter"); // choosing a chapter closes the drawer
 }
 
 const fractionOf = (page: Page) => page.locator(".reading-fraction");

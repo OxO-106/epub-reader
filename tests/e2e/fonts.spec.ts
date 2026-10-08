@@ -244,7 +244,7 @@ test.describe("with the Chinese font on the server (a stand-in with the same fam
     expect(await width(frame, "中")).toBeCloseTo(1, 1); // the sans stacks do not name it
 
     await page.getByRole("button", { name: "Display" }).click();
-    await page.getByRole("region", { name: "Display settings" }).getByLabel("Font").selectOption("serif");
+    await page.getByRole("region", { name: "Display settings" }).getByRole("button", { name: "Serif", exact: true }).click();
 
     await expect.poll(() => width(bookFrame(page)!, "中")).toBeCloseTo(0.5, 1);
   });
