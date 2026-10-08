@@ -1,18 +1,26 @@
 {
   "v": 3,
-  "createdOnFiles": { "v": 1, "at": "2026-10-08T12:00:00Z" },
-  "title": "Reader redesign",
-  "launch": { "view": "canvas" },
-  "pages": [],
+  "attachments": {},
   "boards": {
-    "Main.dc.html": { "x": 0, "y": 0, "w": 1280, "h": 900, "title": "Library", "expand": "fill" },
-    "LibraryEmpty.dc.html": { "x": 1360, "y": 0, "w": 1280, "h": 900, "title": "Library, empty", "expand": "fill" },
-    "Reader.dc.html": { "x": 0, "y": 1320, "w": 1280, "h": 800, "title": "Reader, light", "expand": "fill" },
-    "ReaderDark.dc.html": { "x": 1360, "y": 1320, "w": 1280, "h": 800, "title": "Reader, dark, Contents", "expand": "fill" },
-    "ReaderDisplay.dc.html": { "x": 0, "y": 2540, "w": 1280, "h": 800, "title": "Reader, sepia, Display settings", "expand": "fill" },
-    "ReaderSearch.dc.html": { "x": 1360, "y": 2540, "w": 1280, "h": 800, "title": "Reader, Search", "expand": "fill" },
-    "MobileLibrary.dc.html": { "x": 0, "y": 3760, "w": 390, "h": 844, "title": "Library, phone" },
-    "MobileReader.dc.html": { "x": 470, "y": 3760, "w": 390, "h": 844, "title": "Reader, phone" }
+    "LibraryEmpty.dc.html": { "expand": "fill", "h": 900, "title": "Library, empty", "w": 1280, "x": 1360, "y": 0 },
+    "Main.dc.html": { "expand": "fill", "h": 900, "title": "Library", "w": 1280, "x": 0, "y": 0 },
+    "MobileLibrary.dc.html": { "h": 844, "title": "Library, phone", "w": 390, "x": 0, "y": 3760 },
+    "MobileReader.dc.html": { "h": 844, "title": "Reader, phone", "w": 390, "x": 470, "y": 3760 },
+    "Reader.dc.html": { "expand": "fill", "h": 800, "title": "Reader, light", "w": 1280, "x": 0, "y": 1320 },
+    "ReaderBilingual.dc.html": { "expand": "fill", "h": 800, "title": "Reader, translation on (scrolling)", "w": 1280, "x": 940, "y": 3760 },
+    "ReaderDark.dc.html": { "expand": "fill", "h": 800, "title": "Reader, dark, Contents", "w": 1280, "x": 1360, "y": 1320 },
+    "ReaderDisplay.dc.html": { "expand": "fill", "h": 800, "title": "Reader, sepia, Display settings", "w": 1280, "x": 0, "y": 2540 },
+    "ReaderSearch.dc.html": { "expand": "fill", "h": 800, "title": "Reader, Search", "w": 1280, "x": 1360, "y": 2540 }
+  },
+  "createdOnFiles": { "at": "2026-10-08T12:00:00Z", "v": 1 },
+  "designSystems": [],
+  "launch": { "view": "canvas" },
+  "notes": {
+    "n1": { "kind": "title1", "maxW": 2640, "text": "Library", "w": 240, "x": 0, "y": -300 },
+    "n2": { "kind": "title1", "maxW": 2640, "text": "Reader: themes and panels (light, dark, sepia)", "w": 240, "x": 0, "y": 1020 },
+    "n3": { "kind": "title1", "maxW": 2640, "text": "Reader: Display settings and Search", "w": 240, "x": 0, "y": 2240 },
+    "n4": { "kind": "title1", "maxW": 860, "text": "Phone", "w": 240, "x": 0, "y": 3460 },
+    "n5": { "kind": "title1", "maxW": 1280, "text": "Translation", "w": 240, "x": 940, "y": 3460 }
   },
   "order": [
     "Main.dc.html",
@@ -22,13 +30,9 @@
     "ReaderDisplay.dc.html",
     "ReaderSearch.dc.html",
     "MobileLibrary.dc.html",
-    "MobileReader.dc.html"
+    "MobileReader.dc.html",
+    "ReaderBilingual.dc.html"
   ],
-  "notes": {
-    "n1": { "x": 0, "y": -300, "text": "Library", "kind": "title1", "maxW": 2640 },
-    "n2": { "x": 0, "y": 1020, "text": "Reader: themes and panels (light, dark, sepia)", "kind": "title1", "maxW": 2640 },
-    "n3": { "x": 0, "y": 2240, "text": "Reader: Display settings and Search", "kind": "title1", "maxW": 2640 },
-    "n4": { "x": 0, "y": 3460, "text": "Phone", "kind": "title1", "maxW": 860 }
-  },
-  "designSystems": []
+  "pages": [],
+  "title": "Reader redesign"
 }
