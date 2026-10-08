@@ -27,8 +27,6 @@ button {
   opacity: 1;
 }
 
-}
-
 .button {
   display: inline-flex;
   align-items: center;
@@ -39,10 +37,6 @@ button {
   border-radius: 0.25rem;
   color: inherit;
   text-decoration: none;
-}
-
-  padding: 0.5rem 0.75rem;
-  font: inherit;
 }
 
 /* How far through the Book: in the Reader's top bar and under each Book in the Library. */
