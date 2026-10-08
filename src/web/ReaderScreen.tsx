@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { getBookFile } from "./api.ts";
+import { applyTheme, loadDisplay, saveDisplay, type DisplaySettings } from "./display-settings.ts";
+import { DisplaySettingsPanel } from "./DisplaySettingsPanel.tsx";
 import { createReader, type Reader, type TocEntry } from "./reader/reader.ts";
 
 type State =
@@ -12,6 +14,9 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [tocOpen, setTocOpen] = useState(false);
   const [chapterId, setChapterId] = useState<number | null>(null);
+  const [display, setDisplay] = useState(loadDisplay);
+  const [displayOpen, setDisplayOpen] = useState(false);
+  const displayNow = useRef(display);
   const viewport = useRef<HTMLDivElement>(null);
   const reader = useRef<Reader | null>(null);
 
@@ -19,6 +24,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     let cancelled = false;
     const instance = createReader(viewport.current!);
     reader.current = instance;
+    instance.setDisplay(displayNow.current);
     setState({ kind: "loading" });
     setChapterId(null);
     const stopListening = instance.onLocation((location) => setChapterId(location.chapterId));
@@ -50,6 +56,14 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
 
   const toc = state.kind === "ready" ? state.toc : [];
 
+  function changeDisplay(next: DisplaySettings) {
+    displayNow.current = next;
+    setDisplay(next);
+    saveDisplay(next);
+    applyTheme(next.theme);
+    reader.current?.setDisplay(next);
+  }
+
   function openChapter(entry: TocEntry) {
     reader.current?.goTo(entry.target);
     // On a narrow window the contents cover the text, so get out of the way once a chapter is chosen.
@@ -66,6 +80,9 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
           Contents
         </button>
         <h1 class="reader-title">{state.kind === "ready" ? state.title : ""}</h1>
+        <button type="button" aria-expanded={displayOpen} aria-controls="display-settings" onClick={() => setDisplayOpen(!displayOpen)}>
+          Display
+        </button>
       </header>
 
       <div class="reader-body">
@@ -92,6 +109,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
           </nav>
         )}
         <div class="reader-view" ref={viewport} />
+        {displayOpen && <DisplaySettingsPanel settings={display} onChange={changeDisplay} />}
         {state.kind === "loading" && (
           <p role="status" class="reader-message">
             Opening…

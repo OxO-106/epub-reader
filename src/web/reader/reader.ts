@@ -12,6 +12,8 @@
  * foliate-js book object built by an adapter and are passed to the same view (08, 09).
  */
 import type { FoliateBook, RelocateDetail, TocItem, View } from "../vendor/foliate-js/view.js";
+import { marginSizes, type DisplaySettings } from "../display-settings.ts";
+import { bookStyles } from "./book-styles.ts";
 import { sha1 } from "./sha1.ts";
 
 export type BookSource =
@@ -50,6 +52,11 @@ export interface Reader {
   goTo(target: string): Promise<void>;
   next(): Promise<void>;
   prev(): Promise<void>;
+  /**
+   * Applies display settings (font, size, spacing, margins, theme, scrolling or paginated) to the open Book and
+   * to every Book opened after. The reader stays at the same place in the Book; a Reading position is never involved.
+   */
+  setDisplay(settings: DisplaySettings): void;
   /** Calls `listener` whenever the visible place changes. Returns a function that stops listening. */
   onLocation(listener: (location: ReaderLocation) => void): () => void;
   /** Removes the Book and everything the Reader added to its container. */
@@ -60,6 +67,18 @@ export interface Reader {
 export function createReader(container: HTMLElement): Reader {
   let view: View | null = null;
   const listeners = new Set<(location: ReaderLocation) => void>();
+  let display: DisplaySettings | null = null;
+
+  const applyDisplay = () => {
+    const renderer = view?.renderer;
+    if (!renderer || !display) return;
+    const margins = marginSizes[display.margins];
+    renderer.setAttribute("flow", display.flow);
+    renderer.setAttribute("gap", `${margins.gap}%`);
+    renderer.setAttribute("max-inline-size", `${margins.maxLine}px`);
+    renderer.setStyles?.(bookStyles(display));
+    renderer.render?.();
+  };
 
   const requireView = () => {
     if (!view) throw new Error("No Book is open.");
@@ -87,6 +106,7 @@ export function createReader(container: HTMLElement): Reader {
       });
 
       await next.open(book);
+      applyDisplay();
       await next.init({ lastLocation: options.position ?? null, showTextStart: false });
       return { title: titleOf(book), toc: flattenToc(book.toc ?? []) };
     },
@@ -95,6 +115,10 @@ export function createReader(container: HTMLElement): Reader {
     },
     next: () => requireView().next(),
     prev: () => requireView().prev(),
+    setDisplay(settings) {
+      display = settings;
+      applyDisplay();
+    },
     onLocation(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

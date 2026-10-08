@@ -22,7 +22,16 @@ export interface RelocateDetail {
   tocItem?: TocItem | null;
 }
 
+/** The page renderer inside a View (the paginator, or the fixed-layout renderer, which has no `setStyles`). */
+export interface Renderer extends HTMLElement {
+  /** CSS added to every page: one string, or `[before the Book's own styles, after them]`. */
+  setStyles?(css: string | [string, string]): void;
+  render?(): void;
+}
+
 export class View extends HTMLElement {
+  /** Set once a Book is open. */
+  renderer: Renderer;
   open(book: FoliateBook): Promise<void>;
   init(options: { lastLocation?: string | null; showTextStart?: boolean }): Promise<void>;
   goTo(target: string | number): Promise<unknown>;
