@@ -140,7 +140,7 @@ export function Library() {
           )}
           <button type="button" class="button-primary" onClick={() => picker.current?.click()} disabled={pickerBusy}>
             <PlusIcon />
-            Add books
+            <span class="button-label">Add books</span>
           </button>
         </div>
       </header>
@@ -178,18 +178,21 @@ export function Library() {
         <>
           {resume && (
             <section class="continue" aria-label="Continue reading">
-              <a class="continue-cover" href={`#/read/${resume.id}`} tabIndex={-1} aria-hidden="true">
-                <BookCover book={resume} />
-              </a>
-              <div class="continue-body">
-                <div class="eyebrow">Continue reading</div>
-                <h2 id="continue-title">{resume.title}</h2>
-                {resume.author && <div class="continue-author">{resume.author}</div>}
-                <BookProgress fraction={resume.fraction} large />
-              </div>
-              <a class="button-dark" href={`#/read/${resume.id}`} aria-label="Continue reading" aria-describedby="continue-title">
-                Continue
-                <ChevronRightIcon />
+              {/* One link for the whole card, so a tap anywhere on it opens the Book. */}
+              <a class="continue-link" href={`#/read/${resume.id}`} aria-label="Continue reading" aria-describedby="continue-title">
+                <div class="continue-cover">
+                  <BookCover book={resume} />
+                </div>
+                <div class="continue-body">
+                  <div class="eyebrow">Continue reading</div>
+                  <h2 id="continue-title">{resume.title}</h2>
+                  {resume.author && <div class="continue-author">{resume.author}</div>}
+                  <BookProgress fraction={resume.fraction} large />
+                </div>
+                <span class="button-dark">
+                  Continue
+                  <ChevronRightIcon />
+                </span>
               </a>
             </section>
           )}
