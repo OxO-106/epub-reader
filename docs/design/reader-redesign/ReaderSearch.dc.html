@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<title>Reader, Search</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit}
+</style>
+</helmet>
+<div style="min-height: 800px; display: flex; flex-wrap: wrap; background: #F5F5F1; color: #1C201E; font-family: -apple-system, 'Segoe UI', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 15px">
+
+<div style="flex: 1 1 560px; min-width: 0; display: flex; flex-direction: column">
+
+<!-- Top bar -->
+<header style="display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 20px; box-sizing: border-box; border-bottom: 1px solid #E1E3DD">
+<a href="Main.dc.html" style="display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 14px 0 8px; border-radius: 22px; text-decoration: none; color: #1C201E; font-weight: 500">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1C201E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+Library
+</a>
+<div style="flex: 1; min-width: 0; text-align: center; line-height: 1.25">
+<div style="font-family: 'Libertinus Serif', 'Linux Libertine', '京华老宋体', 'KingHwa_OldSong', Georgia, 'Songti SC', 'Noto Serif CJK SC', serif; font-size: 16px; font-weight: 600">红楼梦</div>
+<div style="font-size: 12px; color: #6A716D">第一回 甄士隐梦幻识通灵</div>
+</div>
+<nav style="display: flex; align-items: center; gap: 4px">
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border: 0; border-radius: 22px; background: transparent; color: #1C201E; font: inherit; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1C201E" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>
+Contents
+</button>
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border: 0; border-radius: 22px; background: #E3EFEA; color: #2E6B58; font: inherit; font-weight: 600; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2E6B58" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+Search
+</button>
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border: 0; border-radius: 22px; background: transparent; color: #1C201E; font: inherit; cursor: pointer">
+<span style="font-family: 'Libertinus Serif', 'Linux Libertine', '京华老宋体', 'KingHwa_OldSong', Georgia, serif; font-size: 17px; font-weight: 600; line-height: 1" aria-hidden="true">Aa</span>
+Display
+</button>
+</nav>
+</header>
+
+<!-- Text with highlighted matches -->
+<main style="flex: 1; padding: 64px 32px 48px; box-sizing: border-box">
+<article style="max-width: 640px; margin: 0 auto; font-family: 'Libertinus Serif', 'Linux Libertine', '京华老宋体', 'KingHwa_OldSong', Georgia, 'Iowan Old Style', 'Songti SC', 'Noto Serif CJK SC', serif; color: #23282A">
+<div style="font-family: -apple-system, 'Segoe UI', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.14em; color: #2E6B58; margin-bottom: 14px">第一回</div>
+<h1 style="margin: 0 0 36px; font-size: 32px; font-weight: 600; line-height: 1.35; letter-spacing: 0.02em">甄士隐<span style="background: #CFE5DC; border-radius: 3px">梦</span>幻识通灵<br>贾雨村风尘怀闺秀</h1>
+<p style="margin: 0 0 22px; font-size: 20px; line-height: 1.95; text-indent: 2em">此开卷第一回也。作者自云：因曾历过一番<span style="background: #F6DE8E; border-radius: 3px; box-shadow: 0 0 0 2px #F6DE8E">梦</span>幻之后，故将真事隐去，而借“通灵”之说，撰此《石头记》一书也。故曰“甄士隐”云云。</p>
+<p style="margin: 0 0 22px; font-size: 20px; line-height: 1.95; text-indent: 2em">但书中所记何事何人？自己又云：“今风尘碌碌，一事无成，忽念及当日所有之女子，一一细考较去，觉其行止见识，皆出于我之上。”</p>
+</article>
+</main>
+
+<!-- Bottom bar -->
+<footer style="border-top: 1px solid #E1E3DD">
+<div style="height: 3px; background: #E6E8E1"><div style="width: 3%; height: 3px; background: #2E6B58"></div></div>
+<div style="display: flex; align-items: center; justify-content: center; height: 64px; padding: 0 20px; box-sizing: border-box; font-size: 14px; color: #6A716D">Chapter 1 of 120 · <span style="font-weight: 600; color: #1C201E; margin-left: 4px">3%</span></div>
+</footer>
+</div>
+
+<!-- Search panel -->
+<aside aria-label="Search in this Book" style="flex: 0 0 400px; max-width: 100%; box-sizing: border-box; display: flex; flex-direction: column; background: #FFFFFF; border-left: 1px solid #E1E3DD">
+<div style="display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 12px 0 24px; border-bottom: 1px solid #E1E3DD">
+<h2 style="margin: 0; font-family: 'Libertinus Serif', 'Linux Libertine', '京华老宋体', 'KingHwa_OldSong', Georgia, 'Songti SC', serif; font-size: 22px; font-weight: 600">Search</h2>
+<button type="button" aria-label="Close search" style="width: 44px; height: 44px; border: 0; border-radius: 22px; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1C201E" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+</div>
+
+<div style="padding: 20px 24px 12px; display: flex; flex-direction: column; gap: 12px">
+<label style="position: relative; display: block">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search this Book</span>
+<svg style="position: absolute; left: 16px; top: 14px" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6A716D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+<input type="search" value="梦" style="box-sizing: border-box; width: 100%; height: 46px; padding: 0 48px 0 44px; border: 2px solid #2E6B58; border-radius: 23px; background: #FFFFFF; color: #1C201E; font: inherit; font-size: 16px">
+<button type="button" aria-label="Clear search" style="position: absolute; right: 4px; top: 1px; width: 44px; height: 44px; border: 0; border-radius: 22px; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6A716D" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+</label>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: #6A716D">
+<span>3 matches so far · searching 40%</span>
+<span style="flex: 0 0 90px; height: 4px; border-radius: 2px; background: #E6E8E1"><span style="display: block; width: 40%; height: 4px; border-radius: 2px; background: #2E6B58"></span></span>
+</div>
+</div>
+
+<div style="flex: 1; overflow: hidden; padding: 4px 12px 24px; display: flex; flex-direction: column; gap: 4px">
+
+<div style="padding: 12px 12px 6px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px">
+<h3 style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; color: #2E6B58">第一回 甄士隐梦幻识通灵</h3>
+<span style="font-size: 12px; color: #6A716D">2</span>
+</div>
+<a href="#" style="display: block; padding: 12px 14px; border-radius: 12px; background: #E3EFEA; text-decoration: none; color: #1C201E; font-family: 'Libertinus Serif', 'Linux Libertine', '京华老宋体', 'KingHwa_OldSong', Georgia, 'Songti SC', 'Noto Serif CJK SC', serif; font-size: 16px; line-height: 1.7; box-shadow: 0 0 0 1.5px #2E6B58 inset">…因曾历过一番<mark style="background: #F6DE8E; color: inherit; border-radius: 3px">梦</mark>幻之后，故将真事隐去，而借“通灵”之说…</a>
+<a href="#" style="display: block; padding: 12px 14px; border-radius: 12px; text-decoration: none; color: #1C201E; font-family: 'Libertinus Serif', 'Linux Libertine', '京华老宋体', 'KingHwa_OldSong', Georgia, 'Songti SC', 'Noto Serif CJK SC', serif; font-size: 16px; line-height: 1.7">甄士隐<mark style="background: #F6DE8E; color: inherit; border-radius: 3px">梦</mark>幻识通灵 贾雨村风尘怀闺秀</a>
+
+<div style="padding: 18px 12px 6px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px">
+<h3 style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; color: #2E6B58">第五回 游幻境指迷十二钗 饮仙醪曲演红楼梦</h3>
+<span style="font-size: 12px; color: #6A716D">1</span>
+</div>
+<a href="#" style="display: block; padding: 12px 14px; border-radius: 12px; text-decoration: none; color: #1C201E; font-family: 'Libertinus Serif', 'Linux Libertine', '京华老宋体', 'KingHwa_OldSong', Georgia, 'Songti SC', 'Noto Serif CJK SC', serif; font-size: 16px; line-height: 1.7">…游幻境指迷十二钗，饮仙醪曲演红楼<mark style="background: #F6DE8E; color: inherit; border-radius: 3px">梦</mark></a>
+
+</div>
+</aside>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

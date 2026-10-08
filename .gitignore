@@ -8,3 +8,4 @@ library/
 test-results/
 playwright-report/
 .claude/worktrees/
+fonts/
