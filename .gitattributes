@@ -1,1 +1,4 @@
 * text=auto eol=lf
+
+# Encoding fixtures must keep their exact bytes (GBK, byte-order marks, CRLF).
+tests/fixtures/*.txt -text
