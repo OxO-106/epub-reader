@@ -9,7 +9,7 @@ import type { ReaderLocation } from "./reader/reader.ts";
 export const saveDelayMs = 1500;
 
 /** "42%": how far through the Book, for display. The same wording in the Reader and in the Library. */
-export function formatProgress(fraction: number): string {
+export function formatFraction(fraction: number): string {
   return `${Math.round(Math.min(1, Math.max(0, fraction)) * 100)}%`;
 }
 

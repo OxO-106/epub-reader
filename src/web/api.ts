@@ -19,7 +19,7 @@ export interface BookSummary {
   addedAt: number;
   lastReadAt: number | null;
   /** How far through the Book the Reading position is, 0 to 1; null when the Book was never opened. */
-  progress: number | null;
+  fraction: number | null;
 }
 
 /** The saved Reading position of a Book: a CFI, and how far through the Book it is. Both null when never opened. */

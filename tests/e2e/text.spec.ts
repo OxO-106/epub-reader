@@ -111,7 +111,7 @@ test.describe("a plain-text Book", () => {
   test("reopens at exactly the Reading position it was left at", async ({ page, server }) => {
     await importAndOpen(page, "latin-long.txt", "The Lamplighter");
     const bookId = new URL(page.url()).hash.split("/").pop()!;
-    const progress = page.locator(".reading-progress");
+    const fraction = page.locator(".reading-fraction");
     const serverPosition = async () =>
       ((await (await page.request.get(`${server.url}/api/books/${bookId}/position`)).json()) as { position: string | null }).position;
     const settle = () => page.waitForTimeout(2500);
@@ -121,13 +121,13 @@ test.describe("a plain-text Book", () => {
     await toc(page).getByRole("button", { name: "Part 3" }).click();
     await page.getByRole("button", { name: "Contents" }).click();
     for (let turn = 0; turn < 2; turn++) {
-      const before = await progress.textContent();
+      const before = await fraction.textContent();
       await expect(async () => {
         await page.getByRole("button", { name: "Next" }).click();
-        await expect(progress).not.toHaveText(before!, { timeout: 1000 });
+        await expect(fraction).not.toHaveText(before!, { timeout: 1000 });
       }).toPass();
     }
-    const percentage = (await progress.textContent())!;
+    const percentage = (await fraction.textContent())!;
     await expect.poll(serverPosition).toMatch(/^epubcfi\(\/6\/6!\/4[,/]/); // inside the third section, "Part 3"
     await settle();
     const saved = (await serverPosition())!;
@@ -135,7 +135,7 @@ test.describe("a plain-text Book", () => {
     await page.getByRole("link", { name: "Library" }).click();
     await expect(page.locator(".books > li").first()).toContainText(percentage);
     await page.getByRole("link", { name: /The Lamplighter/ }).click();
-    await expect(progress).toHaveText(percentage);
+    await expect(fraction).toHaveText(percentage);
     await settle();
     expect(await serverPosition()).toBe(saved);
   });

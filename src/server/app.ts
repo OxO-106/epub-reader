@@ -23,7 +23,7 @@ export interface AppContext {
   webDir: string;
 }
 
-const toSummary = (row: BookRow & { progress?: number | null }) => ({
+const toSummary = (row: BookRow & { fraction?: number | null }) => ({
   id: row.hash,
   title: row.title,
   author: row.author,
@@ -32,7 +32,7 @@ const toSummary = (row: BookRow & { progress?: number | null }) => ({
   addedAt: row.added_at,
   lastReadAt: row.last_read_at,
   /** How far through the Book the Reading position is, 0 to 1; null when the Book was never opened. */
-  progress: row.progress ?? null,
+  fraction: row.fraction ?? null,
 });
 
 const rejectionStatus: Record<RejectionCode, 413 | 415 | 422> = {

@@ -6,7 +6,7 @@ import { ConnectionNotice } from "./ConnectionNotice.tsx";
 import { applyTheme, loadDisplay, saveDisplay, type DisplaySettings } from "./display-settings.ts";
 import { DisplaySettingsPanel } from "./DisplaySettingsPanel.tsx";
 import { createReader, type Reader, type TocEntry } from "./reader/reader.ts";
-import { ReadingProgress } from "./ReadingProgress.tsx";
+import { ReadingFraction } from "./ReadingFraction.tsx";
 import { trackReadingPosition } from "./reading-position.ts";
 import { SearchPanel } from "./SearchPanel.tsx";
 
@@ -182,7 +182,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         <button type="button" onClick={() => reader.current?.prev()} disabled={state.kind !== "ready"}>
           Previous
         </button>
-        <ReadingProgress fraction={fraction} />
+        <ReadingFraction fraction={fraction} />
         <button type="button" onClick={() => reader.current?.next()} disabled={state.kind !== "ready"}>
           Next
         </button>

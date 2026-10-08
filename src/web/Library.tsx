@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { ConnectionNotice } from "./ConnectionNotice.tsx";
 import { DeleteBook } from "./DeleteBook.tsx";
 import { LibraryFolderProblems } from "./LibraryFolderProblems.tsx";
-import { formatProgress } from "./reading-position.ts";
+import { formatFraction } from "./reading-position.ts";
 import {
   coverUrl,
   HttpError,
@@ -158,7 +158,7 @@ export function Library() {
                 )}
                 <span class="title">{book.title}</span>
                 {book.author && <span class="author">{book.author}</span>}
-                {book.progress !== null && <span class="progress-label">{formatProgress(book.progress)} read</span>}
+                {book.fraction !== null && <span class="fraction-label">{formatFraction(book.fraction)} read</span>}
               </a>
               <DeleteBook book={book} onDeleted={refresh} />
             </li>

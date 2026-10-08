@@ -185,7 +185,7 @@ test.describe("a Markdown Book", () => {
   test("reopens at exactly the Reading position it was left at, here and in another browser profile", async ({ page, browser, server }) => {
     await importAndOpen(page, "notes.md", "Field Notes");
     const bookId = new URL(page.url()).hash.split("/").pop()!;
-    const progress = (p: Page) => p.locator(".reading-progress");
+    const fraction = (p: Page) => p.locator(".reading-fraction");
     /** The position the server holds, a CFI. The Reader saves it by itself a moment after the page changes. */
     const serverPosition = async () =>
       ((await (await page.request.get(`${server.url}/api/books/${bookId}/position`)).json()) as { position: string | null }).position;
@@ -198,13 +198,13 @@ test.describe("a Markdown Book", () => {
     await toc(page).getByRole("button", { name: "Long Section" }).click();
     await page.getByRole("button", { name: "Contents" }).click();
     for (let turn = 0; turn < 2; turn++) {
-      const before = await progress(page).textContent();
+      const before = await fraction(page).textContent();
       await expect(async () => {
         await page.getByRole("button", { name: "Next" }).click();
-        await expect(progress(page)).not.toHaveText(before!, { timeout: 1000 });
+        await expect(fraction(page)).not.toHaveText(before!, { timeout: 1000 });
       }).toPass();
     }
-    const percentage = (await progress(page).textContent())!;
+    const percentage = (await fraction(page).textContent())!;
     await expect.poll(serverPosition).toMatch(/^epubcfi\(\/6\/6!\/4[,/]/); // inside the third section, "Long Section"
     await settle();
     const saved = (await serverPosition())!;
@@ -214,7 +214,7 @@ test.describe("a Markdown Book", () => {
     await page.getByRole("link", { name: "Library" }).click();
     await expect(page.locator(".books > li").first()).toContainText(percentage);
     await page.getByRole("link", { name: /Field Notes/ }).click();
-    await expect(progress(page)).toHaveText(percentage);
+    await expect(fraction(page)).toHaveText(percentage);
     await expect.poll(() => bookText(page)).toContain("Paragraph 1 of the long section");
     await settle();
     expect(await serverPosition()).toBe(saved);
@@ -225,7 +225,7 @@ test.describe("a Markdown Book", () => {
     const other = await profile.newPage();
     await other.goto("/");
     await other.getByRole("link", { name: /Field Notes/ }).click();
-    await expect(progress(other)).toHaveText(percentage);
+    await expect(fraction(other)).toHaveText(percentage);
     await other.waitForTimeout(2500);
     expect(((await (await other.request.get(`${server.url}/api/books/${bookId}/position`)).json()) as { position: string }).position).toBe(saved);
     await profile.close();

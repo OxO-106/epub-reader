@@ -108,12 +108,12 @@ describe("Reading position API", () => {
 describe("the Library and Reading positions", () => {
   const listed = async (s: TestServer) => {
     const body = (await (await fetch(`${s.url}/api/books`)).json()) as {
-      books: Array<{ id: string; title: string; progress: number | null; lastReadAt: number | null }>;
+      books: Array<{ id: string; title: string; fraction: number | null; lastReadAt: number | null }>;
     };
     return body.books;
   };
 
-  it("lists the most recently read Book first, then never-opened Books newest import first, with progress", async () => {
+  it("lists the most recently read Book first, then never-opened Books newest import first, with fraction", async () => {
     server = await startTestServer();
     const sample = await importSample(server); // "Sample Book"
     const chinese = ((await (await uploadFixture(server, "chinese.epub")).json()) as { book: { id: string } }).book.id; // "红楼梦"
@@ -121,12 +121,12 @@ describe("the Library and Reading positions", () => {
 
     // Never opened: newest import first.
     expect((await listed(server)).map((book) => book.id)).toEqual([epub2, chinese, sample]);
-    expect((await listed(server)).map((book) => book.progress)).toEqual([null, null, null]);
+    expect((await listed(server)).map((book) => book.fraction)).toEqual([null, null, null]);
 
     await savePosition(server, sample, { position: cfiA, fraction: 0.4 });
     await savePosition(server, chinese, { position: cfiB, fraction: 0.75 });
     let books = await listed(server);
-    expect(books.map((book) => [book.id, book.progress])).toEqual([
+    expect(books.map((book) => [book.id, book.fraction])).toEqual([
       [chinese, 0.75],
       [sample, 0.4],
       [epub2, null],
@@ -137,7 +137,7 @@ describe("the Library and Reading positions", () => {
     await savePosition(server, sample, { position: cfiB, fraction: 0.5 });
     books = await listed(server);
     expect(books.map((book) => book.id)).toEqual([sample, chinese, epub2]);
-    expect(books[0]!.progress).toBe(0.5);
+    expect(books[0]!.fraction).toBe(0.5);
   });
 
   it("removes a Book's Reading position when the Book is deleted", async () => {
@@ -150,6 +150,6 @@ describe("the Library and Reading positions", () => {
     // Importing the same file again gives the same Book id: it must start unread, not at the old position.
     expect(await importSample(server)).toBe(id);
     expect((await loadPosition(server, id)).body).toEqual({ position: null, fraction: null });
-    expect((await listed(server))[0]!.progress).toBeNull();
+    expect((await listed(server))[0]!.fraction).toBeNull();
   });
 });

@@ -30,7 +30,7 @@ async function openChapter2(page: Page) {
   await page.getByRole("button", { name: "Contents" }).click();
 }
 
-const progressOf = (page: Page) => page.locator(".reading-progress");
+const fractionOf = (page: Page) => page.locator(".reading-fraction");
 
 test("a Book reopens where it was left, in the same browser and in a second profile, with its percentage shown", async ({
   page,
@@ -40,12 +40,12 @@ test("a Book reopens where it was left, in the same browser and in a second prof
   await importBooks(page, "sample.epub");
   await page.getByRole("link", { name: /Sample Book/ }).click();
   await expect.poll(() => bookText(page)).toContain("quiet morning");
-  await expect(progressOf(page)).toHaveText(/^\d+%$/);
-  const atStart = (await progressOf(page).textContent())!;
+  await expect(fractionOf(page)).toHaveText(/^\d+%$/);
+  const atStart = (await fractionOf(page).textContent())!;
 
   await openChapter2(page);
-  await expect(progressOf(page)).not.toHaveText(atStart);
-  const percentage = (await progressOf(page).textContent())!;
+  await expect(fractionOf(page)).not.toHaveText(atStart);
+  const percentage = (await fractionOf(page).textContent())!;
   expect(percentage).toMatch(/^\d+%$/);
 
   // Nothing was saved by hand. Leave the Reader and the Library lists the Book with the same percentage.
@@ -55,7 +55,7 @@ test("a Book reopens where it was left, in the same browser and in a second prof
   // Same browser: closing the tab and opening the Book again lands in chapter 2,
   await page.getByRole("link", { name: /Sample Book/ }).click();
   await expect.poll(() => bookText(page)).toContain("second chapter");
-  await expect(progressOf(page)).toHaveText(percentage);
+  await expect(fractionOf(page)).toHaveText(percentage);
   await page.close();
 
   // A second browser profile (no shared storage at all) lands on the same place.
@@ -65,7 +65,7 @@ test("a Book reopens where it was left, in the same browser and in a second prof
   await expect(other.locator(".books > li").first()).toContainText(percentage);
   await other.getByRole("link", { name: /Sample Book/ }).click();
   await expect.poll(() => bookText(other)).toContain("second chapter");
-  await expect(progressOf(other)).toHaveText(percentage);
+  await expect(fractionOf(other)).toHaveText(percentage);
   await profile.close();
 });
 
@@ -111,7 +111,7 @@ test("the Library lists the most recently read Book first and leaves never-opene
 
   await books.filter({ hasText: "红楼梦" }).getByRole("link").first().click();
   await expect.poll(() => bookText(page)).toContain("Chapter 1");
-  await expect(progressOf(page)).toBeVisible();
+  await expect(fractionOf(page)).toBeVisible();
   await page.getByRole("link", { name: "Library" }).click();
   await expect(books.first()).toContainText("红楼梦");
   await expect(books.first()).toContainText(/\d+% read/);

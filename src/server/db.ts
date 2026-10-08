@@ -34,7 +34,7 @@ export interface BookRow {
 
 /** A Book as listed: with how far through it the Reading position is (0 to 1), or null when never opened. */
 export interface ListedBookRow extends BookRow {
-  progress: number | null;
+  fraction: number | null;
 }
 
 export interface ReadingPositionRow {
@@ -77,7 +77,7 @@ export function openDb(path: string): Db {
     listBooks() {
       return db
         .prepare(
-          `SELECT books.*, reading_positions.fraction AS progress
+          `SELECT books.*, reading_positions.fraction
            FROM books LEFT JOIN reading_positions ON reading_positions.book_hash = books.hash
            ORDER BY books.last_read_at IS NULL, books.last_read_at DESC, books.added_at DESC, books.hash`,
         )

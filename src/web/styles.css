@@ -383,13 +383,13 @@ button {
 }
 
 /* How far through the Book: in the Reader's top bar and under each Book in the Library. */
-.reading-progress {
+.reading-fraction {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   opacity: 0.75;
 }
 
-.book .progress-label {
+.book .fraction-label {
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
   opacity: 0.75;
