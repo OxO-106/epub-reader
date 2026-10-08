@@ -12,6 +12,8 @@
  * foliate-js book object built by an adapter and are passed to the same view (08, 09).
  */
 import type { FoliateBook, RelocateDetail, TocItem, View } from "../vendor/foliate-js/view.js";
+import { marginSizes, type DisplaySettings } from "../display-settings.ts";
+import { bookStyles } from "./book-styles.ts";
 import { clickMayTurnPage, createTurnQueue, directionForKey, edgeAt, keyMayTurnPage, type Direction } from "./page-turn.ts";
 import { sha1 } from "./sha1.ts";
 
@@ -83,6 +85,11 @@ export interface Reader {
   /** Moves keyboard focus to the Book, so the page-turn keys work after a click elsewhere. */
   focus(): void;
   /**
+   * Applies display settings (font, size, spacing, margins, theme, scrolling or paginated) to the open Book and
+   * to every Book opened after. The reader stays at the same place in the Book; a Reading position is never involved.
+   */
+  setDisplay(settings: DisplaySettings): void;
+  /**
    * Searches the open Book for `query` (case-insensitive; Chinese works) and yields results chapter by chapter, since
    * a whole-Book search is slow. Every match is outlined on its page until `clearSearch`. Starting a search
    * cancels the one before it (its iterator just ends), so a late result from the old query is never yielded.
@@ -103,6 +110,19 @@ export interface Reader {
 export function createReader(container: HTMLElement): Reader {
   let view: View | null = null;
   const listeners = new Set<(location: ReaderLocation) => void>();
+  let display: DisplaySettings | null = null;
+
+  const applyDisplay = () => {
+    const renderer = view?.renderer;
+    if (!renderer || !display) return;
+    const margins = marginSizes[display.margins];
+    renderer.setAttribute("flow", display.flow);
+    renderer.setAttribute("gap", `${margins.gap}%`);
+    renderer.setAttribute("max-inline-size", `${margins.maxLine}px`);
+    renderer.setStyles?.(bookStyles(display));
+    renderer.render?.();
+  };
+
   /** Incremented to cancel whatever search is running. */
   let searchRun = 0;
 
@@ -188,7 +208,10 @@ export function createReader(container: HTMLElement): Reader {
         container.style.outline = "";
       };
 
-      const opening = next.open(book).then(() => next.init({ lastLocation: options.position ?? null, showTextStart: false }));
+      const opening = next.open(book).then(() => {
+        applyDisplay();
+        return next.init({ lastLocation: options.position ?? null, showTextStart: false });
+      });
       opened = opening.then(
         () => {},
         () => {},
@@ -239,6 +262,10 @@ export function createReader(container: HTMLElement): Reader {
     prev: () => turn("prev"),
     focus() {
       container.focus({ preventScroll: true });
+    },
+    setDisplay(settings) {
+      display = settings;
+      applyDisplay();
     },
     onLocation(listener) {
       listeners.add(listener);

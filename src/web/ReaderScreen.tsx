@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { getBookFile, getReadingPosition } from "./api.ts";
+import { applyTheme, loadDisplay, saveDisplay, type DisplaySettings } from "./display-settings.ts";
+import { DisplaySettingsPanel } from "./DisplaySettingsPanel.tsx";
 import { createReader, type Reader, type TocEntry } from "./reader/reader.ts";
 import { ReadingProgress } from "./ReadingProgress.tsx";
 import { trackReadingPosition } from "./reading-position.ts";
@@ -16,6 +18,9 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const [tocOpen, setTocOpen] = useState(false);
   const [chapterId, setChapterId] = useState<number | null>(null);
   const [fraction, setFraction] = useState<number | null>(null);
+  const [display, setDisplay] = useState(loadDisplay);
+  const [displayOpen, setDisplayOpen] = useState(false);
+  const displayNow = useRef(display);
   const [searchOpen, setSearchOpen] = useState(false);
   // The contents and the search panel share one place beside (or over) the text, so only one is open at a time.
   useEffect(() => {
@@ -28,6 +33,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     let cancelled = false;
     const instance = createReader(viewport.current!);
     reader.current = instance;
+    instance.setDisplay(displayNow.current);
     setState({ kind: "loading" });
     setChapterId(null);
     setFraction(null);
@@ -69,6 +75,14 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
 
   const toc = state.kind === "ready" ? state.toc : [];
 
+  function changeDisplay(next: DisplaySettings) {
+    displayNow.current = next;
+    setDisplay(next);
+    saveDisplay(next);
+    applyTheme(next.theme);
+    reader.current?.setDisplay(next);
+  }
+
   function openChapter(entry: TocEntry) {
     reader.current?.goTo(entry.target);
     reader.current?.focus(); // so the page-turn keys work straight after choosing
@@ -98,6 +112,9 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
           Search
         </button>
         <h1 class="reader-title">{state.kind === "ready" ? state.title : ""}</h1>
+        <button type="button" aria-expanded={displayOpen} aria-controls="display-settings" onClick={() => setDisplayOpen(!displayOpen)}>
+          Display
+        </button>
       </header>
 
       <div class="reader-body">
@@ -134,6 +151,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
           />
         )}
         <div class="reader-view" ref={viewport} />
+        {displayOpen && <DisplaySettingsPanel settings={display} onChange={changeDisplay} />}
         {state.kind === "loading" && (
           <p role="status" class="reader-message">
             Opening…
