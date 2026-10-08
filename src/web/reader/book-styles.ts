@@ -8,21 +8,24 @@ const textBlocks =
 /**
  * The style sheet that applies display settings inside a Book's page. `!important` throughout because Books
  * carry their own styles. Preformatted code keeps its own colours and font, which Markdown Books style themselves.
+ * `fontFaces` is the @font-face rules of the web fonts (fonts.ts): a Book's page is a document of its own and does
+ * not see the rules declared in the app's page, so they are repeated here.
  */
-export function bookStyles(settings: DisplaySettings): string {
+export function bookStyles(settings: DisplaySettings, fontFaces = ""): string {
   const palette = themes[settings.theme];
   const font = fontFamilies.find((choice) => choice.value === settings.fontFamily);
   const notCode = ":not(pre *):not(pre):not(code):not(kbd):not(samp):not(tt)";
   const fontRules = font?.stack
     ? `html, body { font-family: ${font.stack} !important; }
 body *${notCode} { font-family: inherit !important; }
+html:lang(zh), html:lang(zh) body { font-family: ${font.hansStack} !important; }
 html:lang(zh-Hant), html:lang(zh-Hant) body { font-family: ${font.hantStack} !important; }`
     : `/* The Book's own fonts stay. Under its styles, Chinese text gets Chinese fonts rather than the browser's guess. */
 @layer reader-chinese-default {
   html:lang(zh) { font-family: ${chineseDefaultStacks.hans}; }
   html:lang(zh-Hant) { font-family: ${chineseDefaultStacks.hant}; }
 }`;
-  return `
+  return `${fontFaces}
 html {
   color-scheme: ${settings.theme === "dark" ? "dark" : "light"};
   font-size: ${settings.fontSize}px !important;

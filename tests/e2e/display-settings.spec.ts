@@ -183,7 +183,7 @@ test.describe("remembering the settings on this device", () => {
     await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
     expect(await page.locator("html").getAttribute("data-theme")).toBe("sepia");
     await expectLegible(page.locator("body"), 7);
-    expect(parseColor(await page.locator("body").evaluate((el) => getComputedStyle(el).backgroundColor))).toEqual([0xf4, 0xec, 0xd8]);
+    expect(parseColor(await page.locator("body").evaluate((el) => getComputedStyle(el).backgroundColor))).toEqual([0xf3, 0xe9, 0xd2]);
   });
 
   test("the Reader works when browser storage is unavailable", async ({ page }) => {

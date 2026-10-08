@@ -96,6 +96,11 @@ export interface Reader {
    */
   setDisplay(settings: DisplaySettings): void;
   /**
+   * Sets the @font-face rules (CSS text, with absolute addresses) that are repeated inside every Book's page, which
+   * does not see the fonts declared in the app's page. Applies to the open Book and every Book opened after, like `setDisplay`.
+   */
+  setFontFaces(css: string): void;
+  /**
    * Searches the open Book for `query` (case-insensitive; Chinese works) and yields results chapter by chapter, since
    * a whole-Book search is slow. Every match is outlined on its page until `clearSearch`. Starting a search
    * cancels the one before it (its iterator just ends), so a late result from the old query is never yielded.
@@ -117,6 +122,7 @@ export function createReader(container: HTMLElement): Reader {
   let view: View | null = null;
   const listeners = new Set<(location: ReaderLocation) => void>();
   let display: DisplaySettings | null = null;
+  let fontFaces = "";
 
   const applyDisplay = () => {
     const renderer = view?.renderer;
@@ -125,7 +131,7 @@ export function createReader(container: HTMLElement): Reader {
     renderer.setAttribute("flow", display.flow);
     renderer.setAttribute("gap", `${margins.gap}%`);
     renderer.setAttribute("max-inline-size", `${margins.maxLine}px`);
-    renderer.setStyles?.(bookStyles(display));
+    renderer.setStyles?.(bookStyles(display, fontFaces));
     renderer.render?.();
   };
 
@@ -280,6 +286,10 @@ export function createReader(container: HTMLElement): Reader {
     },
     setDisplay(settings) {
       display = settings;
+      applyDisplay();
+    },
+    setFontFaces(css) {
+      fontFaces = css;
       applyDisplay();
     },
     onLocation(listener) {

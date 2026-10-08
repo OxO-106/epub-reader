@@ -5,6 +5,7 @@ import { checkConnection, heartbeatMs } from "./connection.ts";
 import { ConnectionNotice } from "./ConnectionNotice.tsx";
 import { applyTheme, loadDisplay, saveDisplay, type DisplaySettings } from "./display-settings.ts";
 import { DisplaySettingsPanel } from "./DisplaySettingsPanel.tsx";
+import { fontFaceCss } from "./fonts.ts";
 import { createReader, type Reader, type TocEntry } from "./reader/reader.ts";
 import { ReadingFraction } from "./ReadingFraction.tsx";
 import { trackReadingPosition } from "./reading-position.ts";
@@ -49,9 +50,10 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       setFraction(location.fraction);
     });
 
-    Promise.all([loadBookSource(bookId), getReadingPosition(bookId)]).then(
-      ([source, saved]) => {
+    Promise.all([loadBookSource(bookId), getReadingPosition(bookId), fontFaceCss()]).then(
+      ([source, saved, fontFaces]) => {
         if (cancelled) return;
+        instance.setFontFaces(fontFaces); // before the Book opens, so its first page already has the fonts
         if (saved.fraction !== null) setFraction(saved.fraction);
         stopTracking = trackReadingPosition(bookId, instance, saved.position);
         return instance.open(source, { position: saved.position ?? undefined }).then(

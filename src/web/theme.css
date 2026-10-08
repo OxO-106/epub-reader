@@ -1,37 +1,92 @@
 /*
- * Themes (light, dark, sepia) for the whole app: the Library, the Reader screen and its table of contents.
- * The Reader module colours the Book's own pages with the same palette (display-settings.ts), so keep the
- * colours of each theme in step with `themes` there. `data-theme` on <html> is set before the first paint.
+ * Design tokens and themes (light, dark, sepia) for the whole app: the Library, the Reader screen and its panels.
+ * Colours are custom properties set per theme through `data-theme` on <html> (set before the first paint); everything
+ * else (fonts, radii, sizes) is shared. The values are the ones in .scratch/reader-redesign/spec.md and the mockups in
+ * docs/design/reader-redesign. The Reader module paints the Book's own pages with the same palette (`themes` in
+ * display-settings.ts) and the same serif stack (`fontFamilies` there), so keep those in step with this file.
+ *
+ *   --bg          the ground of every screen, and of the Book's page
+ *   --surface     cards, panels, controls: one step above the ground
+ *   --fg          ink: text
+ *   --muted       secondary text (4.5:1 on --bg and --surface)
+ *   --border      hairlines between areas; --border-strong the outline of a control
+ *   --accent      the one colour of emphasis (progress, primary buttons, links); --accent-ink the same colour as text
+ *                 on --accent-soft (selected rows); --on-accent text and icons on --accent
+ *   --mark        search match highlight; --scrim the dim layer behind a modal; --danger destructive actions
  */
+:root {
+  --font-sans: system-ui, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "WenQuanYi Micro Hei", sans-serif;
+  /* Libertinus Serif, then 京华老宋体, then system serif and Chinese fonts: the "serif" stack of display-settings.ts. */
+  --font-serif: "Libertinus Serif", "Linux Libertine", "KingHwa Web", "KingHwa_OldSong", "京華老宋体", Georgia, "Times New Roman", "Noto Serif", "Songti SC", "STSong", "SimSun", "NSimSun", "Noto Serif CJK SC", "Source Han Serif SC", "Noto Serif SC", "FangSong", "STFangsong", "KaiTi", "AR PL UMing CN", serif;
+  --radius-pill: 22px;
+  --radius-card: 18px;
+  --radius-control: 12px;
+  --radius-small: 8px;
+  /* The smallest comfortable touch target. */
+  --tap: 2.75rem;
+}
+
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #ffffff;
-  --fg: #1b1b1b;
-  --surface: #f1f2f4;
-  --border: #b9bcc3;
-  --link: #1a56b0;
+  --bg: #f5f5f1;
+  --surface: #ffffff;
+  --fg: #1c201e;
+  --muted: #6a716d;
+  --border: #e1e3dd;
+  --border-strong: #d9dcd5;
+  --accent: #2e6b58;
+  --accent-soft: #e3efea;
+  --accent-ink: #2e6b58;
+  --on-accent: #ffffff;
+  --link: #2e6b58;
   --danger: #b3261e;
+  --mark: #f6de8e;
+  --scrim: rgb(42 36 16 / 0.5);
+  --shadow-card: 0 1px 2px rgb(20 30 25 / 0.04), 0 12px 32px rgb(20 30 25 / 0.06);
+  --shadow-panel: 0 1px 2px rgb(20 30 25 / 0.14), 0 10px 22px rgb(20 30 25 / 0.12);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #16181d;
-  --fg: #dcdde1;
-  --surface: #262a32;
-  --border: #5a606c;
-  --link: #8ab4f8;
+  --bg: #14171a;
+  --surface: #1c2024;
+  --fg: #e7e9e4;
+  --muted: #9aa19c;
+  --border: #2b3035;
+  --border-strong: #343a40;
+  --accent: #86c7ab;
+  --accent-soft: #23352e;
+  --accent-ink: #86c7ab;
+  --on-accent: #10201a;
+  --link: #86c7ab;
   --danger: #ff8f85;
+  /* The dark and sepia highlights are not in the mockups; chosen to read like the light one. */
+  --mark: #5b4b1c;
+  --scrim: rgb(6 8 10 / 0.58);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2), 0 12px 32px rgb(0 0 0 / 0.3);
+  --shadow-panel: 0 12px 40px rgb(0 0 0 / 0.35);
 }
 
 :root[data-theme="sepia"] {
   color-scheme: light;
-  --bg: #f4ecd8;
-  --fg: #43331f;
-  --surface: #e8dcbf;
-  --border: #a8946a;
-  --link: #7a3e00;
+  --bg: #f3e9d2;
+  --surface: #fbf4e2;
+  --fg: #3a3023;
+  /* A little darker than the mockup's #7a6c55, which is 4.2:1 on the ground. */
+  --muted: #74664d;
+  --border: #e0d3b3;
+  --border-strong: #d8c9a5;
+  --accent: #8a5a2b;
+  --accent-soft: #ebddbe;
+  --accent-ink: #6b4620;
+  --on-accent: #ffffff;
+  --link: #8a5a2b;
   --danger: #9c2a1b;
+  --mark: #ebd28a;
+  --scrim: rgb(60 40 10 / 0.5);
+  --shadow-card: 0 2px 4px rgb(60 40 10 / 0.06), 0 12px 32px rgb(60 40 10 / 0.1);
+  --shadow-panel: 0 2px 4px rgb(60 40 10 / 0.06), 0 24px 56px rgb(60 40 10 / 0.2);
 }
 
 body {
@@ -50,28 +105,48 @@ input[type="search"],
 input[type="text"] {
   color: var(--fg);
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0.25rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+
+select {
+  border-radius: var(--radius-control);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The Library, the Reader's title and every heading are set in the serif; the interface in between stays sans. */
+h1,
+h2,
+h3,
+.title,
+.reader-title {
+  font-family: var(--font-serif);
 }
 
 .toc-item {
   background: none;
   border: 0;
+  border-radius: var(--radius-small);
 }
 
 .toc-item[aria-current="location"] {
-  background: color-mix(in srgb, var(--fg) 16%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 .book-search-match[aria-current="location"] {
-  background: color-mix(in srgb, var(--fg) 16%, transparent);
+  background: var(--accent-soft);
 }
 
 .toc,
 .book-search,
 .display-settings,
 dialog {
-  background: var(--bg);
+  background: var(--surface);
   color: var(--fg);
 }
 
@@ -115,8 +190,8 @@ dialog {
   gap: 1rem;
   padding: 1rem;
   border: 1px solid var(--border);
-  border-radius: 0 0 0 0.5rem;
-  box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 0.25);
+  border-radius: 0 0 0 var(--radius-control);
+  box-shadow: var(--shadow-panel);
 }
 
 .display-settings .setting {

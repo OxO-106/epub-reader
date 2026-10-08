@@ -24,13 +24,24 @@ export const fontSizeRange = { min: 12, max: 36, step: 1 };
 export const lineSpacingRange = { min: 1.1, max: 2.2, step: 0.1 };
 
 /**
- * Font stacks. System fonts only: the app works offline, so nothing is downloaded. Each stack lists Latin fonts first
- * (so English in a Chinese paragraph looks right), then the Chinese fonts of every platform: macOS and iOS (PingFang,
- * Songti, Hiragino), Windows (Microsoft YaHei, SimSun, FangSong, KaiTi), Linux and Android (Noto and Source Han
- * CJK, WenQuanYi, Droid Sans Fallback), ending in a generic family. The browser skips a font that is not installed.
+ * Font stacks. The two web fonts (Libertinus Serif, bundled; 京华老宋体, served only when the owner has built it, see
+ * fonts.ts) come first in the serif stacks; a name that is not declared or installed just matches nothing. After
+ * them only system fonts, so the app works offline. Each stack lists Latin fonts first (so English in a Chinese
+ * paragraph looks right), then the Chinese fonts of every platform: macOS and iOS (PingFang, Songti, Hiragino), Windows
+ * (Microsoft YaHei, SimSun, FangSong, KaiTi), Linux and Android (Noto and Source Han CJK, WenQuanYi, Droid Sans
+ * Fallback), ending in a generic family. The browser skips a font that is not installed.
  * Simplified and Traditional Chinese have their own stacks, chosen by the document's `lang`, because a Simplified
  * font draws many shared characters in the Simplified form.
  */
+const libertinus = '"Libertinus Serif", "Linux Libertine"';
+/**
+ * "KingHwa Web" is the name the served pieces of the font are declared under (see fonts.ts and tools/fonts-build). It is
+ * not the font's own name, so that a copy installed on the device cannot stand in for those pieces: the pieces leave out
+ * ASCII, but an installed copy has it, and English would be drawn in it instead of in Libertinus Serif. The font's own
+ * names come after Libertinus Serif, for a device that has it installed while the server does not serve it.
+ */
+const kingHwaWeb = '"KingHwa Web"';
+const kingHwaInstalled = '"KingHwa_OldSong", "京華老宋体"';
 const latinSerif = 'Georgia, "Times New Roman", "Noto Serif"';
 const latinSans = 'system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial';
 const hansSerif =
@@ -42,21 +53,38 @@ const hansSans =
 const hantSans =
   '"PingFang TC", "Heiti TC", "Microsoft JhengHei", "Noto Sans CJK TC", "Source Han Sans TC", "Noto Sans TC", "WenQuanYi Micro Hei"';
 
+/**
+ * The serif stacks: Libertinus Serif for English, then 京华老宋体 for Chinese, then the system fonts above. In Chinese
+ * documents (`lang` zh) the served pieces of 京华老宋体 come first instead, so that the punctuation that both fonts have
+ * under the same code points (curly quotes, dashes, the ellipsis) is the full-width Chinese one. The pieces leave out
+ * ASCII, so English letters and digits still go to Libertinus Serif. The first is also the `--font-serif` token in theme.css.
+ */
+const serifStack = `${libertinus}, ${kingHwaWeb}, ${kingHwaInstalled}, ${latinSerif}, ${hansSerif}, serif`;
+const hansSerifStack = `${kingHwaWeb}, ${libertinus}, ${kingHwaInstalled}, ${latinSerif}, ${hansSerif}, serif`;
+const hantSerifStack = `${kingHwaWeb}, ${libertinus}, ${kingHwaInstalled}, ${latinSerif}, ${hantSerif}, serif`;
+const sansStack = `${latinSans}, ${hansSans}, sans-serif`;
+const hantSansStack = `${latinSans}, ${hantSans}, sans-serif`;
+
 export interface FontChoice {
   value: FontFamily;
   label: string;
   /** Applied to the whole Book; null leaves the Book's own fonts alone. */
   stack: string | null;
+  /** The same for documents in Chinese (`lang` zh, zh-Hans, zh-CN...). */
+  hansStack: string | null;
   /** The same for documents in Traditional Chinese (`lang` zh-Hant, zh-TW, zh-HK). */
   hantStack: string | null;
 }
 
+const serif = { stack: serifStack, hansStack: hansSerifStack, hantStack: hantSerifStack };
+const sans = { stack: sansStack, hansStack: sansStack, hantStack: hantSansStack };
+
 export const fontFamilies: FontChoice[] = [
-  { value: "book", label: "The Book's own", stack: null, hantStack: null },
-  { value: "serif", label: "Serif", stack: `${latinSerif}, ${hansSerif}, serif`, hantStack: `${latinSerif}, ${hantSerif}, serif` },
-  { value: "sans", label: "Sans-serif", stack: `${latinSans}, ${hansSans}, sans-serif`, hantStack: `${latinSans}, ${hantSans}, sans-serif` },
-  { value: "cjk-serif", label: "Chinese serif (宋体)", stack: `${latinSerif}, ${hansSerif}, serif`, hantStack: `${latinSerif}, ${hantSerif}, serif` },
-  { value: "cjk-sans", label: "Chinese sans (黑体)", stack: `${latinSans}, ${hansSans}, sans-serif`, hantStack: `${latinSans}, ${hantSans}, sans-serif` },
+  { value: "book", label: "The Book's own", stack: null, hansStack: null, hantStack: null },
+  { value: "serif", label: "Serif", ...serif },
+  { value: "sans", label: "Sans-serif", ...sans },
+  { value: "cjk-serif", label: "Chinese serif (宋体)", ...serif },
+  { value: "cjk-sans", label: "Chinese sans (黑体)", ...sans },
 ];
 
 /**
@@ -64,8 +92,8 @@ export const fontFamilies: FontChoice[] = [
  * font after the Latin ones, so that the browser never has to guess. A Book's own font-family always wins over this.
  */
 export const chineseDefaultStacks = {
-  hans: `${latinSerif}, ${hansSerif}, serif`,
-  hant: `${latinSerif}, ${hantSerif}, serif`,
+  hans: hansSerifStack,
+  hant: hantSerifStack,
 };
 
 /** How wide the margins are: the gap at the sides of the text (percent) and the widest a line of text may be (px). */
@@ -82,10 +110,11 @@ export interface Palette {
   link: string;
 }
 
+/** What a Book's page is painted with: the theme's ground, the text colour used for reading (a little softer than the interface's ink) and the accent for links. Keep in step with theme.css. */
 export const themes: Record<Theme, Palette> = {
-  light: { label: "Light", background: "#ffffff", text: "#1b1b1b", link: "#1a56b0" },
-  dark: { label: "Dark", background: "#16181d", text: "#dcdde1", link: "#8ab4f8" },
-  sepia: { label: "Sepia", background: "#f4ecd8", text: "#43331f", link: "#7a3e00" },
+  light: { label: "Light", background: "#f5f5f1", text: "#23282a", link: "#2e6b58" },
+  dark: { label: "Dark", background: "#14171a", text: "#d9dcd6", link: "#86c7ab" },
+  sepia: { label: "Sepia", background: "#f3e9d2", text: "#3a3023", link: "#8a5a2b" },
 };
 
 export function defaultDisplay(): DisplaySettings {
