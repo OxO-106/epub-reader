@@ -35,9 +35,32 @@ async function expectLayoutFits(page: Page, where: string) {
       const rect = el.getBoundingClientRect();
       return style.visibility !== "hidden" && style.display !== "none" && rect.width > 0 && rect.height > 0 && !el.closest("[hidden]");
     });
-    const boxes = visible.map((el) => ({ el, rect: el.getBoundingClientRect() }));
+    // The part of a control that can be seen: cut to the scrolling panels (and clipping boxes) it sits in. A control
+    // scrolled out of view inside a scrolling panel is reachable by scrolling it, so it is left out of the overlap
+    // checks; one cut off by a box that does not scroll is a real problem.
+    const seen = (el: HTMLElement) => {
+      const own = el.getBoundingClientRect();
+      let { left, top, right, bottom } = own;
+      for (let parent = el.parentElement; parent && parent !== document.body && parent !== doc; parent = parent.parentElement) {
+        const style = getComputedStyle(parent);
+        const cuts = [style.overflowX, style.overflowY].some((value) => value !== "visible");
+        if (!cuts) continue;
+        const box = parent.getBoundingClientRect();
+        left = Math.max(left, box.left);
+        top = Math.max(top, box.top);
+        right = Math.min(right, box.right);
+        bottom = Math.min(bottom, box.bottom);
+        const scrolls = [style.overflowX, style.overflowY].every((value) => value === "auto" || value === "scroll" || value === "visible");
+        if (!scrolls && (right - left < own.width - 1 || bottom - top < own.height - 1)) {
+          found.push(`${describe(el)} is cut off by ${describe(parent)}`);
+        }
+      }
+      return { left, top, right, bottom, width: right - left, height: bottom - top };
+    };
+    const everything = visible.map((el) => ({ el, rect: el.getBoundingClientRect(), shown: seen(el) }));
+    const boxes = everything.filter(({ shown }) => shown.width > 0 && shown.height > 0).map(({ el, shown }) => ({ el, rect: shown }));
 
-    for (const { el, rect } of boxes) {
+    for (const { el, rect } of everything) {
       if (rect.left < -0.5 || rect.right > doc.clientWidth + 0.5) {
         found.push(`${describe(el)} is outside the window horizontally (${Math.round(rect.left)}..${Math.round(rect.right)} of ${doc.clientWidth})`);
       }
