@@ -6,6 +6,7 @@ import type { BookRow, Db } from "./db.ts";
 import { deleteBook } from "./delete.ts";
 import { formatById } from "./formats/index.ts";
 import { importBook, type RejectionCode } from "./import.ts";
+import { parseReadingPosition } from "./reading-position.ts";
 import { searchBooks } from "./search.ts";
 import { securityHeaders } from "./security.ts";
 import type { LibraryFolder } from "./library-folder.ts";
@@ -22,7 +23,7 @@ export interface AppContext {
   webDir: string;
 }
 
-const toSummary = (row: BookRow) => ({
+const toSummary = (row: BookRow & { progress?: number | null }) => ({
   id: row.hash,
   title: row.title,
   author: row.author,
@@ -30,6 +31,8 @@ const toSummary = (row: BookRow) => ({
   hasCover: row.cover !== null,
   addedAt: row.added_at,
   lastReadAt: row.last_read_at,
+  /** How far through the Book the Reading position is, 0 to 1; null when the Book was never opened. */
+  progress: row.progress ?? null,
 });
 
 const rejectionStatus: Record<RejectionCode, 413 | 415 | 422> = {
@@ -118,6 +121,24 @@ export function createApp({ db, storage, libraryFolder, webDir }: AppContext): H
   app.delete("/api/books/:id", async (c) => {
     const id = c.req.param("id");
     if (!isBookId(id) || !(await deleteBook({ db, storage }, id))) return c.json({ error: "Not found" }, 404);
+    return c.body(null, 204);
+  });
+
+  // The Reading position of a Book: one per Book, shared by every device; the latest write wins.
+  // `position` is an opaque CFI, `fraction` (0 to 1) how far through the Book it is, for display.
+  app.get("/api/books/:id/position", (c) => {
+    const id = c.req.param("id");
+    if (!isBookId(id) || !db.getBook(id)) return c.json({ error: "Not found" }, 404);
+    const saved = db.getReadingPosition(id);
+    return c.json({ position: saved?.position ?? null, fraction: saved?.fraction ?? null });
+  });
+
+  app.put("/api/books/:id/position", async (c) => {
+    const id = c.req.param("id");
+    if (!isBookId(id) || !db.getBook(id)) return c.json({ error: "Not found" }, 404);
+    const parsed = parseReadingPosition(await c.req.text());
+    if (!parsed.ok) return c.json({ error: parsed.error }, parsed.status);
+    if (!db.saveReadingPosition(id, parsed.value)) return c.json({ error: "Not found" }, 404);
     return c.body(null, 204);
   });
 
