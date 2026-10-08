@@ -15,7 +15,7 @@ Node 24+ and npm; TypeScript runs directly on Node (no compile step for the serv
 - Model stand-in for tests: `tests/helpers/model-stand-in.ts` is a real HTTP server speaking the streaming chat-completions protocol with scripted replies (delays, errors, malformed streams) and a request log (including aborts). Use it from Vitest (`startModelStandIn()`, with `startTestServer({ translate: { url: model.url } })`; translation is off unless a test sets a URL) and from Playwright (`test.use({ withModel: true })` plus the `model` fixture, or `translateUrl`).
 - Regenerate sample files in `tests/fixtures`: `npm run fixtures`
 
-Layout: `src/server` (Hono API, `node:sqlite`), `src/web` (Preact app), `tests/api`, `tests/e2e`, `tests/fixtures`. Use `.ts` extensions in relative imports. foliate-js is vendored in `src/web/vendor/foliate-js` and only `src/web/reader/reader.ts` may import it at runtime (type-only imports of the vendored typings are allowed elsewhere; ADR 0005); the server's Content-Security-Policy is in `src/server/security.ts`.
+Layout: `src/server` (Hono API, `node:sqlite`), `src/web` (Preact app; `src/web/reader/translation` is the live-translation engine, plain DOM with no foliate-js, driven through the Reader interface), `tests/api`, `tests/unit`, `tests/e2e`, `tests/fixtures`. Browser tests drive the Reader's translation methods through `window.__reader`, a seam the Reader screen offers until the Translate button exists. Use `.ts` extensions in relative imports. foliate-js is vendored in `src/web/vendor/foliate-js` and only `src/web/reader/reader.ts` may import it at runtime (type-only imports of the vendored typings are allowed elsewhere; ADR 0005); the server's Content-Security-Policy is in `src/server/security.ts`.
 
 ## Agent skills
 
