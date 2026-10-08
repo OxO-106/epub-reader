@@ -1,3 +1,4 @@
+import { open } from "node:fs/promises";
 import { posix } from "node:path";
 import { XMLParser } from "fast-xml-parser";
 import { bookExtensions } from "../../shared/book-extensions.ts";
@@ -97,10 +98,33 @@ async function extract(path: string): Promise<ExtractedMetadata> {
   }
 }
 
+/** An EPUB is a ZIP archive, and every ZIP starts with these bytes. */
+const zipSignature = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
+
+/** True for a ZIP that opens as an EPUB (a container file pointing at a package file), whatever it is named. */
+async function matchesContent(path: string): Promise<boolean> {
+  const file = await open(path, "r");
+  try {
+    const head = Buffer.alloc(zipSignature.length);
+    const { bytesRead } = await file.read(head, 0, head.length, 0);
+    if (bytesRead < head.length || !head.equals(zipSignature)) return false;
+  } finally {
+    await file.close();
+  }
+  try {
+    await extract(path);
+    return true;
+  } catch (error) {
+    if (error instanceof CorruptBookError) return false;
+    throw error;
+  }
+}
+
 export const epub: BookFormat = {
   id: "epub",
   label: "EPUB",
   extensions: [...bookExtensions.epub],
   mimeType: "application/epub+zip",
+  matchesContent,
   extract,
 };

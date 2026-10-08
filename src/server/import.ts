@@ -2,10 +2,9 @@ import { createHash, randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { rename, rm, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
-import { Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { BookRow, Db } from "./db.ts";
-import { CorruptBookError, detectFormat, formats, type BookFormat } from "./formats/index.ts";
+import { CorruptBookError, detectFormat, detectFormatByName, formats, type BookFormat } from "./formats/index.ts";
 import { withBookLock } from "./book-lock.ts";
 import type { Storage } from "./storage.ts";
 
@@ -57,16 +56,16 @@ export async function importBook({ db, storage }: ImportContext, input: ImportIn
   const { filename } = input;
   const quoted = `"${basename(filename)}"`;
 
-  const format = detectFormat(filename);
-  if (!format) {
-    await receive(input.content, null);
-    const supported = formats.map((f) => f.label).join(", ");
-    return rejected("unsupported", `${quoted} is not a supported file type. Reader can import: ${supported}.`);
-  }
-
   const temp = join(storage.tmpDir, randomUUID());
   try {
+    // The file is received before its format is chosen, because the format is detected from the content as well
+    // as the name. A file over the size cap is not looked at: only its name can say what it was meant to be.
     const received = await receive(input.content, temp);
+    const format = received.tooLarge ? detectFormatByName(filename) : await detectFormat(filename, temp);
+    if (!format) {
+      const supported = formats.map((f) => f.label).join(", ");
+      return rejected("unsupported", `${quoted} is not a supported file type. Reader can import: ${supported}.`);
+    }
     if (received.tooLarge) {
       return rejected("too-large", `${quoted} is larger than the ${maxBookBytes / (1024 * 1024)} MB limit, so it was not added.`);
     }
@@ -138,20 +137,17 @@ function fallbackTitle(filename: string): string {
 }
 
 /**
- * Streams `content` into the file at `destination` (or nowhere, when null), hashing as it goes.
+ * Streams `content` into the file at `destination`, hashing as it goes.
  * Past the size cap nothing more is hashed, and the caller must discard the file; the rest of the
  * upload is still read so the sender gets an answer instead of a dropped connection.
  */
 async function receive(
   content: AsyncIterable<Uint8Array>,
-  destination: string | null,
+  destination: string,
 ): Promise<{ hash: string; tooLarge: boolean }> {
   const hash = createHash("sha256");
   let size = 0;
   let tooLarge = false;
-  const sink = destination
-    ? createWriteStream(destination)
-    : new Writable({ write: (_chunk, _encoding, done) => done() });
   await pipeline(
     content,
     async function* (source: AsyncIterable<Uint8Array>) {
@@ -163,7 +159,7 @@ async function receive(
         yield chunk;
       }
     },
-    sink,
+    createWriteStream(destination),
   );
   return { hash: hash.digest("hex"), tooLarge };
 }

@@ -2,7 +2,7 @@
 
 A personal ebook reader that runs on your own PC and is used through a web browser. A small local server keeps your Library (the Books and your Reading positions), so the same Library and place in each Book are there on every device that connects to it. Nothing leaves your machine and no internet connection is needed. Terms are defined in [GLOSSARY.md](GLOSSARY.md).
 
-Formats: EPUB (`.epub`), Markdown (`.md`, `.markdown`) and plain text (`.txt`). A plain-text file may be UTF-8 (with or without a byte-order mark), UTF-16 with a byte-order mark, or GBK/GB2312/GB18030; it is stored as UTF-8, so the same text in different encodings is one Book. Other file types are refused with a message, as are files over 200 MB and files that are damaged (an EPUB that cannot be parsed, or a "text" file that is really a binary one). Adding the same content twice keeps one Book.
+Formats: EPUB (`.epub`), Markdown (`.md`, `.markdown`) and plain text (`.txt`). A plain-text file may be UTF-8 (with or without a byte-order mark), UTF-16 with a byte-order mark, or GBK/GB2312/GB18030; it is stored as UTF-8, so the same text in different encodings is one Book. The format is detected from the content as well as the name: an EPUB with another name (`.zip`, say) is still imported as an EPUB, while a file named `.epub` that is really text is refused. Other file types are refused with a message, as are files over 200 MB and files that are damaged (an EPUB that cannot be parsed, or a "text" file that is really a binary one). Adding the same content twice keeps one Book.
 
 ## Requirements
 

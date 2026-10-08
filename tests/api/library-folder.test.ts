@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, open, readFile, rm, stat, truncate, utimes, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { strToU8, zipSync } from "fflate";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { startServer } from "../../src/server/server.ts";
 import { eventually, fastLibraryFolder, fixturePath, startTestServer, uploadFixture, type TestServer } from "./helpers.ts";
@@ -101,6 +102,29 @@ describe("files in the library folder are treated exactly like uploads", () => {
     await quietPeriod();
     expect(await books(server)).toHaveLength(2);
     expect(await failures(server)).toEqual([]); // a duplicate is not an error
+  });
+
+  it("detects an EPUB by its content, whatever its name, like an upload does", async () => {
+    server = await startTestServer(fast);
+
+    await copyIn(server, "sample.epub", "renamed.zip");
+    await copyIn(server, "chinese.epub", "renamed.txt");
+
+    await eventually(async () => expect(await titles(server!)).toEqual(["Sample Book", "红楼梦"].sort()));
+    expect(await failures(server)).toEqual([]);
+  });
+
+  it("reports a ZIP that is not an EPUB, and text named .epub, with the messages an upload gets", async () => {
+    server = await startTestServer(fast);
+    await writeFile(join(server.libraryDir, "archive.zip"), zipSync({ "readme.txt": strToU8("just a zip") }));
+    await copyIn(server, "sample.txt", "pretend.epub");
+
+    await eventually(async () => expect(await failures(server!)).toHaveLength(2));
+    const byName = Object.fromEntries((await failures(server)).map((f) => [f.fileName, f]));
+    expect(byName["archive.zip"]).toMatchObject({ code: "unsupported" });
+    expect(byName["pretend.epub"]).toMatchObject({ code: "corrupt" });
+    expect(byName["pretend.epub"]!.message).toContain("not a valid EPUB");
+    expect(await books(server)).toEqual([]);
   });
 
   it("reports an unsupported file with the message an upload gets", async () => {

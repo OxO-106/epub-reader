@@ -214,6 +214,102 @@ describe("files that are rejected", () => {
   });
 });
 
+describe("the format is detected from the content as well as the name", () => {
+  const epubBytes = () => readFile(fixturePath("sample.epub"));
+  const zipOfSomethingElse = () => zipSync({ "readme.txt": strToU8("just a zip") });
+
+  async function summaryOf(s: TestServer, id: string) {
+    return (await (await fetch(`${s.url}/api/books/${id}`)).json()) as { title: string; format: string };
+  }
+
+  for (const name of ["novel.zip", "novel.txt", "novel.md", "novel", "novel.EPUB.bak"]) {
+    it(`accepts an EPUB that has been given the name ${name}`, async () => {
+      server = await startTestServer();
+
+      const response = await uploadBook(server, name, await epubBytes());
+
+      expect(response.status).toBe(201);
+      const [book] = await listBooks(server);
+      expect(await summaryOf(server, book!.id)).toMatchObject({ title: "Sample Book", format: "epub" });
+      const file = await fetch(`${server.url}/api/books/${book!.id}/file`);
+      expect(file.headers.get("content-type")).toBe("application/epub+zip");
+      expect(Buffer.from(await file.arrayBuffer())).toEqual(await epubBytes());
+    });
+  }
+
+  it("keeps one Book when the same EPUB arrives under its real name and under another", async () => {
+    server = await startTestServer();
+    const bytes = await epubBytes();
+
+    expect((await uploadBook(server, "sample.epub", bytes)).status).toBe(201);
+    expect((await uploadBook(server, "sample.zip", bytes)).status).toBe(200);
+
+    expect(await listBooks(server)).toHaveLength(1);
+  });
+
+  it("falls back to the file name for the title when an EPUB with another name has none", async () => {
+    server = await startTestServer();
+    const untitled = zipSync({
+      mimetype: strToU8("application/epub+zip"),
+      "META-INF/container.xml": strToU8(
+        '<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>',
+      ),
+      "content.opf": strToU8('<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0"><metadata/></package>'),
+    });
+
+    expect((await uploadBook(server, "My Untitled Novel.zip", untitled)).status).toBe(201);
+
+    expect(await listBooks(server)).toMatchObject([{ title: "My Untitled Novel" }]);
+  });
+
+  it("refuses a ZIP that is not an EPUB, as unsupported under an unknown name", async () => {
+    server = await startTestServer();
+
+    const response = await uploadBook(server, "archive.zip", zipOfSomethingElse());
+
+    expect(response.status).toBe(415);
+    expect(((await response.json()) as { code: string }).code).toBe("unsupported");
+    expect(await listBooks(server)).toEqual([]);
+  });
+
+  it("refuses a ZIP that is not an EPUB, as damaged under a name of a supported format", async () => {
+    server = await startTestServer();
+
+    for (const name of ["archive.txt", "archive.md"]) {
+      const response = await uploadBook(server, name, zipOfSomethingElse());
+
+      expect(response.status).toBe(422);
+      expect(((await response.json()) as { code: string }).code).toBe("corrupt");
+    }
+    expect(await listBooks(server)).toEqual([]);
+  });
+
+  it("refuses plain text or Markdown named .epub as damaged, and a text file with an unknown name as unsupported", async () => {
+    server = await startTestServer();
+
+    for (const fixture of ["sample.txt", "sample.md"]) {
+      const response = await uploadBook(server, "pretend.epub", await readFile(fixturePath(fixture)));
+
+      expect(response.status).toBe(422);
+      const body = (await response.json()) as { code: string; error: string };
+      expect(body.code).toBe("corrupt");
+      expect(body.error).toContain("not a valid EPUB");
+    }
+    expect((await uploadBook(server, "notes.rtf", await readFile(fixturePath("sample.txt")))).status).toBe(415);
+    expect(await listBooks(server)).toEqual([]);
+  });
+
+  it("still reads a real text file under its own name as text", async () => {
+    server = await startTestServer();
+
+    const response = await uploadFixture(server, "sample.txt");
+
+    expect(response.status).toBe(201);
+    const [book] = await listBooks(server);
+    expect(await summaryOf(server, book!.id)).toMatchObject({ format: "text" });
+  });
+});
+
 describe("the Library after a restart", () => {
   it("still has its Books and covers", async () => {
     server = await startTestServer();

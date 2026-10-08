@@ -21,6 +21,13 @@ export interface BookFormat {
   /** Content type the stored file is served with, e.g. "application/epub+zip". */
   mimeType: string;
   /**
+   * Optional. True when the received file at `path` is recognisably a Book of this format whatever it is named,
+   * so a file with another name or extension can still be imported. Must not throw for a file that is merely
+   * something else. A format that has this is trusted by its extension alone, so a file with its extension but
+   * other content is still tried as this format, and rejected as damaged.
+   */
+  matchesContent?(path: string): Promise<boolean>;
+  /**
    * Optional. Rewrites the received file at `path` into the form that is stored, before the Book's identity is
    * computed, so the same content in different encodings is one Book. Returns whether it changed the file.
    * Throws `CorruptBookError` when the file is not a readable Book of this format.
