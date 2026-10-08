@@ -192,6 +192,38 @@ test.describe("remembering the settings on this device", () => {
   });
 });
 
+test("journey: change the font size, close the Book, reopen it: same Reading position and same size; another device keeps its own display", async ({
+  page,
+  browser,
+  server,
+}) => {
+  await openLongBook(page);
+  const place = await readDeeper(page, 6);
+  expect(place).not.toBe("C1 P001");
+  const settings = await openSettings(page);
+  await settings.getByLabel("Text size").fill("26");
+  await settings.getByLabel("Dark", { exact: true }).check();
+  await expect.poll(() => visibleParagraphs(page)).toContain(place);
+  const onScreen = await visibleParagraphs(page);
+
+  // Close the Book (back to the Library) and open it again.
+  await page.getByRole("link", { name: "Library" }).click();
+  await page.getByRole("link", { name: /Long Book/ }).click();
+
+  await expect.poll(() => visibleParagraphs(page)).toEqual(onScreen);
+  expect(await textSize(page)).toBe(26);
+
+  // The Reading position belongs to the Book on the server; the display belongs to this device.
+  const profile = await browser.newContext({ baseURL: server.url, colorScheme: "light" });
+  const other = await profile.newPage();
+  await other.goto("/");
+  await other.getByRole("link", { name: /Long Book/ }).click();
+  await expect.poll(() => visibleParagraphs(other)).toContain(onScreen[0]);
+  expect(await textSize(other)).toBe(18);
+  expect(await other.locator("html").getAttribute("data-theme")).toBe("light");
+  await profile.close();
+});
+
 test("the display controls fit and work in a narrow window, without hover", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   await openLongBook(page);
