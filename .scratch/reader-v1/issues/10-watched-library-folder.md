@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] A file copied into the folder appears in the Library without restarting
-- [ ] Files present at server start are imported
-- [ ] Duplicates, unsupported, corrupt and oversized files behave as for uploads
-- [ ] A failed import is reported somewhere visible
-- [ ] Original files in the folder are left untouched
-- [ ] API tests use a real temporary library folder
+- [x] A file copied into the folder appears in the Library without restarting
+- [x] Files present at server start are imported
+- [x] Duplicates, unsupported, corrupt and oversized files behave as for uploads
+- [x] A failed import is reported somewhere visible
+- [x] Original files in the folder are left untouched
+- [x] API tests use a real temporary library folder

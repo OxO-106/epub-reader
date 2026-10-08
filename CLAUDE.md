@@ -10,6 +10,7 @@ Node 24+ and npm; TypeScript runs directly on Node (no compile step for the serv
 - Browser tests (builds first, then headless Playwright; import `test`/`expect` from `tests/e2e/fixtures.ts`, which starts a fresh real server with throwaway folders per test, using system Chrome; set `READER_E2E_CHROME` to use another executable): `npm run test:e2e`
 - Everything: `npm run test:all`
 - Configuration is by environment variable: `READER_DATA_DIR` (default `./data`), `READER_LIBRARY_DIR` (default `./library`), `READER_PORT` (default 5174), `READER_HOST` (default `127.0.0.1`).
+- The library folder is watched (`src/server/library-folder.ts`): files present at startup and files added or changed later go through `importBook`; failures are listed at `GET /api/library-folder`. Timings are `librarySettleMs` and `libraryRescanMs` server options (tests shorten them).
 - Regenerate sample files in `tests/fixtures`: `npm run fixtures`
 
 Layout: `src/server` (Hono API, `node:sqlite`), `src/web` (Preact app), `tests/api`, `tests/e2e`, `tests/fixtures`. Use `.ts` extensions in relative imports.

@@ -57,3 +57,16 @@ export async function importFile(file: File): Promise<ImportOutcome> {
     return { fileName, status: "failed", message: `"${fileName}" was not added: cannot reach the server.` };
   }
 }
+
+/** A file in the watched library folder that could not be imported. */
+export interface LibraryFolderFailure {
+  path: string;
+  message: string;
+}
+
+export async function listLibraryFolderFailures(): Promise<LibraryFolderFailure[]> {
+  const response = await fetch("/api/library-folder");
+  if (!response.ok) throw new Error(`Server answered ${response.status}`);
+  const body = (await response.json()) as { failures: LibraryFolderFailure[] };
+  return body.failures;
+}
