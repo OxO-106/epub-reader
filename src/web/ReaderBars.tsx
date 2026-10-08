@@ -1,10 +1,11 @@
 import type { ComponentChildren, Ref } from "preact";
 import type { ChapterProgress } from "./chapter-progress.ts";
-import { ChevronLeft, ChevronRight, ListIcon, SearchIcon, TypeIcon } from "./ReaderIcons.tsx";
+import { ChevronLeft, ChevronRight, ListIcon, SearchIcon, TranslateIcon, TypeIcon } from "./ReaderIcons.tsx";
 import { ReadingFraction } from "./ReadingFraction.tsx";
+import { TranslationPill, type StatusView } from "./TranslationStatus.tsx";
 
-/** The panels the top bar opens. At most one is open at a time. */
-export type Panel = "contents" | "search" | "display";
+/** The panels the top bar opens. At most one is open at a time. "translation" is opened by the status pill, not by a button of its own. */
+export type Panel = "contents" | "search" | "display" | "translation";
 
 /**
  * One button of the top bar: an icon and a label. Where the bar is narrow the label is hidden from the eye only, so
@@ -21,7 +22,7 @@ export function ToolButton({
 }: {
   label: string;
   icon: ComponentChildren;
-  panel: Panel;
+  panel: Exclude<Panel, "translation">;
   buttonRef: Ref<HTMLButtonElement>;
   open: boolean;
   disabled?: boolean;
@@ -43,6 +44,15 @@ export function ToolButton({
   );
 }
 
+/** The Translate toggle and its status pill; passed only for an English Book. */
+export interface TranslateControl {
+  on: boolean;
+  onToggle(): void;
+  buttonRef: Ref<HTMLButtonElement>;
+  /** What the pill shows; null while translation is off. */
+  status: StatusView | null;
+}
+
 interface TopBarProps {
   title: string;
   /** The label of the table-of-contents entry the reader is in; null when there is none. */
@@ -52,17 +62,19 @@ interface TopBarProps {
   searchReady: boolean;
   buttons: Record<Panel, Ref<HTMLButtonElement>>;
   onToggle(panel: Panel): void;
+  /** Null for a Book that is not in English: there is nothing to translate and no button. */
+  translate: TranslateControl | null;
 }
 
 /**
  * The Reader's top bar: a way back to the Library, the Book's title with the chapter under it, and the panel buttons.
  *
- * Room for translation (a later ticket) is reserved in the group of tools between Search and Display: one more
- * `bar-button` for Translate, followed by a `reader-status` (a `role="status"` span holding a `reader-status-dot` and
- * a `reader-status-text`). On a phone the status shrinks to its dot (the words stay for screen readers) and the title
- * gives up the width, so the bar never wraps; tests/e2e/phone-layouts.spec.ts checks it with both added.
+ * Between Search and Display sit the Translate toggle (an English Book only; `aria-pressed`) and, while it is on, the
+ * status pill (a `role="status"` slot holding a `reader-status` with a dot and the words; a button when it offers hints
+ * or Retry). On a phone the pill shrinks to its dot (the words stay for screen readers) and the title gives up the
+ * width, so the bar never wraps; tests/e2e/phone-layouts.spec.ts and layout.spec.ts check it.
  */
-export function ReaderTopBar({ title, chapter, open, searchReady, buttons, onToggle }: TopBarProps) {
+export function ReaderTopBar({ title, chapter, open, searchReady, buttons, onToggle, translate }: TopBarProps) {
   return (
     <header class="reader-bar reader-top">
       <a class="bar-button bar-link" href="#/">
@@ -84,7 +96,21 @@ export function ReaderTopBar({ title, chapter, open, searchReady, buttons, onTog
           disabled={!searchReady}
           onToggle={() => onToggle("search")}
         />
-        {/* Translate button and its status pill go here, between Search and Display. */}
+        {translate && (
+          <button
+            type="button"
+            ref={translate.buttonRef}
+            class="bar-button translate-button"
+            aria-pressed={translate.on}
+            onClick={translate.onToggle}
+          >
+            <TranslateIcon />
+            <span class="bar-label">Translate</span>
+          </button>
+        )}
+        {translate?.status && (
+          <TranslationPill view={translate.status} open={open === "translation"} buttonRef={buttons.translation} onToggle={() => onToggle("translation")} />
+        )}
         <ToolButton label="Display" icon={<TypeIcon />} panel="display" buttonRef={buttons.display} open={open === "display"} onToggle={() => onToggle("display")} />
       </div>
     </header>

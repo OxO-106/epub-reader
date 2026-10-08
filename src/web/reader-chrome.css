@@ -81,6 +81,13 @@
   font-weight: 600;
 }
 
+/* Translate while it is on: filled with the accent, as in the ReaderBilingual mockup. */
+.reader-screen .bar-button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
 .reader-screen .bar-button:disabled,
 .reader-screen .nav-button:disabled {
   opacity: 0.45;
@@ -145,6 +152,26 @@
   }
 
   .reader-screen .bar-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/*
+ * While the status pill is showing, its words need room: in a medium bar (up to 64rem) every button except Translate
+ * keeps just its icon, so Translate and the pill, the newest controls, stay in words. Below 48rem all of them are icons.
+ */
+@container reader (max-width: 64rem) {
+  .reader-screen .reader-top:has(.reader-status) :is(.bar-button:not(.translate-button), .bar-link) {
+    width: var(--tap);
+    padding: 0;
+  }
+
+  .reader-screen .reader-top:has(.reader-status) :is(.bar-button:not(.translate-button), .bar-link) .bar-label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -734,14 +761,44 @@
   cursor: pointer;
 }
 
-/* ---- Status of a background task in the top bar (translation, later): a pill on a wide bar, a dot on a phone ---- */
+/*
+ * ---- Translation status in the top bar: a pill on a wide bar, a dot on a phone ----
+ * The slot is a polite live region. Inside it, `.reader-status` is either a plain span or, when there is something to do
+ * (hints for "Not set up", hints and Retry for trouble), a real button 44 px high whose face is the 32 px pill, so the
+ * target is a fingertip tall while the pill stays as light as in the mockup.
+ */
+
+.reader-screen .reader-status-slot {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-end: 6px;
+}
 
 .reader-screen .reader-status {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+.reader-screen .reader-status-button {
+  height: var(--tap);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+.reader-screen .reader-status-face {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
+  box-sizing: border-box;
   height: 32px;
-  margin-inline-end: 6px;
   padding: 0 12px;
   border-radius: 16px;
   background: var(--accent-soft);
@@ -749,6 +806,21 @@
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.reader-screen .reader-status-face[data-tone="alert"] {
+  background: var(--alert-soft);
+  color: var(--danger);
+}
+
+.reader-screen .reader-status-face[data-tone="neutral"] {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  color: var(--fg);
+}
+
+.reader-screen .reader-status-button[aria-expanded="true"] .reader-status-face {
+  box-shadow: inset 0 0 0 1.5px currentColor;
 }
 
 .reader-screen .reader-status-dot {
@@ -759,10 +831,76 @@
   background: currentColor;
 }
 
+/* While the model is working the dot breathes, slowly; the words say the same for anyone who prefers no motion. */
+.reader-screen .reader-status-face[data-tone="working"] .reader-status-dot {
+  animation: status-breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes status-breathe {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-screen .reader-status-face[data-tone="working"] .reader-status-dot {
+    animation: none;
+  }
+}
+
+/* ---- Translation panel: the hints and Retry behind the pill (a popover like Display's; a sheet on a phone) ---- */
+
+.reader-screen .translation-panel {
+  gap: 12px;
+  width: min(400px, calc(100% - 40px));
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.reader-screen .translation-panel:focus {
+  outline: none;
+}
+
+.reader-screen .translation-panel h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.reader-screen .translation-panel p {
+  margin: 0;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+
+.reader-screen .translation-panel code {
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+}
+
+.reader-screen .translation-retry {
+  align-self: flex-start;
+  box-sizing: border-box;
+  min-width: 96px;
+  min-height: var(--tap);
+  padding: 0 22px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /*
  * ---- Phone (the MobileReader mockup, 390 px; the same rules serve anything narrower than 40rem) ----
  *  - the top bar is one row of 44 px icon buttons (the words stay for screen readers) and the title and chapter in the
- *    middle. It is built to hold one more button and a status dot (Translate, later) at 360 px without wrapping;
+ *    middle. It holds the Translate button and the status dot at 360 px without wrapping;
  *  - the bottom bar has large icon Previous and Next buttons, with "Chapter X of Y" stacked over the percentage;
  *  - Contents and Search are full-width sheets between the bars; Display is a bottom sheet that leaves the top of the
  *    text in view, so a change can be seen; each has its own Close button (Escape works as everywhere);
@@ -787,13 +925,25 @@
     font-size: 15px;
   }
 
-  /* The status shrinks to its dot; its words are still there for screen readers. */
-  .reader-screen .reader-status {
-    width: 10px;
-    height: 10px;
+  /*
+   * The status shrinks to its dot; its words are still there for screen readers. Where it is a button (trouble) it is
+   * a 44 px target with the dot in the middle, and the title gives up the room for it.
+   */
+  .reader-screen .reader-status-slot {
     margin: 0;
+  }
+
+  .reader-screen .reader-status-button {
+    width: var(--tap);
+  }
+
+  .reader-screen .reader-status-face,
+  .reader-screen .reader-status-face[data-tone],
+  .reader-screen .reader-status-button[aria-expanded="true"] .reader-status-face {
+    height: 10px;
     padding: 0;
     background: none;
+    box-shadow: none;
   }
 
   .reader-screen .reader-status-dot {
@@ -808,6 +958,14 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+
+  .reader-screen .reader-status-face > svg {
+    display: none;
+  }
+
+  .reader-screen .reader-top:has(.reader-status-button) .reader-heading {
+    min-width: 0;
   }
 
   .reader-screen .reader-nav {

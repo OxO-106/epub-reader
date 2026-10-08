@@ -49,6 +49,20 @@ export const CloseIcon = ({ size = 20 }: { size?: number }) => (
   </Svg>
 );
 
+/** A glyph for "A to 文": the Translate button (the path of the ReaderBilingual mockup). */
+export const TranslateIcon = () => (
+  <Svg>
+    <path d="M4 5h9M8.5 3v2M6 5c.5 3 2.5 5.5 5.5 7M12 5c-.6 3.2-3 6-7 7.5M13 21l4-10 4 10M14.5 17.5h5" />
+  </Svg>
+);
+
+/** The small arrow on a status pill that opens a panel. */
+export const ChevronDown = () => (
+  <Svg size={14} stroke={2.2}>
+    <path d="M6 9l6 6 6-6" />
+  </Svg>
+);
+
 export const TypeIcon = () => (
   <span class="type-icon" aria-hidden="true">
     Aa
