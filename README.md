@@ -57,7 +57,14 @@ $env:READER_PORT = "8080"; npm start
 
 ## Translation (optional)
 
-The Reader can show a Chinese translation under each English paragraph, produced on your own machines by a local model; nothing is sent to a cloud service. Translation is off until you point the app at a model server that speaks the OpenAI-style streaming API (`llama-server` from llama.cpp, Ollama, LM Studio, vLLM). The set-up guide for the model and the machines is a separate document; this section only lists the settings.
+The Reader can show a Chinese translation under each English paragraph, produced on your own machines by a local model; nothing is sent to a cloud service. Translation is off until you point the app at a model server that speaks the OpenAI-style streaming API (`llama-server` from llama.cpp, Ollama, LM Studio, vLLM). The full set-up guide (what to download and where it goes, the start command and its flags, checking it, troubleshooting, and running the model on a second PC with a graphics card over Tailscale) is [docs/translation-setup.md](docs/translation-setup.md). In short, on the PC that has the files unpacked in `%USERPROFILE%\translation-models` (the model is `Hy-MT2-7B-Q4_K_M.gguf`, 4.6 GB, and the runtime is llama.cpp's Vulkan build):
+
+```
+npm run translate:server                       # window 1: starts the model server on 127.0.0.1:8080, Ctrl+C stops it
+$env:READER_TRANSLATE_URL = "http://127.0.0.1:8080"; npm start        # window 2 (PowerShell)
+```
+
+The script `scripts/start-translation-server.ps1` takes `-RuntimeDir`, `-ModelPath`, `-ListenHost`, `-Port`, `-ContextSize` and `-ApiKey`, or the environment variables `READER_LLAMA_DIR`, `READER_MODEL_PATH` and `LLAMA_API_KEY`. No model or program is kept in the repository. This section lists the app's settings.
 
 | Variable                       | Default | What it is                                                                                         |
 | ------------------------------ | ------- | -------------------------------------------------------------------------------------------------- |

@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Every command in the guide has been run (or is clearly marked as untested because no GPU PC was available to the author)
-- [ ] The guide states file names, sources and sizes of what has to be downloaded and where to put it
-- [ ] A convenience script or batch file starts the model server with the right flags, outside the repository's tracked model files; no model or binary is committed
-- [ ] The guide explains the Arc driver workaround and how to read the status pill when something is wrong
+- [x] Every command in the guide has been run (or is clearly marked as untested because no GPU PC was available to the author)
+- [x] The guide states file names, sources and sizes of what has to be downloaded and where to put it
+- [x] A convenience script or batch file starts the model server with the right flags, outside the repository's tracked model files; no model or binary is committed
+- [x] The guide explains the Arc driver workaround and how to read the status pill when something is wrong
