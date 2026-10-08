@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] Default start accepts connections from this PC only; the option adds the Tailscale address
-- [ ] No login is required on a permitted address
-- [ ] At 900 px the Library and the Reader have no horizontal scroll and no clipped controls
-- [ ] All interactions work without hover
-- [ ] Stopping the server shows a clear unreachable message in the page
-- [ ] A short README documents start, folders, and the Tailscale option
-- [ ] Playwright checks the layout at 900 px
+- [x] Default start accepts connections from this PC only; the option adds the Tailscale address
+- [x] No login is required on a permitted address
+- [x] At 900 px the Library and the Reader have no horizontal scroll and no clipped controls
+- [x] All interactions work without hover
+- [x] Stopping the server shows a clear unreachable message in the page
+- [x] A short README documents start, folders, and the Tailscale option
+- [x] Playwright checks the layout at 900 px

@@ -152,6 +152,7 @@ button {
 
 .reader-bar {
   display: flex;
+  flex-wrap: wrap; /* more buttons than fit move to a second row instead of squeezing or overflowing */
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
@@ -180,7 +181,7 @@ button {
 }
 
 .reader-title {
-  flex: 1;
+  flex: 1 1 8rem; /* below this width the title drops to its own row, so it is never squeezed away */
   min-width: 0;
   margin: 0;
   font-size: 1.1rem;
