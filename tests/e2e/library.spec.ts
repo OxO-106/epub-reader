@@ -13,7 +13,7 @@ test("the Library page loads and shows an empty state", async ({ page }) => {
 });
 
 test("tells the user when the server cannot be reached", async ({ page }) => {
-  await page.route("**/api/books", (route) => route.abort());
+  await page.route("**/api/**", (route) => route.abort()); // the server is gone: every request fails
 
   await page.goto("/");
 
