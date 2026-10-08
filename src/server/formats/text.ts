@@ -2,6 +2,7 @@ import { createReadStream, createWriteStream } from "node:fs";
 import { open, rename, rm } from "node:fs/promises";
 import { pipeline } from "node:stream/promises";
 import { isChapterHeading } from "../../shared/text-source.ts";
+import { bookExtensions } from "../../shared/book-extensions.ts";
 import { CorruptBookError, type BookFormat, type ExtractedMetadata } from "./types.ts";
 
 /** Only the start of the stored file is read to find the title. */
@@ -117,7 +118,8 @@ async function extract(path: string): Promise<ExtractedMetadata> {
 export const text: BookFormat = {
   id: "text",
   label: "plain text",
-  extensions: [".txt"],
+  extensions: [...bookExtensions.text],
+  mimeType: "text/plain; charset=utf-8",
   normalize,
   extract,
 };

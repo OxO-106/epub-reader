@@ -18,6 +18,8 @@ export interface BookFormat {
   label: string;
   /** Lower-case file extensions with the dot, e.g. [".epub"]. */
   extensions: string[];
+  /** Content type the stored file is served with, e.g. "application/epub+zip". */
+  mimeType: string;
   /**
    * Optional. Rewrites the received file at `path` into the form that is stored, before the Book's identity is
    * computed, so the same content in different encodings is one Book. Returns whether it changed the file.

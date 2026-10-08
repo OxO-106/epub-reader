@@ -156,7 +156,7 @@ export function watchLibraryFolder(options: LibraryFolderOptions): LibraryFolder
         const result = await options.importBook({
           filename: fileName,
           content: createReadStream(fullPath(path)),
-          declined: (hash) => deleted.has(hash),
+          isDeclined: (hash) => deleted.has(hash),
         });
         if (result.status === "rejected") {
           failed.set(path, { path, fileName, code: result.code, message: result.message, at: Date.now() });

@@ -1,6 +1,7 @@
 import { open } from "node:fs/promises";
 import MarkdownIt, { type Token } from "markdown-it";
 import { stripFrontMatter } from "../../shared/markdown-source.ts";
+import { bookExtensions } from "../../shared/book-extensions.ts";
 import { CorruptBookError, type BookFormat, type ExtractedMetadata } from "./types.ts";
 
 /** Only the start of the file is read to find the title; a heading further in than this is not "first". */
@@ -54,6 +55,7 @@ async function extract(path: string): Promise<ExtractedMetadata> {
 export const markdown: BookFormat = {
   id: "markdown",
   label: "Markdown",
-  extensions: [".md", ".markdown"],
+  extensions: [...bookExtensions.markdown],
+  mimeType: "text/markdown; charset=utf-8",
   extract,
 };

@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import { XMLParser } from "fast-xml-parser";
+import { bookExtensions } from "../../shared/book-extensions.ts";
 import { CorruptBookError, type BookFormat, type ExtractedMetadata } from "./types.ts";
 import { openZip, type ZipReader } from "./zip.ts";
 
@@ -99,6 +100,7 @@ async function extract(path: string): Promise<ExtractedMetadata> {
 export const epub: BookFormat = {
   id: "epub",
   label: "EPUB",
-  extensions: [".epub"],
+  extensions: [...bookExtensions.epub],
+  mimeType: "application/epub+zip",
   extract,
 };

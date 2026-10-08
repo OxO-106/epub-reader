@@ -5,7 +5,7 @@ import { basename, extname, join } from "node:path";
 import { Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { BookRow, Db } from "./db.ts";
-import { CorruptBookError, detectFormat, formats } from "./formats/index.ts";
+import { CorruptBookError, detectFormat, formats, type BookFormat } from "./formats/index.ts";
 import { withBookLock } from "./book-lock.ts";
 import type { Storage } from "./storage.ts";
 
@@ -27,25 +27,32 @@ export interface ImportInput {
    * (`skipped`). The watched folder uses it so that a Book deleted from the Library is not re-added from its
    * unchanged original. Uploads never pass it: choosing a file is always a request to add it.
    */
-  declined?: (hash: string) => boolean;
+  isDeclined?: (hash: string) => boolean;
 }
 
 /** Why a file was not added. */
 export type RejectionCode = "unsupported" | "too-large" | "corrupt";
 
-export type ImportResult =
+export type ImportOutcome =
   | { status: "added"; book: BookRow }
   /** The same content is already in the Library; nothing changed. */
   | { status: "duplicate"; book: BookRow }
-  /** The caller declined this content (see `ImportInput.declined`); nothing changed. */
-  | { status: "skipped"; hash: string }
   | { status: "rejected"; code: RejectionCode; message: string };
+
+export type ImportResult =
+  | ImportOutcome
+  /** The caller declined this content (see `ImportInput.isDeclined`); nothing changed. */
+  | { status: "skipped"; hash: string };
 
 /**
  * The one way a Book enters the Library: detect the format, enforce the size cap, hash the content,
- * skip duplicates, extract metadata and store the Book. Every source of files (upload today, the
- * watched folder later) calls this. The content is streamed to disk, never held whole in memory.
+ * skip duplicates, extract metadata and store the Book. Every source of files (uploads and the watched
+ * folder) calls this. The content is streamed to disk, never held whole in memory.
+ *
+ * Without `isDeclined` a file is never `skipped`, which the first signature says in the type.
  */
+export function importBook(context: ImportContext, input: ImportInput & { isDeclined?: undefined }): Promise<ImportOutcome>;
+export function importBook(context: ImportContext, input: ImportInput): Promise<ImportResult>;
 export async function importBook({ db, storage }: ImportContext, input: ImportInput): Promise<ImportResult> {
   const { filename } = input;
   const quoted = `"${basename(filename)}"`;
@@ -61,7 +68,7 @@ export async function importBook({ db, storage }: ImportContext, input: ImportIn
   try {
     const received = await receive(input.content, temp);
     if (received.tooLarge) {
-      return rejected("too-large", `${quoted} is larger than the 200 MB limit, so it was not added.`);
+      return rejected("too-large", `${quoted} is larger than the ${maxBookBytes / (1024 * 1024)} MB limit, so it was not added.`);
     }
     let hash = received.hash;
 
@@ -71,7 +78,7 @@ export async function importBook({ db, storage }: ImportContext, input: ImportIn
       if (await format.normalize?.(temp)) hash = await hashFile(temp);
     } catch (error) {
       if (!(error instanceof CorruptBookError)) throw error;
-      return rejected("corrupt", `${quoted} is not a valid ${format.label} file, or it is damaged, so it was not added.`);
+      return corrupt(quoted, format);
     }
 
     // Everything from the duplicate check to the database insert happens one import at a time per Book: two imports of
@@ -80,14 +87,14 @@ export async function importBook({ db, storage }: ImportContext, input: ImportIn
     return await withBookLock(hash, async (): Promise<ImportResult> => {
       const existing = db.getBook(hash);
       if (existing) return { status: "duplicate", book: existing };
-      if (input.declined?.(hash)) return { status: "skipped", hash };
+      if (input.isDeclined?.(hash)) return { status: "skipped", hash };
 
       let metadata;
       try {
         metadata = await format.extract(temp);
       } catch (error) {
         if (!(error instanceof CorruptBookError)) throw error;
-        return rejected("corrupt", `${quoted} is not a valid ${format.label} file, or it is damaged, so it was not added.`);
+        return corrupt(quoted, format);
       }
 
       const cover = metadata.cover ? `${hash}${metadata.cover.extension}` : null;
@@ -117,8 +124,12 @@ async function hashFile(path: string): Promise<string> {
   return hash.digest("hex");
 }
 
-function rejected(code: RejectionCode, message: string): ImportResult {
+function rejected(code: RejectionCode, message: string): ImportOutcome {
   return { status: "rejected", code, message };
+}
+
+function corrupt(quotedName: string, format: BookFormat): ImportOutcome {
+  return rejected("corrupt", `${quotedName} is not a valid ${format.label} file, or it is damaged, so it was not added.`);
 }
 
 function fallbackTitle(filename: string): string {

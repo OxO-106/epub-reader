@@ -1,7 +1,7 @@
 import { createReadStream, statSync } from "node:fs";
 import { extname } from "node:path";
 import { Readable } from "node:stream";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import type { BookRow, Db } from "./db.ts";
 import { deleteBook } from "./delete.ts";
 import { formatById } from "./formats/index.ts";
@@ -41,13 +41,6 @@ const rejectionStatus: Record<RejectionCode, 413 | 415 | 422> = {
   corrupt: 422,
 };
 
-/** Content type of each Book format's stored file. */
-const bookTypes: Record<string, string> = {
-  epub: "application/epub+zip",
-  markdown: "text/markdown; charset=utf-8",
-  text: "text/plain; charset=utf-8",
-};
-
 const coverTypes: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".png": "image/png",
@@ -58,9 +51,14 @@ const coverTypes: Record<string, string> = {
 /** A Book's id is its SHA-256 content hash. */
 const isBookId = (id: string) => /^[0-9a-f]{64}$/.test(id);
 
+const notFound = (c: Context) => c.json({ error: "Not found" }, 404);
+
 export function createApp({ db, storage, libraryFolder, webDir }: AppContext): Hono {
   const app = new Hono();
   app.use(securityHeaders);
+
+  /** The Book with this id, or undefined when the id is not a content hash or no such Book exists. */
+  const findBook = (id: string) => (isBookId(id) ? db.getBook(id) : undefined);
 
   // `?q=` narrows the list by title and author.
   app.get("/api/books", (c) => c.json({ books: searchBooks(db.listBooks(), c.req.query("q") ?? "").map(toSummary) }));
@@ -72,6 +70,7 @@ export function createApp({ db, storage, libraryFolder, webDir }: AppContext): H
     if (!filename) return c.json({ error: "Missing the file name (?name=...)." }, 400);
     if (!c.req.raw.body) return c.json({ error: "The request has no file." }, 400);
 
+    // No `isDeclined` here: choosing a file is always a request to add it, so the result is never "skipped".
     const result = await importBook({ db, storage }, { filename, content: c.req.raw.body });
     switch (result.status) {
       case "added":
@@ -80,15 +79,12 @@ export function createApp({ db, storage, libraryFolder, webDir }: AppContext): H
         return c.json({ status: "duplicate", book: toSummary(result.book) }, 200);
       case "rejected":
         return c.json({ status: "rejected", code: result.code, error: result.message }, rejectionStatus[result.code]);
-      case "skipped":
-        throw new Error("An upload is never declined."); // only the watched folder passes `declined`
     }
   });
 
   app.get("/api/books/:id/cover", (c) => {
-    const id = c.req.param("id");
-    const cover = isBookId(id) ? db.getBook(id)?.cover : null;
-    if (!cover) return c.json({ error: "Not found" }, 404);
+    const cover = findBook(c.req.param("id"))?.cover;
+    if (!cover) return notFound(c);
     const path = storage.coverFile(cover);
     return new Response(Readable.toWeb(createReadStream(path)) as ReadableStream, {
       headers: {
@@ -102,17 +98,15 @@ export function createApp({ db, storage, libraryFolder, webDir }: AppContext): H
 
   // One Book's summary, so the Reader knows its format and title before it fetches the file.
   app.get("/api/books/:id", (c) => {
-    const id = c.req.param("id");
-    const book = isBookId(id) ? db.getBook(id) : undefined;
-    return book ? c.json(toSummary(book)) : c.json({ error: "Not found" }, 404);
+    const book = findBook(c.req.param("id"));
+    return book ? c.json(toSummary(book)) : notFound(c);
   });
 
   // The Book file as stored, streamed. A Book's id is its content hash, so the bytes behind a URL never change.
   app.get("/api/books/:id/file", (c) => {
-    const id = c.req.param("id");
-    const book = isBookId(id) ? db.getBook(id) : undefined;
+    const book = findBook(c.req.param("id"));
     const format = book && formatById(book.format);
-    if (!book || !format) return c.json({ error: "Not found" }, 404);
+    if (!book || !format) return notFound(c);
 
     const etag = `"${book.hash}"`;
     const headers = { etag, "cache-control": "public, max-age=31536000, immutable" };
@@ -122,7 +116,7 @@ export function createApp({ db, storage, libraryFolder, webDir }: AppContext): H
     return new Response(Readable.toWeb(createReadStream(path)) as ReadableStream, {
       headers: {
         ...headers,
-        "content-type": bookTypes[book.format] ?? "application/octet-stream",
+        "content-type": format.mimeType,
         "content-length": String(statSync(path).size),
       },
     });
@@ -131,7 +125,7 @@ export function createApp({ db, storage, libraryFolder, webDir }: AppContext): H
   // Deletes the app's copy of a Book. Never touches the original file it was imported from.
   app.delete("/api/books/:id", async (c) => {
     const id = c.req.param("id");
-    if (!isBookId(id) || !(await deleteBook({ db, storage, onDeleted: libraryFolder.bookDeleted }, id))) return c.json({ error: "Not found" }, 404);
+    if (!isBookId(id) || !(await deleteBook({ db, storage, onDeleted: libraryFolder.bookDeleted }, id))) return notFound(c);
     return c.body(null, 204);
   });
 
@@ -139,17 +133,17 @@ export function createApp({ db, storage, libraryFolder, webDir }: AppContext): H
   // `position` is an opaque CFI, `fraction` (0 to 1) how far through the Book it is, for display.
   app.get("/api/books/:id/position", (c) => {
     const id = c.req.param("id");
-    if (!isBookId(id) || !db.getBook(id)) return c.json({ error: "Not found" }, 404);
+    if (!findBook(id)) return notFound(c);
     const saved = db.getReadingPosition(id);
     return c.json({ position: saved?.position ?? null, fraction: saved?.fraction ?? null });
   });
 
   app.put("/api/books/:id/position", async (c) => {
     const id = c.req.param("id");
-    if (!isBookId(id) || !db.getBook(id)) return c.json({ error: "Not found" }, 404);
+    if (!findBook(id)) return notFound(c);
     const parsed = parseReadingPosition(await c.req.text());
     if (!parsed.ok) return c.json({ error: parsed.error }, parsed.status);
-    if (!db.saveReadingPosition(id, parsed.value)) return c.json({ error: "Not found" }, 404);
+    if (!db.saveReadingPosition(id, parsed.value)) return notFound(c);
     return c.body(null, 204);
   });
 

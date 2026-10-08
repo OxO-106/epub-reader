@@ -90,8 +90,8 @@ export async function getBookFile(id: string): Promise<Blob> {
   return response.blob();
 }
 
-/** File types the file picker offers. The server decides what it accepts; add formats here as they arrive. */
-export const importableExtensions = [".epub", ".md", ".markdown", ".txt"];
+/** File types the file picker offers: the same list the server's formats declare (see src/shared/book-extensions.ts). */
+export { importableExtensions } from "../shared/book-extensions.ts";
 
 export interface ImportOutcome {
   fileName: string;
