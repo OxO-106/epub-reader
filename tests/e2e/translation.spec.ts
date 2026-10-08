@@ -4,19 +4,20 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 import {
   answerWithLabels,
+  asked,
   bookFrame,
   labelOf,
+  passageOf,
   openBook,
   openShadowRoots,
-  passageOf,
   setTranslation,
   shownBlocks,
-  topOf,
-  trackPosition,
+  topParagraph,
   translatedParagraphs,
-  translationStatus,
+  trackPosition,
   untilReady,
   useFlow,
+  visibleParagraphs,
   watchStillness,
   wheel,
 } from "./translation-helpers.ts";
@@ -24,32 +25,9 @@ import {
 test.use({ withModel: true });
 test.setTimeout(60_000);
 
-/** The numbers of the paragraphs of long.epub that are at least partly on screen (scrolling mode). */
-async function visibleParagraphs(page: Page): Promise<number[]> {
-  const frame = await bookFrame(page);
-  return frame.evaluate(() => {
-    const view = window.parent.document.querySelector(".reader-view")!.getBoundingClientRect();
-    const origin = window.frameElement!.getBoundingClientRect();
-    const found: number[] = [];
-    for (const p of document.querySelectorAll("p")) {
-      const box = p.getBoundingClientRect();
-      const top = origin.top + box.top;
-      if (top < view.bottom && top + box.height > view.top) found.push(Number(/paragraph (\d+)/.exec(p.textContent ?? "")?.[1]));
-    }
-    return found;
-  });
-}
-
-/** The first paragraph on screen (0 while the page is not there yet). */
-const topParagraph = (page: Page) => visibleParagraphs(page).then((list) => list[0] ?? 0, () => 0);
-
-/** The paragraph numbers the model has been asked about, in order. */
-const asked = (model: { chatRequests(): Array<{ user: string }> }) =>
-  model.chatRequests().map((request) => labelOf(passageOf(request.user))?.paragraph ?? -1);
-
 /** "epubcfi(/6/2!/4,/42/1:92,/56/1:92)" is a range; its start is the path with the first of the two offsets. */
 const startOf = (cfi: string): [string, number] => {
-  const [parent, start] = cfi.replace(/^epubcfi(|)$/g, "").split(",");
+  const [parent, start] = cfi.replace(/^epubcfi\(|\)$/g, "").split(",");
   const [node, offset] = `${parent}${start ?? ""}`.split(":");
   return [node!, Number(offset ?? 0)];
 };

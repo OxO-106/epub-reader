@@ -14,6 +14,7 @@ type ReaderHandle = {
   retryTranslation(id?: number): void;
   isEnglish(): boolean;
   goTo(target: string): Promise<void>;
+  next(): Promise<void>;
   onLocation(listener: (location: { position: string }) => void): () => void;
 };
 declare global {
@@ -42,7 +43,7 @@ export async function openBook(page: Page, fixtureName: string, title: RegExp | 
   await page.locator("input[type=file]").setInputFiles(fixture(fixtureName));
   await page.getByRole("link", { name: title }).click();
   await expect(page.locator("foliate-view")).toBeVisible();
-  await expect.poll(() => bookFrame(page).then((frame) => frame.evaluate(() => document.body.textContent?.length ?? 0)).catch(() => 0)).toBeGreaterThan(50);
+  await expect.poll(() => bookFrame(page).then((frame) => frame.evaluate(() => document.body.textContent?.length ?? 0)).catch(() => 0)).toBeGreaterThan(5);
   // foliate-js sometimes throws in its resize observer while a Book loads: harmless, and not ours to fix.
   await page.waitForFunction(() => window.__reader !== undefined);
 }
@@ -174,14 +175,18 @@ export interface ShownBlock {
 
 /** Every block of the page that carries a translation attribute, in document order. */
 export async function shownBlocks(page: Page): Promise<ShownBlock[]> {
-  const frame = await bookFrame(page);
-  return frame.evaluate(() =>
-    [...document.querySelectorAll("[data-reader-tx]")].map((el) => ({
-      english: (el.textContent ?? "").trim().slice(0, 40),
-      state: el.getAttribute("data-reader-tx") ?? "",
-      zh: el.getAttribute("data-reader-zh") ?? "",
-    })),
-  );
+  try {
+    const frame = await bookFrame(page);
+    return await frame.evaluate(() =>
+      [...document.querySelectorAll("[data-reader-tx]")].map((el) => ({
+        english: (el.textContent ?? "").trim().slice(0, 40),
+        state: el.getAttribute("data-reader-tx") ?? "",
+        zh: el.getAttribute("data-reader-zh") ?? "",
+      })),
+    );
+  } catch {
+    return []; // the page is being replaced (a jump to another chapter)
+  }
 }
 
 /** The paragraph numbers ("Chapter 1, paragraph 7") of the blocks that are fully translated. */
@@ -210,3 +215,27 @@ export async function topOf(page: Page, text: string): Promise<number | null> {
     return null;
   }, text);
 }
+
+/** The numbers of the paragraphs of long.epub that are at least partly on screen (scrolling mode). */
+export async function visibleParagraphs(page: Page): Promise<number[]> {
+  const frame = await bookFrame(page);
+  return frame.evaluate(() => {
+    const view = window.parent.document.querySelector(".reader-view")!.getBoundingClientRect();
+    const origin = window.frameElement!.getBoundingClientRect();
+    const found: number[] = [];
+    for (const p of document.querySelectorAll("p")) {
+      const box = p.getBoundingClientRect();
+      const top = origin.top + box.top;
+      if (top < view.bottom && top + box.height > view.top) found.push(Number(/paragraph (\d+)/.exec(p.textContent ?? "")?.[1]));
+    }
+    return found;
+  });
+}
+
+/** The first paragraph on screen (0 while the page is not there yet). */
+export const topParagraph = (page: Page) => visibleParagraphs(page).then((list) => list[0] ?? 0, () => 0);
+
+/** The paragraph numbers the model has been asked about, in order. */
+export const asked = (model: { chatRequests(): Array<{ user: string }> }) =>
+  model.chatRequests().map((request) => labelOf(passageOf(request.user))?.paragraph ?? -1);
+

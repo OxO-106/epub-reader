@@ -147,14 +147,17 @@ export function createTranslationEngine(options: EngineOptions = {}): Translatio
     } else element.removeAttribute(textAttribute);
   }
 
-  /** The first block that is not entirely above the visible area: a fixed point to keep still while others change. */
+  /**
+   * The first block that starts on screen: a fixed point to keep still while others change. A block cut off at the top
+   * edge is not used, because a Translation arriving under it would push everything after it down.
+   */
   function anchorElement(): Element | null {
     if (!current) return null;
     const view = current.surface.viewport();
     if (!view) return null;
     for (const entry of current.entries) {
       const span = spanOf(entry.block.element);
-      if (span && span.end > view.start) return entry.block.element;
+      if (span && span.start >= view.start - 0.5) return entry.block.element;
     }
     return null;
   }
