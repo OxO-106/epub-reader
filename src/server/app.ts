@@ -80,6 +80,8 @@ export function createApp({ db, storage, libraryFolder, webDir }: AppContext): H
         return c.json({ status: "duplicate", book: toSummary(result.book) }, 200);
       case "rejected":
         return c.json({ status: "rejected", code: result.code, error: result.message }, rejectionStatus[result.code]);
+      case "skipped":
+        throw new Error("An upload is never declined."); // only the watched folder passes `declined`
     }
   });
 
@@ -129,7 +131,7 @@ export function createApp({ db, storage, libraryFolder, webDir }: AppContext): H
   // Deletes the app's copy of a Book. Never touches the original file it was imported from.
   app.delete("/api/books/:id", async (c) => {
     const id = c.req.param("id");
-    if (!isBookId(id) || !(await deleteBook({ db, storage }, id))) return c.json({ error: "Not found" }, 404);
+    if (!isBookId(id) || !(await deleteBook({ db, storage, onDeleted: libraryFolder.bookDeleted }, id))) return c.json({ error: "Not found" }, 404);
     return c.body(null, 204);
   });
 

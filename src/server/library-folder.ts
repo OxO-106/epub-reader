@@ -18,6 +18,11 @@ export interface LibraryFolderFailure {
 export interface LibraryFolder {
   /** Files that failed to import and have not changed or disappeared since. */
   failures(): LibraryFolderFailure[];
+  /**
+   * Tells the folder that the Book with this content hash was deleted from the Library. Until a file with that
+   * content changes (or the server restarts), the folder does not add the content again.
+   */
+  bookDeleted(hash: string): void;
   /** Stops watching and waits for an import in progress to finish. */
   close(): Promise<void>;
 }
@@ -53,6 +58,12 @@ function isIgnored(path: string): boolean {
  * modification time are unchanged for a whole `settleMs`, so a half-copied file is never imported.
  * A failed file is not retried until it changes; it is listed in `failures()` until it does, or
  * disappears.
+ *
+ * The folder is the source of truth, but within one server run a Book deleted from the Library stays deleted
+ * while its original is unchanged: the folder remembers every version it has handled (even one whose Book was
+ * deleted afterwards) and the content hashes of deleted Books, including files it had not looked at yet when
+ * the Book was deleted. Replacing or touching the file adds the Book again. The memory is not kept across a
+ * restart, so then a Book whose original is still in the folder comes back.
  */
 export function watchLibraryFolder(options: LibraryFolderOptions): LibraryFolder {
   const { dir, settleMs } = options;
@@ -61,6 +72,10 @@ export function watchLibraryFolder(options: LibraryFolderOptions): LibraryFolder
   /** Files waiting to settle, with the version seen at the previous check (null: not checked yet). */
   const pending = new Map<string, string | null>();
   const failed = new Map<string, LibraryFolderFailure>();
+  /** The content hash each handled file had, as far as the import said (not for rejected files). */
+  const hashes = new Map<string, string>();
+  /** Content of Books deleted during this run, which must not be added again from an unchanged original. */
+  const deleted = new Set<string>();
   const ready: Array<{ path: string; version: string }> = [];
   let importing: Promise<void> | null = null;
   let watcher: FSWatcher | null = null;
@@ -117,6 +132,7 @@ export function watchLibraryFolder(options: LibraryFolderOptions): LibraryFolder
     pending.delete(path);
     done.delete(path);
     failed.delete(path);
+    hashes.delete(path);
   }
 
   /** Imports settled files one at a time. */
@@ -132,11 +148,23 @@ export function watchLibraryFolder(options: LibraryFolderOptions): LibraryFolder
     for (let next = ready.shift(); next && !closed; next = ready.shift()) {
       const { path, version } = next;
       const fileName = basename(path);
+      // A new version of a file that was handled before is a change, even if the content is the same: it may add
+      // a Book that was deleted.
+      const before = hashes.get(path);
+      if (done.has(path) && before) deleted.delete(before);
       try {
-        const result = await options.importBook({ filename: fileName, content: createReadStream(fullPath(path)) });
+        const result = await options.importBook({
+          filename: fileName,
+          content: createReadStream(fullPath(path)),
+          declined: (hash) => deleted.has(hash),
+        });
         if (result.status === "rejected") {
           failed.set(path, { path, fileName, code: result.code, message: result.message, at: Date.now() });
-        } else failed.delete(path);
+          hashes.delete(path);
+        } else {
+          failed.delete(path);
+          hashes.set(path, result.status === "skipped" ? result.hash : result.book.hash);
+        }
         done.set(path, version);
       } catch (error) {
         // Not marked done, so the next rescan tries again (the file may just have been locked).
@@ -200,6 +228,9 @@ export function watchLibraryFolder(options: LibraryFolderOptions): LibraryFolder
 
   return {
     failures: () => [...failed.values()].sort((a, b) => a.at - b.at),
+    bookDeleted: (hash) => {
+      deleted.add(hash);
+    },
     async close() {
       closed = true;
       clearInterval(rescanTimer);

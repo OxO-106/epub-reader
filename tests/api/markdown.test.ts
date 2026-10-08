@@ -1,7 +1,7 @@
 import { copyFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { fixturePath, startTestServer, uploadBook, uploadFixture, type TestServer } from "./helpers.ts";
+import { afterEach, describe, expect, it } from "vitest";
+import { eventually, fastLibraryFolder, fixturePath, startTestServer, uploadBook, uploadFixture, type TestServer } from "./helpers.ts";
 
 // Seam: the server's HTTP API. Markdown is rendered in the browser (see tests/e2e/markdown.spec.ts); the
 // server's job is to accept the file, name the Book and keep the original bytes.
@@ -143,21 +143,21 @@ describe("a Markdown Book's file", () => {
 
 describe("a Markdown file copied into the watched library folder", () => {
   it("appears in the Library like an uploaded one", async () => {
-    server = await startTestServer({ librarySettleMs: 150, libraryRescanMs: 1000 });
+    server = await startTestServer(fastLibraryFolder);
 
     await copyFile(fixturePath("chinese.md"), join(server.libraryDir, "notes from a friend.md"));
 
-    await vi.waitFor(async () => expect(await books(server!)).toMatchObject([{ title: "红楼梦读书笔记", format: "markdown" }]));
+    await eventually(async () => expect(await books(server!)).toMatchObject([{ title: "红楼梦读书笔记", format: "markdown" }]));
   });
 
   it("is a duplicate of the same file that was uploaded", async () => {
-    server = await startTestServer({ librarySettleMs: 150, libraryRescanMs: 1000 });
+    server = await startTestServer(fastLibraryFolder);
     await uploadFixture(server, "notes.md");
 
     await copyFile(fixturePath("notes.md"), join(server.libraryDir, "notes again.md"));
     await copyFile(fixturePath("no-heading.md"), join(server.libraryDir, "no-heading.md"));
 
-    await vi.waitFor(async () => expect(await books(server!)).toHaveLength(2));
+    await eventually(async () => expect(await books(server!)).toHaveLength(2));
     await new Promise((resolve) => setTimeout(resolve, 600));
     expect((await books(server)).map((b) => b.title).sort()).toEqual(["Field Notes", "no-heading"]);
   });

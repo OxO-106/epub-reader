@@ -19,13 +19,21 @@ import type { Storage } from "./storage.ts";
  * The database goes first: if the process dies in between, the Book is already gone from the Library
  * and a stray file is merely wasted space, whereas the other order could leave a listed Book with no file.
  *
+ * `onDeleted` tells the watched library folder which content was deleted, so it does not re-add the Book from
+ * its unchanged original while the server runs.
+ *
  * Returns false when there is no such Book.
  */
-export async function deleteBook({ db, storage }: { db: Db; storage: Storage }, hash: string): Promise<boolean> {
+export async function deleteBook(
+  { db, storage, onDeleted }: { db: Db; storage: Storage; onDeleted?: (hash: string) => void },
+  hash: string,
+): Promise<boolean> {
   // Not interleaved with an import of the same content (see `withBookLock`).
   return withBookLock(hash, async () => {
     const book = db.getBook(hash);
     if (!book || !db.deleteBook(hash)) return false;
+    // Still inside the lock: no import of this content can run between the deletion and this notice.
+    onDeleted?.(hash);
     await removeStoredFiles(storage, book);
     return true;
   });

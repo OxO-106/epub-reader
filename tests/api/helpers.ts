@@ -3,6 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { vi } from "vitest";
 import { startServer, type RunningServer, type ServerOptions } from "../../src/server/server.ts";
 
 export interface TestServer extends RunningServer {
@@ -44,4 +45,18 @@ export async function startTestServer(options: ServerOptions = {}): Promise<Test
       await rm(root, { recursive: true, force: true });
     },
   };
+}
+
+/** Watched-folder timings for tests, so they need not wait for the production ones (1 s to settle, 60 s between rescans). */
+export const fastLibraryFolder = { librarySettleMs: 150, libraryRescanMs: 300 };
+
+/**
+ * Retries `assertion` until it holds, for something the watched folder does in the background. The longest the folder
+ * needs, when the operating system's change event is missed, is one rescan plus two settle periods (about 0.6 s with
+ * `fastLibraryFolder`); the deadline is eight times that, so a busy PC (other test files, other programs) still
+ * passes, and a folder that really does nothing still fails within the test timeout.
+ */
+export function eventually<T>(assertion: () => T | Promise<T>): Promise<T> {
+  const worstCase = fastLibraryFolder.libraryRescanMs + 2 * fastLibraryFolder.librarySettleMs;
+  return vi.waitFor(assertion, { timeout: 8 * worstCase, interval: 50 });
 }

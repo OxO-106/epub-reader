@@ -1,7 +1,7 @@
 import { copyFile, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { fixturePath, startTestServer, uploadBook, uploadFixture, type TestServer } from "./helpers.ts";
+import { afterEach, describe, expect, it } from "vitest";
+import { eventually, fastLibraryFolder, fixturePath, startTestServer, uploadBook, uploadFixture, type TestServer } from "./helpers.ts";
 
 // Seam: the server's HTTP API. Plain text arrives in UTF-8 or GBK; whatever it arrives in, the Library holds
 // and serves UTF-8, so the browser never has to guess an encoding. The text is shown in the browser (see
@@ -189,23 +189,23 @@ describe("duplicates", () => {
 
 describe("a text file copied into the watched library folder", () => {
   it("appears in the Library, decoded, like an uploaded one", async () => {
-    server = await startTestServer({ librarySettleMs: 150, libraryRescanMs: 1000 });
+    server = await startTestServer(fastLibraryFolder);
 
     await copyFile(fixturePath("chinese-gbk.txt"), join(server.libraryDir, "old novel.txt"));
 
-    await vi.waitFor(async () => expect(await books(server!)).toMatchObject([{ title: "红楼梦（节选）", format: "text" }]));
+    await eventually(async () => expect(await books(server!)).toMatchObject([{ title: "红楼梦（节选）", format: "text" }]));
     const [book] = await books(server);
     expect((await fileOf(server, book!.id)).equals(await readFile(fixturePath("chinese-utf8.txt")))).toBe(true);
   });
 
   it("is a duplicate of the same text that was uploaded in another encoding", async () => {
-    server = await startTestServer({ librarySettleMs: 150, libraryRescanMs: 1000 });
+    server = await startTestServer(fastLibraryFolder);
     await uploadFixture(server, "chinese-utf8.txt");
 
     await copyFile(fixturePath("chinese-gbk.txt"), join(server.libraryDir, "gbk copy.txt"));
     await copyFile(fixturePath("latin-long.txt"), join(server.libraryDir, "latin.txt"));
 
-    await vi.waitFor(async () => expect(await books(server!)).toHaveLength(2));
+    await eventually(async () => expect(await books(server!)).toHaveLength(2));
     await new Promise((resolve) => setTimeout(resolve, 600));
     expect((await books(server)).map((b) => b.title).sort()).toEqual(["The Lamplighter", "红楼梦（节选）"]);
   });

@@ -22,6 +22,12 @@ export interface ImportInput {
   filename: string;
   /** The file's bytes. A Node stream, a web stream and an array of chunks all work. */
   content: AsyncIterable<Uint8Array>;
+  /**
+   * Asked with the content hash once it is known and the Library does not have it: true leaves the file out
+   * (`skipped`). The watched folder uses it so that a Book deleted from the Library is not re-added from its
+   * unchanged original. Uploads never pass it: choosing a file is always a request to add it.
+   */
+  declined?: (hash: string) => boolean;
 }
 
 /** Why a file was not added. */
@@ -31,6 +37,8 @@ export type ImportResult =
   | { status: "added"; book: BookRow }
   /** The same content is already in the Library; nothing changed. */
   | { status: "duplicate"; book: BookRow }
+  /** The caller declined this content (see `ImportInput.declined`); nothing changed. */
+  | { status: "skipped"; hash: string }
   | { status: "rejected"; code: RejectionCode; message: string };
 
 /**
@@ -72,6 +80,7 @@ export async function importBook({ db, storage }: ImportContext, input: ImportIn
     return await withBookLock(hash, async (): Promise<ImportResult> => {
       const existing = db.getBook(hash);
       if (existing) return { status: "duplicate", book: existing };
+      if (input.declined?.(hash)) return { status: "skipped", hash };
 
       let metadata;
       try {
