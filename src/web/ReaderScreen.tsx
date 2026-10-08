@@ -3,6 +3,7 @@ import { getBookFile } from "./api.ts";
 import { applyTheme, loadDisplay, saveDisplay, type DisplaySettings } from "./display-settings.ts";
 import { DisplaySettingsPanel } from "./DisplaySettingsPanel.tsx";
 import { createReader, type Reader, type TocEntry } from "./reader/reader.ts";
+import { SearchPanel } from "./SearchPanel.tsx";
 
 type State =
   | { kind: "loading" }
@@ -17,6 +18,11 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const [display, setDisplay] = useState(loadDisplay);
   const [displayOpen, setDisplayOpen] = useState(false);
   const displayNow = useRef(display);
+  const [searchOpen, setSearchOpen] = useState(false);
+  // The contents and the search panel share one place beside (or over) the text, so only one is open at a time.
+  useEffect(() => {
+    if (tocOpen) setSearchOpen(false);
+  }, [tocOpen]);
   const viewport = useRef<HTMLDivElement>(null);
   const reader = useRef<Reader | null>(null);
 
@@ -79,6 +85,18 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         <button type="button" aria-expanded={tocOpen} aria-controls="toc" onClick={() => setTocOpen(!tocOpen)}>
           Contents
         </button>
+        <button
+          type="button"
+          aria-expanded={searchOpen}
+          aria-controls="book-search"
+          disabled={state.kind !== "ready"}
+          onClick={() => {
+            setSearchOpen(!searchOpen);
+            setTocOpen(false);
+          }}
+        >
+          Search
+        </button>
         <h1 class="reader-title">{state.kind === "ready" ? state.title : ""}</h1>
         <button type="button" aria-expanded={displayOpen} aria-controls="display-settings" onClick={() => setDisplayOpen(!displayOpen)}>
           Display
@@ -107,6 +125,16 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
               </ol>
             )}
           </nav>
+        )}
+        {searchOpen && state.kind === "ready" && reader.current && (
+          <SearchPanel
+            reader={reader.current}
+            onClose={() => setSearchOpen(false)}
+            onPicked={() => {
+              // On a narrow window the panel covers the text, so get out of the way once a match is chosen.
+              if (window.matchMedia("(max-width: 45rem)").matches) setSearchOpen(false);
+            }}
+          />
         )}
         <div class="reader-view" ref={viewport} />
         {displayOpen && <DisplaySettingsPanel settings={display} onChange={changeDisplay} />}

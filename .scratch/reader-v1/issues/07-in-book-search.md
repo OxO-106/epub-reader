@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] Searching finds matches across all chapters, with excerpt and chapter
-- [ ] Selecting a match jumps to it
-- [ ] Chinese text is found
-- [ ] No match shows a clear empty state
-- [ ] Playwright test: search a Chinese phrase in a fixture EPUB and jump to it
+- [x] Searching finds matches across all chapters, with excerpt and chapter
+- [x] Selecting a match jumps to it
+- [x] Chinese text is found
+- [x] No match shows a clear empty state
+- [x] Playwright test: search a Chinese phrase in a fixture EPUB and jump to it

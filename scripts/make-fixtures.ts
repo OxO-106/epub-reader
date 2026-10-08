@@ -13,9 +13,9 @@ mkdirSync(out, { recursive: true });
 const xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
 const fixedTime = new Date(Date.UTC(2026, 0, 1)); // keeps regenerated files byte-identical
 
-const chapter = (n: number, body: string) =>
-  `${xml}<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter ${n}</title></head>` +
-  `<body><h1>Chapter ${n}</h1><p>${body}</p></body></html>`;
+const chapter = (n: number, body: string, title = `Chapter ${n}`) =>
+  `${xml}<html xmlns="http://www.w3.org/1999/xhtml"><head><title>${title}</title></head>` +
+  `<body><h1>${title}</h1>${body.startsWith("<p>") ? body : `<p>${body}</p>`}</body></html>`;
 
 /** A solid-colour PNG, built by hand so the fixtures need no image library. */
 function png(width: number, height: number, [r, g, b]: [number, number, number]): Uint8Array {
@@ -49,9 +49,15 @@ interface EpubOptions {
   version?: "2.0" | "3.0";
   /** Extra files, keyed by path inside the zip. */
   files?: Record<string, Uint8Array>;
+  /** Replaces the two default one-line chapters. `body` is HTML, or plain text that gets wrapped in a paragraph. */
+  chapters?: { title: string; body: string }[];
 }
 
-function epub({ metadata, manifest = "", version = "3.0", files = {} }: EpubOptions): Uint8Array {
+function epub({ metadata, manifest = "", version = "3.0", files = {}, chapters }: EpubOptions): Uint8Array {
+  const chapterList = chapters ?? [
+    { title: "Chapter 1", body: "It was a quiet morning in the sample library." },
+    { title: "Chapter 2", body: "The second chapter is only here so there is a table of contents." },
+  ];
   const entries: Zippable = {
     // "mimetype" must be the first entry and stored uncompressed.
     mimetype: [strToU8("application/epub+zip"), { level: 0 }],
@@ -63,17 +69,19 @@ function epub({ metadata, manifest = "", version = "3.0", files = {} }: EpubOpti
       `${xml}<package xmlns="http://www.idpf.org/2007/opf" version="${version}" unique-identifier="id">` +
         `<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">${metadata}</metadata>` +
         `<manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>` +
-        `<item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/>` +
-        `<item id="c2" href="c2.xhtml" media-type="application/xhtml+xml"/>${manifest}</manifest>` +
-        `<spine><itemref idref="c1"/><itemref idref="c2"/></spine></package>`,
+        chapterList.map((_, i) => `<item id="c${i + 1}" href="c${i + 1}.xhtml" media-type="application/xhtml+xml"/>`).join("") +
+        `${manifest}</manifest><spine>${chapterList.map((_, i) => `<itemref idref="c${i + 1}"/>`).join("")}</spine></package>`,
     ),
     "OEBPS/nav.xhtml": strToU8(
       `${xml}<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head>` +
-        `<body><nav epub:type="toc"><ol><li><a href="c1.xhtml">Chapter 1</a></li><li><a href="c2.xhtml">Chapter 2</a></li></ol></nav></body></html>`,
+        `<body><nav epub:type="toc"><ol>` +
+        chapterList.map((c, i) => `<li><a href="c${i + 1}.xhtml">${c.title}</a></li>`).join("") +
+        `</ol></nav></body></html>`,
     ),
-    "OEBPS/c1.xhtml": strToU8(chapter(1, "It was a quiet morning in the sample library.")),
-    "OEBPS/c2.xhtml": strToU8(chapter(2, "The second chapter is only here so there is a table of contents.")),
   };
+  chapterList.forEach((c, i) => {
+    entries[`OEBPS/c${i + 1}.xhtml`] = strToU8(chapter(i + 1, c.body, c.title));
+  });
   for (const [path, data] of Object.entries(files)) entries[path] = data;
   return zipSync(entries, { mtime: fixedTime });
 }
@@ -100,6 +108,28 @@ writeFileSync(
     files: { "OEBPS/images/cover.png": png(2, 3, [180, 40, 40]) },
   }),
 );
+
+// Several Chinese and English chapters with repeated phrases, for in-book search. Matches are spread over three
+// chapters (the phrase 红楼 appears in chapters 1 and 3, 黛玉 in all three), chapter 3 buries one far down a long
+// chapter so a jump has to leave the first page, and "lantern" appears in English in chapter 2.
+{
+  const filler = (word: string, n: number) =>
+    Array.from({ length: n }, (_, i) => `<p>${word}第${i + 1}段，说的是闲话，与要找的词无关。</p>`).join("");
+  writeFileSync(
+    join(out, "chinese-search.epub"),
+    epub({
+      metadata: `${id(6)}<dc:title>石头记</dc:title><dc:creator>曹雪芹</dc:creator><dc:language>zh-CN</dc:language>${modified}`,
+      chapters: [
+        { title: "第一回 甄士隐梦幻识通灵", body: "<p>此开卷第一回也。红楼一梦，黛玉初入府，众人皆惊。</p>" },
+        { title: "第二回 贾夫人仙逝扬州城", body: "<p>黛玉辞父进京。The lantern in the hall was lit before dawn.</p>" },
+        {
+          title: "第三回 托内兄如海荐西宾",
+          body: `${filler("闲", 60)}<p>终于说到红楼深处，黛玉倚窗而望，口中念着旧诗。</p>${filler("尾", 5)}`,
+        },
+      ],
+    }),
+  );
+}
 
 // EPUB 2 style: cover named by <meta name="cover">, two authors.
 writeFileSync(

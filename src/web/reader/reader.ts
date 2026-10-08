@@ -45,6 +45,30 @@ export interface ReaderLocation {
   chapterId: number | null;
 }
 
+/** One hit in the Book: the matched text with the words around it. */
+export interface SearchMatch {
+  /** A CFI. Pass the whole match to `Reader.goToMatch` to see it in context. */
+  target: string;
+  before: string;
+  match: string;
+  after: string;
+}
+
+/** The matches found in one chapter, in reading order. */
+export interface SearchChapter {
+  /** The chapter's table-of-contents label; empty when the Book has none for this place. */
+  label: string;
+  matches: SearchMatch[];
+}
+
+/** Progress of a search. A chapter arrives as soon as it has been searched, so results can be shown early. */
+export interface SearchUpdate {
+  /** How much of the Book has been searched, 0 to 1. */
+  progress: number;
+  /** Present when this update brings the matches of one more chapter. */
+  chapter?: SearchChapter;
+}
+
 export interface Reader {
   /** Shows a Book, replacing any open one. Starts at `options.position` (a CFI), or at the beginning. */
   open(source: BookSource, options?: { position?: string }): Promise<OpenedBook>;
@@ -57,6 +81,17 @@ export interface Reader {
    * to every Book opened after. The reader stays at the same place in the Book; a Reading position is never involved.
    */
   setDisplay(settings: DisplaySettings): void;
+  /**
+   * Searches the open Book for `query` (case-insensitive; Chinese works) and yields results chapter by chapter, since
+   * a whole-Book search is slow. Every match is outlined on its page until `clearSearch`. Starting a search
+   * cancels the one before it (its iterator just ends), so a late result from the old query is never yielded.
+   * Searching never moves the reader: the place only changes when the caller picks a match with `goToMatch`.
+   */
+  search(query: string): AsyncGenerator<SearchUpdate, void>;
+  /** Cancels a search in progress and removes the outlines. */
+  clearSearch(): void;
+  /** Jumps to a match returned by `search`. */
+  goToMatch(match: SearchMatch): Promise<void>;
   /** Calls `listener` whenever the visible place changes. Returns a function that stops listening. */
   onLocation(listener: (location: ReaderLocation) => void): () => void;
   /** Removes the Book and everything the Reader added to its container. */
@@ -79,6 +114,9 @@ export function createReader(container: HTMLElement): Reader {
     renderer.setStyles?.(bookStyles(display));
     renderer.render?.();
   };
+
+  /** Incremented to cancel whatever search is running. */
+  let searchRun = 0;
 
   const requireView = () => {
     if (!view) throw new Error("No Book is open.");
@@ -113,6 +151,38 @@ export function createReader(container: HTMLElement): Reader {
     async goTo(target) {
       await requireView().goTo(target);
     },
+    async *search(query) {
+      const searched = requireView();
+      const run = ++searchRun;
+      const text = query.trim();
+      if (!text) {
+        searched.clearSearch();
+        return;
+      }
+      let progress = 0;
+      for await (const result of searched.search({ query: text })) {
+        if (run !== searchRun) return; // a newer search, or clearSearch, took over
+        if (result === "done") break;
+        if ("progress" in result) {
+          progress = result.progress;
+          yield { progress };
+        } else {
+          const matches = result.subitems.map(({ cfi, excerpt }) => ({
+            target: cfi,
+            before: excerpt.pre,
+            match: excerpt.match,
+            after: excerpt.post,
+          }));
+          yield { progress, chapter: { label: result.label.trim(), matches } };
+        }
+      }
+      if (run === searchRun) yield { progress: 1 };
+    },
+    clearSearch() {
+      searchRun++;
+      view?.clearSearch();
+    },
+    goToMatch: (match) => requireView().goTo(match.target).then(() => undefined),
     next: () => requireView().next(),
     prev: () => requireView().prev(),
     setDisplay(settings) {
@@ -124,6 +194,7 @@ export function createReader(container: HTMLElement): Reader {
       return () => listeners.delete(listener);
     },
     close() {
+      searchRun++;
       view?.close();
       view?.remove();
       view = null;
