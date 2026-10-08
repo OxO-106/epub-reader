@@ -99,7 +99,7 @@ export const chineseDefaultStacks = {
 /** How wide the margins are: the gap at the sides of the text (percent) and the widest a line of text may be (px). */
 export const marginSizes: Record<Margins, { label: string; gap: number; maxLine: number }> = {
   narrow: { label: "Narrow", gap: 3, maxLine: 960 },
-  medium: { label: "Medium", gap: 7, maxLine: 720 },
+  medium: { label: "Normal", gap: 7, maxLine: 720 },
   wide: { label: "Wide", gap: 14, maxLine: 560 },
 };
 

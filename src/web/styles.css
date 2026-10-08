@@ -142,31 +142,6 @@ button {
   text-decoration: underline;
 }
 
-/* The Reader screen: a bar on top, the text (with the table of contents beside it), a bar below. */
-.reader-screen {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
-}
-
-.reader-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-block: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-}
-
-.reader-screen > .reader-bar:first-child {
-  border-top: 0;
-}
-
-.reader-screen > .reader-bar:last-child {
-  border-bottom: 0;
-  justify-content: center;
-}
-
 .button {
   display: inline-flex;
   align-items: center;
@@ -177,156 +152,6 @@ button {
   border-radius: 0.25rem;
   color: inherit;
   text-decoration: none;
-}
-
-.reader-title {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  font-size: 1.1rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.reader-body {
-  position: relative;
-  display: flex;
-  flex: 1;
-  min-height: 0;
-}
-
-.reader-view {
-  flex: 1;
-  min-width: 0;
-}
-
-.toc {
-  flex: none;
-  box-sizing: border-box;
-  width: 18rem;
-  max-width: 100%;
-  overflow-y: auto;
-  padding: 0.5rem;
-  border-inline-end: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-}
-
-.toc ol {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.toc-item {
-  display: block;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 0;
-  border-radius: 0.25rem;
-  background: none;
-  color: inherit;
-  text-align: start;
-}
-
-.toc-item[aria-current="location"] {
-  font-weight: 700;
-  background: color-mix(in srgb, currentColor 14%, transparent);
-}
-
-.reader-message {
-  position: absolute;
-  inset-inline: 1rem;
-  top: 1rem;
-  margin: 0;
-  text-align: center;
-}
-
-/* In-book search: beside the text on a wide window, over it on a narrow one (like the contents). */
-.book-search {
-  flex: none;
-  box-sizing: border-box;
-  width: 22rem;
-  max-width: 100%;
-  overflow-y: auto;
-  padding: 0.5rem;
-  border-inline-end: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-}
-
-.book-search-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.book-search-form input {
-  flex: 1 1 100%;
-  box-sizing: border-box;
-  min-width: 0;
-  min-height: 2.75rem;
-  padding: 0.5rem 0.75rem;
-  font: inherit;
-}
-
-.book-search-form button {
-  flex: 1;
-  padding-inline: 0.5rem;
-}
-
-.book-search-status {
-  margin: 0.5rem 0.25rem;
-  opacity: 0.8;
-}
-
-.book-search-chapter h3 {
-  margin: 1rem 0.25rem 0.25rem;
-  font-size: 1rem;
-}
-
-.book-search-chapter ol {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.book-search-match {
-  display: block;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 0;
-  border-radius: 0.25rem;
-  background: none;
-  color: inherit;
-  text-align: start;
-  line-height: 1.4;
-}
-
-.book-search-match[aria-current="location"] {
-  background: color-mix(in srgb, currentColor 14%, transparent);
-}
-
-.book-search-match mark {
-  font-weight: 700;
-}
-
-/* On a narrow window the contents and the search cover the text instead of squeezing it. */
-@media (max-width: 45rem) {
-  .toc {
-    position: absolute;
-    inset-block: 0;
-    inset-inline-start: 0;
-    z-index: 1;
-    width: min(20rem, 85%);
-    background: Canvas;
-  }
-
-  .book-search {
-    position: absolute;
-    inset-block: 0;
-    inset-inline-start: 0;
-    z-index: 1;
-    width: min(24rem, 92%);
-    background: Canvas;
-  }
 }
 
 .search {
@@ -413,7 +238,7 @@ button {
   overflow-wrap: anywhere;
 }
 
-.reader-screen > .connection-notice {
+.reader-main > .connection-notice {
   flex: none;
   margin: 0;
   border-width: 1px 0;
