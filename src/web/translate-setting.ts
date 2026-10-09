@@ -5,15 +5,21 @@
  */
 const storageKey = "reader.translate";
 
+/** What was last saved, for when the browser refuses storage. */
+let remembered: boolean | null = null;
+
 export function loadTranslate(): boolean {
   try {
-    return localStorage.getItem(storageKey) === "on";
+    const saved = localStorage.getItem(storageKey);
+    if (saved !== null) return saved === "on";
   } catch {
-    return false; // storage blocked or unreadable
+    // storage blocked or unreadable
   }
+  return remembered ?? false;
 }
 
 export function saveTranslate(on: boolean): void {
+  remembered = on;
   try {
     localStorage.setItem(storageKey, on ? "on" : "off");
   } catch {

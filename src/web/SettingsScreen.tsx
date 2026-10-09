@@ -3,6 +3,7 @@ import { useEffect, useId, useState } from "preact/hooks";
 import { getSettings, restartReader, saveSettings, SettingsRefusal, testTranslation, type SettingInfo, type SettingKey, type SettingsView } from "./api.ts";
 import { ConnectionNotice } from "./ConnectionNotice.tsx";
 import { ChevronLeft } from "./ReaderIcons.tsx";
+import { followsShared, setFollowsShared } from "./shared-reading.ts";
 import "./settings.css";
 
 /** The environment variable behind each setting, for the note on a setting it fixes. */
@@ -48,6 +49,7 @@ export function SettingsScreen() {
       {view ? (
         <>
           {view.restartNeeded && <RestartNotice view={view} />}
+          <ReadingSection />
           <TranslationSection view={view} onSaved={setView} />
           <LibrarySection view={view} onSaved={setView} />
           <NetworkSection view={view} onSaved={setView} />
@@ -356,7 +358,7 @@ function RestartNotice({ view }: { view: SettingsView }) {
     <div class="settings-restart" role="status">
       <p>
         Restart Reader to apply your changes to {waiting.join(" and ")}.{" "}
-        {!view.canRestart && "Stop Reader (Ctrl+C in its window, or Quit in the tray icon\u2019s menu) and start it again."}
+        {!view.canRestart && "Stop Reader (Ctrl+C in its window, or Quit in the tray icon’s menu) and start it again."}
         {state === "failed" && " Reader did not come back by itself; start it again by hand."}
       </p>
       {view.canRestart && (
@@ -432,7 +434,7 @@ function LibrarySection({ view, onSaved }: { view: SettingsView; onSaved(view: S
         <Field
           name="libraryDir"
           label="Folder"
-          hint={"The folder\u2019s full path, such as D:\\Books or /home/me/Books. Leave it empty for the default."}
+          hint={"The folder’s full path, such as D:\\Books or /home/me/Books. Leave it empty for the default."}
           info={info}
           value={folder}
           error={errors.libraryDir}
@@ -559,6 +561,47 @@ function AboutSection({ view }: { view: SettingsView }) {
         <a href="https://github.com/OxO-106/epub-reader/issues/new/choose">Report a problem</a>
         <a href="https://github.com/OxO-106/epub-reader/blob/main/CHANGELOG.md">What is new</a>
       </p>
+    </Section>
+  );
+}
+
+/** Whether this device follows the reading preferences shared by all devices (kept in this browser, not on the server). */
+function ReadingSection() {
+  const [following, setFollowing] = useState(followsShared);
+  const [busy, setBusy] = useState(false);
+  const [outcome, setOutcome] = useState<Outcome>(null);
+
+  async function change(on: boolean) {
+    setBusy(true);
+    setFollowing(on);
+    await setFollowsShared(on); // following again may bring another theme; sharing applies it
+    setBusy(false);
+    setOutcome({
+      kind: "ok",
+      text: on ? "This device now uses the shared reading preferences." : "This device now keeps its own reading preferences.",
+    });
+  }
+
+  return (
+    <Section
+      title="Reading"
+      description="Your theme, font, text size, spacing, margins, layout and the Translate switch are set in the Reader’s Display panel."
+    >
+      <div class="settings-form">
+        <label class="settings-choice settings-toggle">
+          <input type="checkbox" checked={following} disabled={busy} onChange={(event) => void change(event.currentTarget.checked)} />
+          <span>
+            <span class="settings-choice-label">Use the same reading preferences on all devices</span>
+            <span class="settings-hint">
+              When this is on, a change on this device reaches your other devices that have it on too. Turn it off to keep this device’s own, such
+              as larger text on a phone. This choice is kept on this device only.
+            </span>
+          </span>
+        </label>
+        <p role="status" class={`settings-outcome${outcome ? ` ${outcome.kind}` : ""}`}>
+          {outcome?.text}
+        </p>
+      </div>
     </Section>
   );
 }

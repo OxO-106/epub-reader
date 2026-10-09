@@ -23,3 +23,8 @@ _Avoid_: Viewer, player
 **Translation**:
 The Chinese rendering of one paragraph of an English Book, produced on demand by a model and held only in memory while it is near the Reading position.
 _Avoid_: Subtitle, gloss file, cache
+
+**Settings**:
+How Reader runs (the translation model server, the library folder, who can connect, the port) and the reading preferences shared by all devices; changed on the Settings screen and kept by the server.
+_Avoid_: Preferences, options, config (for the screen); Display settings is the Reader's own panel for how a Book looks
+

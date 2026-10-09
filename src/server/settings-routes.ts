@@ -41,7 +41,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> => !!value &
  *                                       An empty apiKey uses the saved one, so a key need not be typed again to test.
  * POST /api/settings/restart            asks the host to restart the server -> 202, or 409 when it cannot
  * GET  /api/settings/reading            -> {"reading": object | null}: the shared reading preferences
- * PUT  /api/settings/reading            body {"reading": object} -> 204
+ * PUT  /api/settings/reading            body {"reading": {"display"?, "translate"?, "changedAt"?}} -> 204; a change older
+ *                                       than the saved one (by changedAt) is ignored
  */
 export function settingsRoutes(store: SettingsStore): Hono {
   const routes = new Hono();
@@ -100,7 +101,17 @@ export function settingsRoutes(store: SettingsStore): Hono {
     if ("refusal" in read) return read.refusal;
     const reading = isRecord(read.body) ? read.body.reading : undefined;
     if (!isRecord(reading)) return errorResponse(400, "bad-request", 'Send {"reading": {...}}.');
-    store.saveReading(reading);
+    // Only the two things shared: the Display settings (checked again by every device that reads them) and Translate.
+    const { display, translate, changedAt } = reading;
+    if (display !== undefined && !isRecord(display)) return errorResponse(400, "bad-request", '"display" must be an object.');
+    if (translate !== undefined && typeof translate !== "boolean") return errorResponse(400, "bad-request", '"translate" must be true or false.');
+    if (changedAt !== undefined && (typeof changedAt !== "number" || !Number.isFinite(changedAt))) {
+      return errorResponse(400, "bad-request", '"changedAt" must be a time in milliseconds.');
+    }
+    // An older change arriving late (a device that was offline) does not replace a newer one.
+    const saved = store.reading() as { changedAt?: number } | null;
+    if (typeof changedAt === "number" && typeof saved?.changedAt === "number" && changedAt < saved.changedAt) return c.body(null, 204);
+    store.saveReading({ ...(display ? { display } : {}), ...(translate !== undefined ? { translate } : {}), ...(changedAt !== undefined ? { changedAt } : {}) });
     return c.body(null, 204);
   });
 

@@ -11,6 +11,7 @@ Add a line under **Unreleased** with every change a user would notice; `npm run 
 - Settings are saved by the server (`settings.json` in the data folder) and served at `/api/settings`; translation settings (model server address, model, key, how many paragraphs at once) apply without a restart. Environment variables still work and win over saved settings.
 - A Settings screen, opened from the Library: set up translation (model server address, model, API key, paragraphs at once), test the connection, and save, with no environment variables or restart.
 - Settings also choose the library folder, who can connect (this PC only, also your Tailscale network, or a specific address) and the port; the screen says when Reader must restart for a change. An About section shows the version and the data folder.
+- Reading preferences (theme, fonts, size, spacing, margins, layout and the Translate switch) are shared by all your devices: a new device starts with them, and a change on one reaches the others. A device can keep its own instead (Settings, Reading).
 - Browser tests for the resting bars and the progress scrubber.
 
 ### Fixed

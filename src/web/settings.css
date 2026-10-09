@@ -336,3 +336,11 @@
     margin-bottom: 0.625rem;
   }
 }
+
+.settings-toggle {
+  border-color: var(--border-strong);
+}
+
+.settings .settings-toggle input {
+  margin-top: 0.2rem;
+}

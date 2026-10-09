@@ -323,6 +323,48 @@ describe("restarting from the screen", () => {
   });
 });
 
+describe("shared reading preferences", () => {
+  it("are empty until a device sends them, then kept in the settings file and across restarts", async () => {
+    const first = await setup();
+    const reading = () => fetch(`${first.server.url}/api/settings/reading`).then((r) => r.json());
+    expect(await reading()).toEqual({ reading: null });
+
+    const sent = await fetch(`${first.server.url}/api/settings/reading`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reading: { display: { theme: "sepia", fontSize: 22 }, translate: true, extra: "dropped" } }),
+    });
+
+    expect(sent.status).toBe(204);
+    expect(await reading()).toEqual({ reading: { display: { theme: "sepia", fontSize: 22 }, translate: true } });
+    await first.server.close();
+    const again = await setup({}, first.root);
+    expect(await (await fetch(`${again.server.url}/api/settings/reading`)).json()).toEqual({
+      reading: { display: { theme: "sepia", fontSize: 22 }, translate: true },
+    });
+  });
+
+  it("keeps the newer of two changes, so a late one from a device that was offline does not undo a newer one", async () => {
+    const { server } = await setup();
+    const send = (reading: unknown) =>
+      fetch(`${server.url}/api/settings/reading`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ reading }) });
+
+    await send({ display: { theme: "dark" }, changedAt: 2000 });
+    await send({ display: { theme: "sepia" }, changedAt: 1000 });
+
+    expect(await (await fetch(`${server.url}/api/settings/reading`)).json()).toEqual({ reading: { display: { theme: "dark" }, changedAt: 2000 } });
+  });
+
+  it("refuses anything that is not preferences", async () => {
+    const { server } = await setup();
+    const send = (body: unknown) =>
+      fetch(`${server.url}/api/settings/reading`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    for (const body of [{}, { reading: "dark" }, { reading: { display: "dark" } }, { reading: { translate: "yes" } }, { reading: { changedAt: "now" } }]) {
+      expect((await send(body)).status, JSON.stringify(body)).toBe(400);
+    }
+  });
+});
+
 describe("the rules for each setting", () => {
   it("accepts a port from 1 to 65535 and refuses anything else", () => {
     expect(specs.port.parse("8080")).toBe(8080);

@@ -12,6 +12,7 @@ import { createReader, type Reader, type TocEntry, type TranslationStatus } from
 import { ReaderBottomBar, ReaderTopBar, type Panel } from "./ReaderBars.tsx";
 import { trackReadingPosition } from "./reading-position.ts";
 import { SearchPanel } from "./SearchPanel.tsx";
+import { preferencesEvent, pushSharedReading } from "./shared-reading.ts";
 import { loadTranslate, saveTranslate } from "./translate-setting.ts";
 import { describeStatus, TranslationPanel } from "./TranslationStatus.tsx";
 import "./reader-chrome.css";
@@ -170,6 +171,19 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     };
   }, [bookId, attempt]);
 
+  // Newer reading preferences from another device (shared-reading.ts) apply to the open Book at once.
+  useEffect(() => {
+    const take = () => {
+      const next = loadDisplay();
+      displayNow.current = next;
+      setDisplay(next);
+      reader.current?.setDisplay(next);
+      setTranslate(loadTranslate());
+    };
+    addEventListener(preferencesEvent, take);
+    return () => removeEventListener(preferencesEvent, take);
+  }, []);
+
   // Translation runs for an English Book once it is open and the reader has it switched on; it is off for any other Book.
   const translating = state.kind === "ready" && english && translate;
   useEffect(() => {
@@ -251,6 +265,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     displayNow.current = next;
     setDisplay(next);
     saveDisplay(next);
+    pushSharedReading();
     applyTheme(next.theme);
     reader.current?.setDisplay(next);
   }
@@ -259,6 +274,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     const next = !translate;
     setTranslate(next);
     saveTranslate(next);
+    pushSharedReading();
     reader.current?.setTranslation(next && ready && english); // at once, not after the next render: turning it off clears the page now
   }
 

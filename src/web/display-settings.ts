@@ -189,16 +189,10 @@ export function defaultDisplay(): DisplaySettings {
 
 const storageKey = "reader.display";
 
-/** The saved settings; anything missing or invalid falls back to its default. Works without browser storage. */
-export function loadDisplay(): DisplaySettings {
+/** Settings from anywhere (browser storage, the server): anything missing or invalid falls back to its default. */
+export function normalizeDisplay(input: unknown): DisplaySettings {
   const fallback = defaultDisplay();
-  let saved: Partial<Record<keyof DisplaySettings, unknown>> = {};
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "null");
-    if (parsed && typeof parsed === "object") saved = parsed;
-  } catch {
-    // Storage blocked or unreadable: use the defaults.
-  }
+  const saved = (input && typeof input === "object" ? input : {}) as Partial<Record<keyof DisplaySettings, unknown>>;
   const oneOf = <T extends string>(value: unknown, allowed: readonly T[], otherwise: T): T =>
     allowed.includes(value as T) ? (value as T) : otherwise;
   const within = (value: unknown, { min, max }: { min: number; max: number }, otherwise: number) =>
@@ -213,7 +207,22 @@ export function loadDisplay(): DisplaySettings {
   };
 }
 
+/** What was last saved, for when the browser refuses storage: it then lasts until the page is closed. */
+let remembered: DisplaySettings | null = null;
+
+/** The saved settings; anything missing or invalid falls back to its default. Works without browser storage. */
+export function loadDisplay(): DisplaySettings {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "null");
+    if (parsed && typeof parsed === "object") return normalizeDisplay(parsed);
+  } catch {
+    // Storage blocked or unreadable: what this page last saved, else the defaults.
+  }
+  return remembered ?? normalizeDisplay(null);
+}
+
 export function saveDisplay(settings: DisplaySettings): void {
+  remembered = settings;
   try {
     localStorage.setItem(storageKey, JSON.stringify(settings));
   } catch {
