@@ -29,6 +29,8 @@ export type { TranslationState, TranslationStatus } from "./translation/engine.t
 export type BookSource =
   /** An EPUB file, as downloaded from the server. */
   | { kind: "epub"; file: Blob }
+  /** A Kindle file (MOBI 6 or KF8/AZW3), read by foliate-js's own MOBI reader. */
+  | { kind: "mobi"; file: Blob }
   /** A Book that is not an EPUB (Markdown, plain text), already turned into HTML sections; see `custom-book.ts`. */
   | { kind: "custom"; book: CustomBook };
 
@@ -510,6 +512,13 @@ async function makeBook(source: BookSource): Promise<FoliateBook> {
         getSize: (name) => byName.get(name)?.uncompressedSize ?? 0,
         sha1,
       }).init();
+    }
+    case "mobi": {
+      const [{ MOBI }, fflate] = await Promise.all([
+        import("../vendor/foliate-js/mobi.js"),
+        import("../vendor/foliate-js/vendor/fflate.js"),
+      ]);
+      return new MOBI({ unzlib: fflate.unzlibSync }).open(source.file);
     }
     case "custom":
       return makeCustomBook(source.book);

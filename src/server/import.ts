@@ -4,7 +4,7 @@ import { rename, rm, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import type { BookRow, Db } from "./db.ts";
-import { CorruptBookError, detectFormat, detectFormatByName, formats, type BookFormat } from "./formats/index.ts";
+import { CorruptBookError, detectFormat, detectFormatByName, formats, ProtectedBookError, type BookFormat } from "./formats/index.ts";
 import { withBookLock } from "./book-lock.ts";
 import type { Storage } from "./storage.ts";
 
@@ -30,7 +30,7 @@ export interface ImportInput {
 }
 
 /** Why a file was not added. */
-export type RejectionCode = "unsupported" | "too-large" | "corrupt";
+export type RejectionCode = "unsupported" | "too-large" | "corrupt" | "protected";
 
 export type ImportOutcome =
   | { status: "added"; book: BookRow }
@@ -92,6 +92,9 @@ export async function importBook({ db, storage }: ImportContext, input: ImportIn
       try {
         metadata = await format.extract(temp);
       } catch (error) {
+        if (error instanceof ProtectedBookError) {
+          return rejected("protected", `${quoted} is protected by DRM, so Reader cannot open it and it was not added. Only DRM-free Books can be read.`);
+        }
         if (!(error instanceof CorruptBookError)) throw error;
         return corrupt(quoted, format);
       }

@@ -7,6 +7,7 @@ export const bookExtensions = {
   epub: [".epub"],
   markdown: [".md", ".markdown"],
   text: [".txt"],
+  mobi: [".azw3", ".mobi", ".azw"],
 } as const;
 
 /** Every extension Reader imports by name. */

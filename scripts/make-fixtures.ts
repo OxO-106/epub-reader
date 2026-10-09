@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { crc32, deflateSync } from "node:zlib";
 import { zipSync, strToU8, type Zippable } from "fflate";
 import iconv from "iconv-lite";
+import { kf8, mobi6, type KindleBook } from "./kindle-writer.ts";
 
 const out = join(dirname(fileURLToPath(import.meta.url)), "../tests/fixtures");
 mkdirSync(out, { recursive: true });
@@ -514,3 +515,33 @@ writeFileSync(join(out, "no-heading.md"), "Just a few words, with no heading any
     }),
   );
 }
+
+// ---- Kindle files (MOBI 6 and KF8/AZW3), written by kindle-writer.ts ----
+{
+  const paragraphs = (chapter: number, count: number, extra = "") =>
+    Array.from(
+      { length: count },
+      (_, i) =>
+        `<p>K${chapter} P${String(i + 1).padStart(3, "0")} The lamp burned low while the long story went on and on through the night, and the river kept its own hours under the bridge.${i === 2 && extra ? ` ${extra}` : ""}</p>`,
+    ).join("");
+  const book = (title: string, extra: Partial<KindleBook> = {}): KindleBook => ({
+    title,
+    author: "Kindle Author",
+    language: "en",
+    chapters: [
+      { title: "Chapter 1", html: paragraphs(1, 24, "A heron stood in the shallows.") },
+      { title: "Chapter 2", html: paragraphs(2, 24, "The ferryman sang of Quillmoor.") },
+      { title: "Chapter 3", html: paragraphs(3, 12) },
+    ],
+    ...extra,
+  });
+  writeFileSync(join(out, "kindle.mobi"), mobi6(book("Kindle Six")));
+  writeFileSync(join(out, "kindle.azw3"), kf8(book("Kindle Eight", { cover: png(60, 90, [38, 52, 79]) })));
+  // Marked as protected by DRM in its header (nothing is really encrypted): Reader must refuse it.
+  writeFileSync(join(out, "kindle-drm.azw3"), kf8(book("Locked Book", { encrypted: true })));
+  // A real Kindle file with the wrong name: found by its content.
+  writeFileSync(join(out, "kindle-misnamed.txt"), mobi6(book("Misnamed Kindle")));
+  // The Palm database header of a Kindle file and nothing after it.
+  writeFileSync(join(out, "corrupt.mobi"), mobi6(book("Broken")).slice(0, 90));
+}
+

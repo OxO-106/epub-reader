@@ -50,6 +50,7 @@ const rejectionStatus: Record<RejectionCode, 413 | 415 | 422> = {
   "too-large": 413,
   unsupported: 415,
   corrupt: 422,
+  protected: 422,
 };
 
 const coverTypes: Record<string, string> = {
