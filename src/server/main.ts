@@ -1,5 +1,5 @@
 // Entry point: `npm start`. Configuration comes from READER_* environment variables
-// (see resolveConfig in config.ts and the README).
+// (see resolveConfig in config.ts and docs/running-reader.md).
 import { ConfigError } from "./config.ts";
 import { ListenError } from "./listen.ts";
 import { startServer } from "./server.ts";

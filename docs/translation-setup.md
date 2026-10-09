@@ -1,6 +1,6 @@
 # Translation set-up guide
 
-How to run the model that translates Books for the Reader, on this PC or on a second PC with an NVIDIA graphics card. The app's own settings (the four `READER_TRANSLATE_*` variables and the two endpoints) are in the README's Translation section. The reasoning behind the choices is in `.scratch/ai-translation/research.md` (what was considered) and `.scratch/ai-translation/benchmark.md` (what was measured on the laptop).
+How to run the model that translates Books for the Reader, on this PC or on a second PC with an NVIDIA graphics card. The app's own settings (the four `READER_TRANSLATE_*` variables and the two endpoints) are in [translation.md](translation.md). The reasoning behind the choices is in `.scratch/ai-translation/research.md` (what was considered) and `.scratch/ai-translation/benchmark.md` (what was measured on the laptop).
 
 Everything here runs on your own machines. Nothing is sent to a cloud service, and no model or program is stored in the repository.
 

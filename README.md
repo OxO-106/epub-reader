@@ -1,135 +1,53 @@
 # Reader
 
 [![CI](https://github.com/OxO-106/epub-reader/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/OxO-106/epub-reader/actions/workflows/ci.yml)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-a4492a.svg)](LICENSE)
 
-A personal ebook reader that runs on your own PC and is used through a web browser. A small local server keeps your Library (the Books and your Reading positions), so the same Library and place in each Book are there on every device that connects to it. Nothing leaves your machine and no internet connection is needed. Terms are defined in [GLOSSARY.md](GLOSSARY.md).
+**A calm, local-first reader for your own books, with live Chinese translation by a model on your own machine.**
 
-Formats: EPUB (`.epub`), Markdown (`.md`, `.markdown`) and plain text (`.txt`). A plain-text file may be UTF-8 (with or without a byte-order mark), UTF-16 with a byte-order mark, or GBK/GB2312/GB18030; it is stored as UTF-8, so the same text in different encodings is one Book. The format is detected from the content as well as the name: an EPUB with another name (`.zip`, say) is still imported as an EPUB, while a file named `.epub` that is really text is refused. Other file types are refused with a message, as are files over 200 MB and files that are damaged (an EPUB that cannot be parsed, or a "text" file that is really a binary one). Adding the same content twice keeps one Book.
+Reader runs on your PC and is used from any browser: your desk, your laptop, your phone. It keeps one Library and remembers where you are in every Book, so you can stop on one device and carry on on another. Nothing leaves your machines, and no account or internet connection is needed.
 
-## Requirements
+![The Reader with translation on: each English paragraph of Pride and Prejudice followed by its Chinese](docs/images/bilingual.png)
 
-- Node.js 24 or newer
-- A browser. The end-to-end tests also need Google Chrome or Microsoft Edge installed.
+## Features
 
-```
+- **Your Library, everywhere.** EPUB, Markdown and plain text (UTF-8, UTF-16 and the Chinese GBK family), added by dragging files in, choosing them, or dropping them into a watched folder. Covers, sorting by recently read, title or author (Chinese by pinyin), and a Continue reading card.
+- **Reading that gets out of the way.** The controls fade while you read, leaving just the chapter and your progress; a tap brings them back. Paginated or scrolling, with keyboard, click, tap and swipe page turns.
+- **Know where you are.** A progress line over the whole Book with a mark at every chapter, drag it to jump, and an estimate of the time left in the chapter. Your Reading position follows you to every device.
+- **Make it yours.** Four themes (Light, Sepia, Dark and true-black Black), text size that reaches every part of the Book, line spacing, margins, and fonts set for reading: Libertinus Serif, IBM Plex Sans, 京华老宋体 and more.
+- **Search inside a Book**, Chinese included, with results grouped by chapter.
+- **Live Chinese translation.** Turn on Translate in an English Book and a Chinese rendering appears under each paragraph, written by a model you run yourself (llama.cpp, Ollama, LM Studio or vLLM). Names are put into Chinese by their sound.
+- **Phone-friendly.** Layouts designed for a phone, reachable over your own Tailscale network.
+
+| Library | Reading | Phone |
+|---|---|---|
+| ![The Library with a Continue reading card and a grid of covers](docs/images/library.png) | ![The Reader in the dark theme](docs/images/reader-dark.png) | ![The Reader on a phone](docs/images/phone-reader.png) |
+
+## Quick start
+
+You need [Node.js](https://nodejs.org/) 24 or newer.
+
+```bash
+git clone https://github.com/OxO-106/epub-reader.git
+cd epub-reader
 npm install
-```
-
-## Start
-
-```
 npm start
 ```
 
-This builds the front end and starts the server. Open <http://127.0.0.1:5174>. Stop it with Ctrl+C.
+Open <http://127.0.0.1:5174> and drop a Book on the page. On Windows you can also double-click **`Start Reader.cmd`**, which starts Reader (and translation, if set up) behind a tray icon.
 
-For development, `npm run dev` starts the server (restarting on change) and the Vite dev server with hot reload; open <http://localhost:5173>. It always uses port 5174 for the API, so `READER_PORT` does not apply to it.
+## Learn more
 
-### One-click start (Windows)
+- [Running Reader](docs/running-reader.md): starting it, the tray launcher, where your files live, the library folder, and every setting.
+- [Reaching it from other devices](docs/network-access.md): your phone and other computers, over Tailscale.
+- [Translation](docs/translation.md) and its [set-up guide](docs/translation-setup.md): running the model, and what the Reader does with it.
+- [Changelog](CHANGELOG.md): what changed in each version.
+- [Glossary](GLOSSARY.md) and [decision records](docs/adr/): the language and the reasoning behind the code.
 
-Double-click **`Start Reader.cmd`**. It starts the Reader server and the translation model server (both hidden) and puts an icon in the system tray: two dots, the left one for the Reader and the right one for Translation.
+## Contributing
 
-| Dot | Meaning |
-|---|---|
-| green | running and answering |
-| amber | starting (the model needs about 10 s to load; the Reader a few seconds) |
-| red | stopped or not answering |
-| grey | not set up (model or llama.cpp missing, see [docs/translation-setup.md](docs/translation-setup.md)) or switched off |
+Bug reports, ideas and pull requests are welcome: start with [CONTRIBUTING.md](CONTRIBUTING.md). Please report security problems privately, as described in [SECURITY.md](SECURITY.md). Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-Hover over the icon for the words ("Reader: running | Translation: running"). Double-click it to open the Reader in the browser. Right-click for Open Reader, Restart Reader, Restart Translation, Open logs folder and **Quit (stop both)**. A balloon tells you when both are up and when one stops unexpectedly. Windows may tuck a new tray icon into the "^" overflow: drag it onto the taskbar once to keep it visible.
+## Licence
 
-- **Stop everything:** use Quit in the icon's menu, or double-click **`Stop Reader.cmd`**.
-- **Already running?** Double-clicking `Start Reader.cmd` again just opens the Reader. A server that was already running on its port is used as it is and is left running when you quit; the tray only stops what it started.
-- **Reader only:** `Start Reader.cmd -NoTranslation`. Another model location: `-ModelPath` and `-RuntimeDir`, or the `READER_MODEL_PATH` and `READER_LLAMA_DIR` variables (default `%USERPROFILE%\translation-models`).
-- **Logs and status:** `%LOCALAPPDATA%\Reader\logs` (overwritten at each start; server messages, never Book text) and `%LOCALAPPDATA%\Reader\status.json`.
-- The tray is `scripts/reader-tray.ps1` (Windows PowerShell 5.1, nothing to install). It needs `npm` on the PATH, as `npm start` does.
-
-## Your files
-
-Both folders are created on first start, relative to the folder you start the server from (so start it from the same place each time), unless you set them:
-
-| Variable             | Default     | What it is                                                                 |
-| -------------------- | ----------- | -------------------------------------------------------------------------- |
-| `READER_DATA_DIR`    | `./data`    | The SQLite database and the stored Book files. Back this folder up.        |
-| `READER_LIBRARY_DIR` | `./library` | Watched folder: a file copied in here is added to the Library.             |
-
-Books can also be dragged onto the Library page or picked with its Choose files button. Deleting a Book removes only the app's copy, never your original file. The Library offers the Book you read last under Continue reading, and sorts by recently read, title or author (Chinese by pinyin); the sort is remembered per browser. A Book without a cover gets a generated one, and Markdown and text files are drawn as documents.
-
-### The library folder is the source of truth
-
-If the original of a deleted Book is still in the library folder, what happens depends on whether the server has been restarted:
-
-- **While the server keeps running**, the Book stays deleted. The server remembers the files it has handled and the content of Books you deleted, so neither a rescan nor a slow copy brings the Book back. It is added again only if the file in the folder changes (a new version, or even just a new modification time), or if you add it yourself with Choose files.
-- **After a restart**, the server imports everything in the folder again, so a Book whose original is still there returns. To get rid of a Book for good, remove its original from the library folder (or move it out) as well as deleting the Book.
-
-Other settings, all optional:
-
-| Variable          | Default       | What it is                                                               |
-| ----------------- | ------------- | ------------------------------------------------------------------------ |
-| `READER_PORT`     | `5174`        | Port to listen on.                                                       |
-| `READER_HOST`     | `127.0.0.1`   | The one address to listen on instead of this PC only (see below).        |
-| `READER_TAILSCALE`| off           | `1` or `true`: also listen on this PC's Tailscale address (see below).   |
-
-On Windows PowerShell set a variable for one run like this (in a POSIX shell, `READER_PORT=8080 npm start`):
-
-```
-$env:READER_PORT = "8080"; npm start
-```
-
-## Translation (optional)
-
-The Reader can show a Chinese translation under each English paragraph, produced on your own machines by a local model; nothing is sent to a cloud service. Translation is off until you point the app at a model server that speaks the OpenAI-style streaming API (`llama-server` from llama.cpp, Ollama, LM Studio, vLLM). The full set-up guide (what to download and where it goes, the start command and its flags, checking it, troubleshooting, and running the model on a second PC with a graphics card over Tailscale) is [docs/translation-setup.md](docs/translation-setup.md). In short, on the PC that has the files unpacked in `%USERPROFILE%\translation-models` (the model is `Hy-MT2-7B-Q4_K_M.gguf`, 4.6 GB, and the runtime is llama.cpp's Vulkan build):
-
-```
-npm run translate:server                       # window 1: starts the model server on 127.0.0.1:8080, Ctrl+C stops it
-$env:READER_TRANSLATE_URL = "http://127.0.0.1:8080"; npm start        # window 2 (PowerShell)
-```
-
-The script `scripts/start-translation-server.ps1` takes `-RuntimeDir`, `-ModelPath`, `-ListenHost`, `-Port`, `-ContextSize` and `-ApiKey`, or the environment variables `READER_LLAMA_DIR`, `READER_MODEL_PATH` and `LLAMA_API_KEY` (prefer the variable for the key: a `-ApiKey` typed on the command line is visible in the process list). No model or program is kept in the repository. This section lists the app's settings.
-
-| Variable                       | Default | What it is                                                                                         |
-| ------------------------------ | ------- | -------------------------------------------------------------------------------------------------- |
-| `READER_TRANSLATE_URL`         | unset   | Base address of the model server, for example `http://127.0.0.1:8080`. Unset means "not set up".   |
-| `READER_TRANSLATE_MODEL`       | unset   | Model name to ask for; servers that serve one model can ignore it.                                 |
-| `READER_TRANSLATE_API_KEY`     | unset   | Sent to the model server as a Bearer token, for servers that need one.                             |
-| `READER_TRANSLATE_CONCURRENCY` | `1`     | How many paragraphs the model server works on at once; the rest wait in the order they arrived.    |
-
-The browser never talks to the model; the app server does, so a phone reaching the app over Tailscale needs nothing else. The app adds two endpoints: `POST /api/translate` (one English paragraph, optionally the previous paragraph as context, answered as a stream of newline-delimited JSON events) and `GET /api/translate/status` (`{"configured", "reachable", "model"}`, checked against the model server with a short timeout and cached for a few seconds). A browser that disconnects stops the work on the model. The text being translated is never logged or stored. The request is JSON, `{"text": "...", "context": "...", "names": ["..."]}` (`context` and `names` are optional); the answer is `application/x-ndjson`, one JSON event per line: `{"delta": "..."}` for each piece of the translation, then `{"done": true}` or `{"error": {"code", "message"}}`. Trouble before any text is sent is a plain JSON error with an HTTP status (`503` not set up, `400` bad request), always `{"error": {"code", "message"}}`. The other refusals: `413` `bad-request` (a paragraph over 20 000 characters, or a request body over 128 KiB, which is counted as it arrives so a chunked body cannot get round it), `415` `unsupported-media-type` (the body is not sent as `application/json`), `403` `forbidden-origin` and `503` `busy`. So that a web page on another site cannot make your model work, a request that carries an `Origin` header must name the host it was sent to (http or https, ports included); requests with no `Origin`, such as curl or another program, are accepted, and the status endpoint is left open. At most 64 requests wait for their turn behind the ones the model is working on; one more is answered `503` `busy` at once, and a request abandoned while it waits gives its place up (the number is `maxQueue` in the translate options, next to the concurrency, with no environment variable). The details are in `src/server/translate-routes.ts`.
-
-The Book's text and the API key travel to the model server in each request, so its address should be `https` or a network you trust (a private network, or plain `http` over Tailscale, which encrypts the traffic). The address cannot carry a user name or password (`http://user:pass@host` stops the app at start with a message to use `READER_TRANSLATE_API_KEY`), and a wrong `READER_TRANSLATE_URL` is reported without repeating its value.
-
-Names are put into Chinese by their sound (音译), never by their meaning, so a character called River becomes something like 瑞弗 rather than 河 ("river"), and a well-known name keeps its usual Chinese form. Before the text goes to the model, the server finds the proper names in it (a capitalised word that does not start a sentence, with neighbouring ones joined, like "Netherfield Park") and lists them in the prompt with that rule; the text itself is sent unchanged. A name that starts a sentence is listed when it also appears in the middle of a sentence in the same request, or when the caller lists it in `names` (up to 500 strings of up to 80 characters; titles such as "Mr." are ignored, so `"Mr. Darcy"` lists `Darcy`). Weekdays, months, countries, languages, nationalities, titles, pronouns and common sentence starters are never listed; that list is the plain text file `src/server/name-stop-list.txt`, which you can extend (it is read at start). The model chooses the Chinese characters for each name, so the same name may occasionally come out a little differently in different paragraphs.
-
-### What the Reader does with it
-
-In the Reader, an English Book (one that declares English, or whose text is clearly English) has a **Translate** button in the top bar, between Search and Display; turn it on and the Chinese appears as a soft tinted gloss under each English paragraph, in every theme. The choice is remembered on this device and applies to every English Book until you turn it off. Beside the button a small status pill says what is happening ("Translating ahead", "Ready", "Not set up", "Backend unreachable", "Some paragraphs failed"; just a dot on a phone); when there is something to do it is a button that opens a short panel with the fix (the settings below, `npm run translate:server`, or Retry), and reading is never blocked.
-
-The Reader module has a translation engine (`src/web/reader/translation`) for EPUB, Markdown and plain-text Books alike: `setTranslation(true)` finds the reading blocks (paragraphs, list items, quotations, headings) of the page on screen, skips empty blocks, decorations such as "* * *", bare chapter numbers and blocks that are already mostly Chinese, translates the blocks on screen and then about one screenful ahead, one block at a time and in reading order, and shows each Translation as generated content after its block. No element is added to the Book's document, so the Reading position (a CFI) is the same with translation on or off. Translations live in memory only; in scrolling mode those more than a screenful above the reader are cleared and the page is corrected so the text does not move, and a jump (Contents, Search) cancels the work in flight and starts again at the new place. A failed block shows a notice that retries it when clicked (or `retryTranslation`), the English keeps working whatever happens, and a model that is away or keeps failing pauses translation (status "unreachable" or "error") and is asked about now and then instead of again and again. The names the engine sends with every request are the capitalised words found in the middle of sentences in the loaded section, minus the words in `name-stop-list.txt` (which the front end now bundles too, so change it and rebuild).
-
-Limits: a Book section (chapter file) is a separate page, so a chapter is translated from the moment the Reader loads it, not before; the Chinese is generated content, so it cannot be selected, copied or searched; paginated mode translates the page on screen and the next one but does not clear anything before the reader leaves the section.
-
-## Reaching it from other devices (Tailscale)
-
-By default the server accepts connections from this PC only. There is no login, so only open it to a network you trust. To also reach it from your other devices over [Tailscale](https://tailscale.com):
-
-```
-$env:READER_TAILSCALE = "1"; npm start        # PowerShell
-READER_TAILSCALE=1 npm start                  # bash, zsh
-```
-
-The server then listens on `127.0.0.1` and on this PC's Tailscale address (the IPv4 address in 100.64.0.0/10, the first one found) and prints both, for example `http://100.101.102.103:5174`. Open that address from any device on your tailnet. If Tailscale is not running, the server refuses to start and says so; it never falls back to listening on every address.
-
-Precedence: `READER_HOST` sets the base address (default `127.0.0.1`) and `READER_TAILSCALE` adds the Tailscale address to it, so `READER_HOST=192.168.1.20 READER_TAILSCALE=1` listens on exactly those two. `READER_HOST` alone listens on that one address only. Nothing listens on `0.0.0.0` unless you set `READER_HOST=0.0.0.0` yourself.
-
-Over Tailscale the page is plain HTTP. Reading works that way, but if you want HTTPS (a secure browser context), leave `READER_TAILSCALE` off and let Tailscale proxy the localhost server instead: `tailscale serve --bg 5174`, then open the `https://` name it prints; `tailscale serve reset` undoes it.
-
-## Tests
-
-```
-npm run typecheck   # TypeScript
-npm test            # tests/api (real server on throwaway folders, over HTTP) and tests/unit (a few pieces of pure logic)
-npm run test:e2e    # browser tests: tests/e2e (Playwright; builds the front end first)
-npm run test:all    # all three
-```
-
-Use `npm run test:e2e` rather than `npx playwright test`, which skips the build and would test an old front end. `tests/e2e/layout.spec.ts` checks the Library and the Reader for sideways scrolling and clipped or overlapping controls at 900 px and 360 px wide. Test files are in `tests/fixtures`; `npm run fixtures` regenerates them.
+Reader is released under the [MIT Licence](LICENSE). The fonts and libraries it includes keep their own licences; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
