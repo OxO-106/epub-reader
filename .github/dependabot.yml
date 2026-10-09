@@ -1,0 +1,25 @@
+# Dependency updates as pull requests, each checked by CI. The vendored foliate-js copy (src/web/vendor) is not an npm
+# dependency, so Dependabot never touches it; it is updated by hand as its notes describe.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      # Minor and patch updates of everything together, so they arrive as one pull request a week.
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    # A major update comes on its own, since it may need code changes.
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels: ["dependencies"]
+    groups:
+      actions:
+        patterns: ["*"]
