@@ -2,7 +2,13 @@
 
 Reader's desktop app is the same Reader (the same server, the same pages, the same data format) in a window of its own, built with [Electron](https://www.electronjs.org/). It starts the Reader server for you on this PC and stops it when you quit; phones on your Tailscale network reach it as they reach `npm start` (see [Reader on your phone](phone.md)).
 
-The installer and automatic updates are on their way (issue #36). Until then the app runs from a clone of the repository.
+## Install it (Windows)
+
+1. Download `Reader-Setup-<version>.exe` from the [Releases page](https://github.com/OxO-106/epub-reader/releases).
+2. Run it. The installer is not signed yet, so Windows SmartScreen may say "Windows protected your PC". Choose **More info**, then **Run anyway**. (The installer is built by the release workflow on GitHub from the tagged source; its log is public.)
+3. Choose where to install it (your user account only; no administrator rights needed). Reader appears in the Start menu and on the desktop.
+
+Reader then updates itself: at start it looks for a newer release, downloads it in the background, and asks before restarting (choose **Later** and it installs when you next quit). EPUB, AZW3, MOBI and PDF files get **Open with, Reader**: opening one adds it to the Library and opens it, also while Reader is running. Uninstalling leaves your Library in place.
 
 ## Run it from the repository
 
@@ -46,6 +52,14 @@ No model yet? In **Settings, Desktop app**, choose a folder (it needs about 5 GB
 - Quitting stops the server process (and kills it if it does not stop within five seconds) and the model server it started.
 - The page reaches the app only through `desktop/preload.cjs`: the Desktop app settings and the model server's start, stop and state, and only from Reader's own page. The app's own settings are in `desktop.json`.
 
+## Build the installer
+
+```bash
+npm run desktop:build
+```
+
+This builds the pages and runs electron-builder (`electron-builder.yml`): the files are shipped as they are, without an asar archive (Node's type stripping cannot read TypeScript from one), with the built front end and, when `npm run fonts:build` has made them, the Chinese font's pieces. The installer lands in `release/`. It uses the Electron already in `node_modules` (run `node node_modules/electron/install.js` first) and puts electron-builder's own tools in its cache (set `ELECTRON_BUILDER_CACHE` to choose where). Pushing a version tag builds and attaches it to the GitHub Release, with the `latest.yml` the installed apps read to update.
+
 ## Tests
 
-`npm run test:desktop` builds the pages and runs `tests/desktop/smoke.spec.ts` through Playwright's Electron support: the app starts, shows the Library, adds and opens a Book, and quits leaving no server; a second copy leaves at once; a taken port ends in a message. CI runs it on Windows.
+`npm run test:desktop` builds the pages and runs `tests/desktop/smoke.spec.ts` through Playwright's Electron support: the app starts, shows the Library, adds and opens a Book, and quits leaving no server; a second copy leaves at once; a taken port ends in a message. CI runs it on Windows, and also packages the app and starts the packaged copy (`READER_DESKTOP_EXE`).

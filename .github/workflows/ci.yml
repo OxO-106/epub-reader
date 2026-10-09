@@ -125,6 +125,16 @@ jobs:
       - name: Build and run the desktop smoke test
         run: npm run test:desktop
 
+      # The app as the installer ships it (the same files, unpacked), started once.
+      - name: Package the app and start it
+        run: |
+          npx electron-builder --win --dir --publish never
+          npx playwright test --config playwright.desktop.config.ts -g "packaged app"
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          READER_DESKTOP_EXE: ${{ github.workspace }}/release/win-unpacked/Reader.exe
+elease\win-unpacked\Reader.exe
+
       - name: Upload the report
         if: failure()
         uses: actions/upload-artifact@v4

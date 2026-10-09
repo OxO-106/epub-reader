@@ -1,6 +1,7 @@
 # Pushing a version tag (made by `npm run release`) publishes a GitHub Release: the tag must match package.json and
-# have a section in CHANGELOG.md, the checks must pass, and the built web front end is attached. The desktop
-# installers (issue #6) will be built and attached by this same workflow.
+# have a section in CHANGELOG.md, the checks must pass, and the built web front end is attached. Then the Windows
+# installer of the desktop app is built (with the Chinese font's web pieces) and attached, with the latest.yml that the
+# installed apps read to update themselves.
 name: Release
 
 on:
@@ -50,3 +51,37 @@ jobs:
           --notes-file release-notes.md
           --verify-tag
           "reader-web-${{ github.ref_name }}.tar.gz"
+
+  desktop:
+    name: Windows installer for ${{ github.ref_name }}
+    needs: release
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install
+        run: |
+          npm ci
+          node node_modules/electron/install.js
+          pip install fonttools brotli
+
+      - name: Build the Chinese font's web pieces
+        run: npm run fonts:build
+
+      - name: Build the front end and the installer, and attach them to the release
+        run: |
+          npm run build
+          npx electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"

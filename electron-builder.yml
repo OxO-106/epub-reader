@@ -1,0 +1,62 @@
+# Packaging the desktop app (issue #36): `npm run desktop:build` makes a Windows installer (NSIS) in release/. The app
+# is the same code as `npm start`: the server's TypeScript runs on the Node that Electron bundles, so the files are
+# shipped as they are (no asar archive, which Node's type stripping cannot read from), with the built web front end.
+appId: io.github.oxo106.reader
+productName: Reader
+copyright: Copyright © 2026 Zihan Chen
+directories:
+  output: release
+# The Electron already fetched into node_modules (node node_modules/electron/install.js), so the build downloads no
+# second copy into a cache of its own.
+electronDist: node_modules/electron/dist
+asar: false
+files:
+  - package.json
+  - desktop/**/*
+  - "!desktop/build/**"
+  - src/server/**/*
+  - src/shared/**/*
+  - dist/web/**/*
+  # The Chinese font's web pieces, when `npm run fonts:build` has made them (the release workflow does).
+  - fonts/**/*
+  - "!**/*.map"
+  - LICENSE
+  - THIRD-PARTY-NOTICES.md
+extraMetadata:
+  main: desktop/main.ts
+fileAssociations:
+  - ext: epub
+    name: EPUB book
+    role: Viewer
+  - ext: azw3
+    name: Kindle book
+    role: Viewer
+  - ext: mobi
+    name: Mobipocket book
+    role: Viewer
+  - ext: pdf
+    name: PDF document
+    role: Viewer
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: desktop/icons/app.png
+  executableName: Reader
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Reader
+  artifactName: Reader-Setup-${version}.${ext}
+  deleteAppDataOnUninstall: false
+mac:
+  target: dmg
+  category: public.app-category.books
+  icon: desktop/icons/app.png
+publish:
+  provider: github
+  owner: OxO-106
+  repo: epub-reader

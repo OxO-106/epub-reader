@@ -23,13 +23,14 @@ import {
   type UtilityProcess,
 } from "electron";
 import { spawn } from "node:child_process";
-import { appendFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { appendFileSync, createWriteStream, existsSync, mkdirSync, openAsBlob, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
+import updater from "electron-updater";
 import { fileURLToPath } from "node:url";
 import { applyDesktopChange, loadDesktopSettings, saveDesktopSettings, type DesktopSettings } from "./desktop-settings.ts";
 import { downloadFile, translationDownloads, unzip } from "./downloads.ts";
 import { createModelServer, findModelFiles, type ModelServer } from "./model-server.ts";
-import { defaultWindowState, isReaderPage, opensInBrowser, restoreWindowState, trayLook, type ServerState, type WindowState } from "./shell-rules.ts";
+import { booksInArguments, defaultWindowState, isReaderPage, opensInBrowser, restoreWindowState, trayLook, type ServerState, type WindowState } from "./shell-rules.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 app.setName("Reader");
@@ -395,6 +396,68 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+// ---- Books given to the app (issue #36) ----------------------------------------------------------------------------
+
+/** Files given before the server was ready (the app was started by opening one). */
+const waitingFiles: string[] = [];
+
+/**
+ * Adds Books given to the app (double-clicked, dropped on its icon, `Reader book.epub`) to the Library, as the
+ * Library's own import does, and opens the last one. A file the Library refuses is explained in a message.
+ */
+async function addAndOpen(paths: string[]) {
+  if (!paths.length) return;
+  if (!server) {
+    waitingFiles.push(...paths);
+    return;
+  }
+  let opened: string | null = null;
+  const problems: string[] = [];
+  for (const path of paths) {
+    try {
+      const response = await fetch(new URL(`/api/books?name=${encodeURIComponent(basename(path))}`, server.url), { method: "POST", body: await openAsBlob(path) });
+      const body = (await response.json()) as { book?: { id: string }; error?: string };
+      if (body.book) opened = body.book.id;
+      else problems.push(body.error ?? `${basename(path)} could not be added.`);
+    } catch (error) {
+      problems.push(`${basename(path)} could not be read: ${(error as Error).message}`);
+    }
+  }
+  if (opened) {
+    showWindow();
+    void window?.loadURL(new URL(`/#/read/${opened}`, server.url).href);
+  }
+  if (problems.length) showError("Some files were not added", problems.join("\n"));
+}
+
+// ---- updates (issue #36) -------------------------------------------------------------------------------------------
+
+/**
+ * The installed app checks GitHub Releases for a newer version at start, downloads it in the background, and asks
+ * before restarting; "Later" installs it when Reader next quits. The Library and settings live in the data folder, not
+ * the install folder, so they stay as they are.
+ */
+function checkForUpdates() {
+  if (!app.isPackaged || process.env.READER_DESKTOP_NO_UPDATES) return;
+  const { autoUpdater } = updater;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on("error", (error) => log(`update check failed: ${error.message}`));
+  autoUpdater.on("update-downloaded", async (info) => {
+    log(`update ${info.version} downloaded`);
+    const answer = await dialog.showMessageBox({
+      type: "info",
+      buttons: ["Restart now", "Later"],
+      defaultId: 0,
+      cancelId: 1,
+      message: `Reader ${info.version} is ready to install`,
+      detail: "Restart Reader to use it. Your Library, Reading positions, highlights and settings stay as they are.",
+    });
+    if (answer.response === 0) autoUpdater.quitAndInstall();
+  });
+  autoUpdater.checkForUpdates().catch((error: Error) => log(`update check failed: ${error.message}`));
+}
+
 // ---- the bridge to the Settings screen -----------------------------------------------------------------------------
 
 function status() {
@@ -461,7 +524,16 @@ if (!app.requestSingleInstanceLock()) {
   // Another copy is running: it is told (second-instance below) and shows its window; this one leaves at once.
   app.quit();
 } else {
-  app.on("second-instance", showWindow);
+  // Starting Reader again (also by opening a Book file while it runs) brings its window forward and adds the files.
+  app.on("second-instance", (_event, argv) => {
+    showWindow();
+    void addAndOpen(booksInArguments(argv.slice(1)));
+  });
+  // macOS hands files over with an event instead of arguments.
+  app.on("open-file", (event, path) => {
+    event.preventDefault();
+    void addAndOpen([path]);
+  });
 
   app.whenReady().then(async () => {
     buildMenu();
@@ -478,6 +550,8 @@ if (!app.requestSingleInstanceLock()) {
     if (!startedHidden) openWindow(server.url);
     if (settings.startTranslation && model.state() === "stopped") void model.start();
     app.on("activate", showWindow);
+    void addAndOpen([...waitingFiles.splice(0), ...booksInArguments(process.argv.slice(1))]);
+    checkForUpdates();
   });
 
   // Closing the last window quits, unless Reader is to keep running in the tray.
@@ -492,7 +566,8 @@ if (!app.requestSingleInstanceLock()) {
     pauseDownload(); // what has arrived is kept, and the next download carries on from there
     void Promise.all([stopServerProcess(), model.stop()]).finally(() => {
       tray?.destroy();
-      app.exit(0);
+      // Quit again, now for real: the normal quit lets an update install itself on the way out.
+      app.quit();
     });
   });
 }

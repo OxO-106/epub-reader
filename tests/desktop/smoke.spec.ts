@@ -117,3 +117,27 @@ test("shows Reader and translation in the tray, and can keep running there when 
   await expect.poll(() => app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((w) => w.isVisible()))).toEqual([false]);
   expect((await fetch(new URL("/api/books", page.url()))).ok).toBe(true);
 });
+
+test("a Book file given to the app is added to the Library and opened", async () => {
+  port = String(20000 + Math.floor(Math.random() * 20000));
+  app = await electron.launch({ args: [root, fixture("sample.epub")], cwd: root, env: { ...process.env, READER_DESKTOP_DATA: data, READER_DESKTOP_MODELS: "", READER_PORT: port } });
+  const page = await app.firstWindow();
+
+  await expect(page.getByRole("heading", { name: "Sample Book" })).toBeVisible({ timeout: 30_000 });
+  expect(page.url()).toMatch(/#\/read\/[0-9a-f]{64}$/);
+});
+
+// The packaged app (electron-builder's unpacked output), when READER_DESKTOP_EXE names its Reader.exe: the same code,
+// shipped without an asar archive, must still start its server and show the Library.
+test("the packaged app starts and shows the Library", async () => {
+  test.skip(!process.env.READER_DESKTOP_EXE, "set READER_DESKTOP_EXE to the packaged Reader.exe (npx electron-builder --win --dir)");
+  port = String(20000 + Math.floor(Math.random() * 20000));
+  app = await electron.launch({
+    executablePath: process.env.READER_DESKTOP_EXE,
+    args: [],
+    env: { ...process.env, READER_DESKTOP_DATA: data, READER_DESKTOP_MODELS: "", READER_DESKTOP_NO_UPDATES: "1", READER_PORT: port },
+  });
+  const page = await app.firstWindow();
+  await expect(page.getByRole("heading", { name: "Your Library is empty" })).toBeVisible({ timeout: 30_000 });
+  expect(await app.evaluate(({ app: electronApp }) => electronApp.isPackaged)).toBe(true);
+});
