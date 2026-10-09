@@ -26,7 +26,7 @@ Layout: `src/server` (Hono API, `node:sqlite`), `src/web` (Preact app; `src/web/
 
 ### Issue tracker
 
-Issues and specs are local markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+Issues and specs are GitHub issues on OxO-106/epub-reader, used through the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
