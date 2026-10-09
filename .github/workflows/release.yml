@@ -1,0 +1,52 @@
+# Pushing a version tag (made by `npm run release`) publishes a GitHub Release: the tag must match package.json and
+# have a section in CHANGELOG.md, the checks must pass, and the built web front end is attached. The desktop
+# installers (issue #6) will be built and attached by this same workflow.
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Release notes from the changelog (also checks the tag against package.json)
+        run: node scripts/release-notes-cli.ts "${{ github.ref_name }}" > release-notes.md
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: API and unit tests
+        run: npm test
+
+      - name: Build the web front end
+        run: npm run build
+
+      - name: Archive the build
+        run: tar -czf "reader-web-${{ github.ref_name }}.tar.gz" -C dist web
+
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "${{ github.ref_name }}"
+          --title "Reader ${{ github.ref_name }}"
+          --notes-file release-notes.md
+          --verify-tag
+          "reader-web-${{ github.ref_name }}.tar.gz"

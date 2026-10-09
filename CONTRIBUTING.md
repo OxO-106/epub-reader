@@ -64,6 +64,14 @@ Write the subject as a short, plain statement of what the change does (imperativ
 
 Match the code around you. TypeScript runs directly on Node (no compile step for the server); relative imports use `.ts` extensions. Comments explain why, in plain sentences.
 
+## Releasing (maintainer)
+
+Reader follows [Semantic Versioning](https://semver.org/). Every change a user would notice adds a line under `Unreleased` in [CHANGELOG.md](CHANGELOG.md); a release turns that section into a version.
+
+1. On an up-to-date, clean `main` with green CI, run `npm run release -- patch` (or `minor`, `major`, or an exact `x.y.z`). It bumps the version in `package.json` and `package-lock.json`, moves the `Unreleased` entries under the new version with today's date, updates the comparison links, commits `Release vX.Y.Z` and tags `vX.Y.Z`. It refuses to run with uncommitted changes, off `main`, or with an empty `Unreleased` section.
+2. Push the commit and the tag: `git push origin main vX.Y.Z`.
+3. The Release workflow checks that the tag matches `package.json`, runs the typecheck and tests, builds the front end and publishes a GitHub Release whose notes are that version's changelog section, with the built front end attached.
+
 ## Triage labels
 
 Issues move through five labels: `needs-triage` (to be evaluated), `needs-info` (waiting on the reporter), `ready-for-agent` (fully specified, ready to implement), `ready-for-human` (needs a person, for example a repository setting), and `wontfix`.
