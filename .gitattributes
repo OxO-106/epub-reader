@@ -2,3 +2,7 @@
 
 # Encoding fixtures must keep their exact bytes (GBK, byte-order marks, CRLF).
 tests/fixtures/*.txt -text
+
+# Windows batch files keep CRLF line endings.
+*.cmd text eol=crlf
+*.bat text eol=crlf
