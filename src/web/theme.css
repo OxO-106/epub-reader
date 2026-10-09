@@ -1,12 +1,13 @@
 /*
- * Design tokens and themes (light, dark, sepia) for the whole app: the Library, the Reader screen and its panels.
+ * Design tokens and themes (light "Paper", dark "Night", sepia, black) for the whole app: the Library, the Reader screen and its panels.
  * Colours are custom properties set per theme through `data-theme` on <html> (set before the first paint); everything
- * else (fonts, radii, sizes) is shared. The values are the ones in .scratch/reader-redesign/spec.md and the mockups in
- * docs/design/reader-redesign. The Reader module paints the Book's own pages with the same palette (`themes` in
+ * else (fonts, radii, sizes) is shared. The values are those of the second redesign (see
+ * .scratch/reader-redesign-2/spec.md). The Reader module paints the Book's own pages with the same palette (`themes` in
  * display-settings.ts) and the same serif stack (`fontFamilies` there), so keep those in step with this file.
  *
  *   --bg          the ground of every screen, and of the Book's page
  *   --surface     cards, panels, controls: one step above the ground
+ *   --raised      a quiet fill on the ground (the Continue reading card, segmented controls)
  *   --fg          ink: text
  *   --muted       secondary text (4.5:1 on --bg and --surface)
  *   --border      hairlines between areas; --border-strong the outline of a control
@@ -18,90 +19,121 @@
  *                 its tint), the tint, and the bars of the skeleton that stands in for a paragraph still waiting
  */
 :root {
-  --font-sans: system-ui, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "WenQuanYi Micro Hei", sans-serif;
+  /* The interface is set in IBM Plex Sans (bundled, see fonts.ts); Chinese falls to the system sans fonts. */
+  --font-sans: "IBM Plex Sans", system-ui, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "WenQuanYi Micro Hei", sans-serif;
   /* Libertinus Serif, then 京华老宋体, then system serif and Chinese fonts: the "serif" stack of display-settings.ts. */
   --font-serif: "Libertinus Serif", "Linux Libertine", "KingHwa Web", "KingHwa_OldSong", "京華老宋体", Georgia, "Times New Roman", "Noto Serif", "Songti SC", "STSong", "SimSun", "NSimSun", "Noto Serif CJK SC", "Source Han Serif SC", "Noto Serif SC", "FangSong", "STFangsong", "KaiTi", "AR PL UMing CN", serif;
-  --radius-pill: 22px;
-  --radius-card: 18px;
-  --radius-control: 12px;
-  --radius-small: 8px;
+  --radius-pill: 999px;
+  --radius-card: 14px;
+  --radius-control: 10px;
+  --radius-small: 6px;
   /* The smallest comfortable touch target. */
   --tap: 2.75rem;
 }
 
+/* Paper: warm off-white, near-black ink, a terracotta accent. */
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #f5f5f1;
+  --bg: #faf8f3;
   --surface: #ffffff;
-  --fg: #1c201e;
-  --muted: #6a716d;
-  --border: #e1e3dd;
-  --border-strong: #d9dcd5;
-  --accent: #2e6b58;
-  --accent-soft: #e3efea;
-  --accent-ink: #2e6b58;
+  --raised: #f3f0e8;
+  --fg: #1f1d1a;
+  --muted: #69645b;
+  --border: #ebe6dc;
+  --border-strong: #ddd7ca;
+  --accent: #a4492a;
+  --accent-soft: #f6e8e0;
+  --accent-ink: #8f3d21;
   --on-accent: #ffffff;
-  --link: #2e6b58;
+  --link: #a4492a;
   --danger: #b3261e;
-  --mark: #f6de8e;
-  --alert-soft: #ecd8d3;
-  --gloss-ink: #3f4743;
-  --gloss-bg: #ebf2ee;
-  --gloss-bar: #d6e5de;
-  --scrim: rgb(42 36 16 / 0.5);
-  --shadow-card: 0 1px 2px rgb(20 30 25 / 0.04), 0 12px 32px rgb(20 30 25 / 0.06);
-  --shadow-panel: 0 1px 2px rgb(20 30 25 / 0.14), 0 10px 22px rgb(20 30 25 / 0.12);
+  --mark: #f7dc8a;
+  --alert-soft: #f5dfd9;
+  --gloss-ink: #4a4640;
+  --gloss-bg: #f1ede4;
+  --gloss-bar: #e2dccf;
+  --scrim: rgb(31 29 26 / 0.42);
+  --shadow-card: 0 1px 2px rgb(40 30 20 / 0.05), 0 10px 30px rgb(40 30 20 / 0.07);
+  --shadow-panel: 0 1px 2px rgb(40 30 20 / 0.08), 0 18px 48px rgb(40 30 20 / 0.16);
 }
 
+/* Night: a warm charcoal, never pure black, with a softer accent. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #14171a;
-  --surface: #1c2024;
-  --fg: #e7e9e4;
-  --muted: #9aa19c;
-  --border: #2b3035;
-  --border-strong: #343a40;
-  --accent: #86c7ab;
-  --accent-soft: #23352e;
-  --accent-ink: #86c7ab;
-  --on-accent: #10201a;
-  --link: #86c7ab;
+  --bg: #171615;
+  --surface: #201f1d;
+  --raised: #272523;
+  --fg: #ece8e1;
+  --muted: #a39d93;
+  --border: #2d2b28;
+  --border-strong: #3b3834;
+  --accent: #e8956b;
+  --accent-soft: #3a2a22;
+  --accent-ink: #f0ab86;
+  --on-accent: #23140c;
+  --link: #e8956b;
   --danger: #ff8f85;
-  /* The dark and sepia highlights are not in the mockups; chosen to read like the light one. */
-  --mark: #5b4b1c;
-  --alert-soft: #352829;
-  --gloss-ink: #c3cdc7;
-  --gloss-bg: #1c2622;
-  --gloss-bar: #2a3a33;
-  --scrim: rgb(6 8 10 / 0.58);
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2), 0 12px 32px rgb(0 0 0 / 0.3);
-  --shadow-panel: 0 12px 40px rgb(0 0 0 / 0.35);
+  --mark: #5e4a1d;
+  --alert-soft: #3a2928;
+  --gloss-ink: #c9c3b9;
+  --gloss-bg: #23211e;
+  --gloss-bar: #36332e;
+  --scrim: rgb(0 0 0 / 0.55);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.25), 0 10px 30px rgb(0 0 0 / 0.3);
+  --shadow-panel: 0 18px 48px rgb(0 0 0 / 0.45);
 }
 
+/* Sepia: aged paper. */
 :root[data-theme="sepia"] {
   color-scheme: light;
-  --bg: #f3e9d2;
-  --surface: #fbf4e2;
-  --fg: #3a3023;
-  /* A little darker than the mockup's #7a6c55, which is 4.2:1 on the ground. */
-  --muted: #74664d;
-  --border: #e0d3b3;
-  --border-strong: #d8c9a5;
-  --accent: #8a5a2b;
-  --accent-soft: #ebddbe;
-  --accent-ink: #6b4620;
+  --bg: #f4ecd8;
+  --surface: #fbf5e6;
+  --raised: #ede3cb;
+  --fg: #3b3022;
+  --muted: #72644b;
+  --border: #e3d6b8;
+  --border-strong: #d6c6a1;
+  --accent: #8f4f24;
+  --accent-soft: #ecdcbf;
+  --accent-ink: #74401c;
   --on-accent: #ffffff;
-  --link: #8a5a2b;
+  --link: #8f4f24;
   --danger: #9c2a1b;
   --mark: #ebd28a;
-  --alert-soft: #e7ceb8;
+  --alert-soft: #ebd2bd;
   --gloss-ink: #4b3f2e;
-  --gloss-bg: #ece0c4;
-  --gloss-bar: #dccfa9;
-  --scrim: rgb(60 40 10 / 0.5);
-  --shadow-card: 0 2px 4px rgb(60 40 10 / 0.06), 0 12px 32px rgb(60 40 10 / 0.1);
-  --shadow-panel: 0 2px 4px rgb(60 40 10 / 0.06), 0 24px 56px rgb(60 40 10 / 0.2);
+  --gloss-bg: #ece1c6;
+  --gloss-bar: #ddd0ab;
+  --scrim: rgb(60 40 10 / 0.42);
+  --shadow-card: 0 2px 4px rgb(60 40 10 / 0.06), 0 10px 30px rgb(60 40 10 / 0.1);
+  --shadow-panel: 0 2px 4px rgb(60 40 10 / 0.06), 0 18px 48px rgb(60 40 10 / 0.2);
+}
+
+/* Black: true black for OLED phones and reading in the dark; dimmer ink than Night. */
+:root[data-theme="black"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: #121212;
+  --raised: #1a1a1a;
+  --fg: #dedad3;
+  --muted: #9a958d;
+  --border: #222120;
+  --border-strong: #302f2d;
+  --accent: #e08c63;
+  --accent-soft: #2c1f18;
+  --accent-ink: #eda27c;
+  --on-accent: #1a0f09;
+  --link: #e08c63;
+  --danger: #ff8f85;
+  --mark: #574419;
+  --alert-soft: #301f1e;
+  --gloss-ink: #bcb7af;
+  --gloss-bg: #141312;
+  --gloss-bar: #292725;
+  --scrim: rgb(0 0 0 / 0.65);
+  --shadow-card: none;
+  --shadow-panel: 0 0 0 1px #2a2928, 0 18px 48px rgb(0 0 0 / 0.6);
 }
 
 body {

@@ -20,6 +20,8 @@ export interface RelocateDetail {
   cfi: string;
   fraction?: number;
   tocItem?: TocItem | null;
+  /** Estimated reading time left, in minutes (foliate-js counts about 1600 bytes of the Book's files a minute). */
+  time?: { section: number; total: number };
 }
 
 /** The page renderer inside a View (the paginator, or the fixed-layout renderer, which has no `setStyles`). */
@@ -46,6 +48,12 @@ export class View extends HTMLElement {
   open(book: FoliateBook): Promise<void>;
   init(options: { lastLocation?: string | null; showTextStart?: boolean }): Promise<void>;
   goTo(target: string | number): Promise<unknown>;
+  /** Moves to a place given as a fraction of the whole Book (0 to 1). */
+  goToFraction(fraction: number): Promise<void>;
+  /** Where each section of the Book starts, as a fraction of the whole (one more entry than there are sections). */
+  getSectionFractions(): number[];
+  /** Finds the section a table-of-contents href (or a CFI) points into. */
+  resolveNavigation(target: string): { index: number; anchor?: unknown } | undefined;
   next(): Promise<void>;
   prev(): Promise<void>;
   close(): void;

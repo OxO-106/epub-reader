@@ -4,7 +4,7 @@
  * styles for the page (`reader/reader.ts`), and `applyTheme` colours the rest of the app.
  */
 
-export type Theme = "light" | "dark" | "sepia";
+export type Theme = "light" | "sepia" | "dark" | "black";
 export type Flow = "paginated" | "scrolled";
 export type FontFamily = "book" | "serif" | "sans" | "plex" | "cjk-serif" | "cjk-sans";
 export type Margins = "narrow" | "medium" | "wide";
@@ -84,13 +84,17 @@ const serif = { stack: serifStack, hansStack: hansSerifStack, hantStack: hantSer
 const sans = { stack: sansStack, hansStack: sansStack, hantStack: hantSansStack };
 const plex = { stack: plexStack, hansStack: plexStack, hantStack: hantPlexStack };
 
-export const fontFamilies: FontChoice[] = [
-  { value: "book", label: "The Book's own", stack: null, hansStack: null, hantStack: null },
-  { value: "serif", label: "Serif", ...serif },
-  { value: "sans", label: "Sans-serif", ...sans },
-  { value: "plex", label: "IBM Plex Sans", ...plex },
-  { value: "cjk-serif", label: "Chinese serif (宋体)", ...serif },
-  { value: "cjk-sans", label: "Chinese sans (黑体)", ...sans },
+/**
+ * The choices, in the order the Display panel shows them. `label` is the short name on the tile; `sample` is what the
+ * tile draws in the font itself ("Aa", or a Chinese character for the Chinese ones).
+ */
+export const fontFamilies: (FontChoice & { sample: string })[] = [
+  { value: "book", label: "Original", sample: "Aa", stack: null, hansStack: null, hantStack: null },
+  { value: "serif", label: "Serif", sample: "Aa", ...serif },
+  { value: "sans", label: "Sans", sample: "Aa", ...sans },
+  { value: "plex", label: "Plex", sample: "Aa", ...plex },
+  { value: "cjk-serif", label: "京华老宋体", sample: "文", ...serif },
+  { value: "cjk-sans", label: "黑体", sample: "文", ...sans },
 ];
 
 /**
@@ -127,36 +131,47 @@ export interface Palette {
 export const themes: Record<Theme, Palette> = {
   light: {
     label: "Light",
-    background: "#f5f5f1",
-    text: "#23282a",
-    link: "#2e6b58",
-    glossInk: "#3f4743",
-    glossBackground: "#ebf2ee",
-    glossBar: "#d6e5de",
+    background: "#faf8f3",
+    text: "#2a2724",
+    link: "#a4492a",
+    glossInk: "#4a4640",
+    glossBackground: "#f1ede4",
+    glossBar: "#e2dccf",
     alertInk: "#b3261e",
-    alertBackground: "#ecd8d3",
-  },
-  dark: {
-    label: "Dark",
-    background: "#14171a",
-    text: "#d9dcd6",
-    link: "#86c7ab",
-    glossInk: "#c3cdc7",
-    glossBackground: "#1c2622",
-    glossBar: "#2a3a33",
-    alertInk: "#ff8f85",
-    alertBackground: "#352829",
+    alertBackground: "#f5dfd9",
   },
   sepia: {
     label: "Sepia",
-    background: "#f3e9d2",
-    text: "#3a3023",
-    link: "#8a5a2b",
+    background: "#f4ecd8",
+    text: "#3b3022",
+    link: "#8f4f24",
     glossInk: "#4b3f2e",
-    glossBackground: "#ece0c4",
-    glossBar: "#dccfa9",
+    glossBackground: "#ece1c6",
+    glossBar: "#ddd0ab",
     alertInk: "#9c2a1b",
-    alertBackground: "#e7ceb8",
+    alertBackground: "#ebd2bd",
+  },
+  dark: {
+    label: "Dark",
+    background: "#171615",
+    text: "#dcd7cf",
+    link: "#e8956b",
+    glossInk: "#c9c3b9",
+    glossBackground: "#23211e",
+    glossBar: "#36332e",
+    alertInk: "#ff8f85",
+    alertBackground: "#3a2928",
+  },
+  black: {
+    label: "Black",
+    background: "#000000",
+    text: "#cfcbc4",
+    link: "#e08c63",
+    glossInk: "#bcb7af",
+    glossBackground: "#141312",
+    glossBar: "#292725",
+    alertInk: "#ff8f85",
+    alertBackground: "#301f1e",
   },
 };
 

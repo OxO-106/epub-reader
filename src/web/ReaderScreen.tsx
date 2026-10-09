@@ -24,10 +24,18 @@ type State =
 /** The Search panel is docked beside the text from this width up, and covers the text below it (see reader-chrome.css). */
 const searchOverlays = () => !window.matchMedia("(min-width: 60rem)").matches;
 
+/** How long the bars stay after the Book opens, or after the pointer leaves them, before they fade to let the page be read. */
+const chromeRestMs = 2500;
+
 /**
  * The Reader screen: one Book, a top bar (Library, title and chapter, the Contents, Search and Display buttons and, for an
- * English Book, Translate with its status), the text, and a bottom bar. At most one panel is open at a time; Escape closes
- * it and gives focus back to its button.
+ * English Book, Translate with its status), the text, and a bottom bar (Previous, the progress scrubber, Next). At most
+ * one panel is open at a time; Escape closes it and gives focus back to its button.
+ *
+ * The bars get out of the way while reading: they fade to a running head (the chapter) and foot (the percentage) once a
+ * page is turned from the keyboard or the page, or a moment after the Book opens. A tap in the middle of the page brings
+ * them back (and sends them away again); so does pointing at them, or giving one of their controls focus. They stay
+ * while a panel is open, while the Book is opening, and while translation reports trouble.
  *
  * Translate is a setting of this device (translate-setting.ts) applied to every English Book; the Reader module does the work.
  */
@@ -36,6 +44,8 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [chapterId, setChapterId] = useState<number | null>(null);
   const [fraction, setFraction] = useState<number | null>(null);
+  const [minutesLeft, setMinutesLeft] = useState<number | null>(null);
+  const [chapterStarts, setChapterStarts] = useState<number[]>([]);
   const [display, setDisplay] = useState(loadDisplay);
   const displayNow = useRef(display);
   const [translate, setTranslate] = useState(loadTranslate);
@@ -44,6 +54,12 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const [translation, setTranslation] = useState<TranslationStatus | null>(null);
   // Bumped to open the Book again after the server could not be reached.
   const [attempt, setAttempt] = useState(0);
+  // Whether the bars are resting (faded); see the comment above.
+  const [resting, setResting] = useState(false);
+  const restTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // The pointer is over a bar, or one of their controls has focus: the bars are in use, so they stay.
+  const inBars = useRef({ pointer: false, focus: false });
+  const restingNow = useRef(false);
   const viewport = useRef<HTMLDivElement>(null);
   const reader = useRef<Reader | null>(null);
   const buttons = {
@@ -54,8 +70,29 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   };
   const translateButton = useRef<HTMLButtonElement>(null);
 
+  const barsInUse = () => inBars.current.pointer || inBars.current.focus;
+
+  function rest() {
+    clearTimeout(restTimer.current);
+    setResting(true);
+  }
+
+  function wake() {
+    clearTimeout(restTimer.current);
+    setResting(false);
+  }
+
+  /** Lets the bars fade after a moment, unless they are in use by then. */
+  function restSoon() {
+    clearTimeout(restTimer.current);
+    restTimer.current = setTimeout(() => {
+      if (!barsInUse()) setResting(true);
+    }, chromeRestMs);
+  }
+
   useEffect(() => {
     let cancelled = false;
+    let opened = false;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
     const instance = createReader(viewport.current!);
     reader.current = instance;
@@ -66,16 +103,26 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     setState({ kind: "loading" });
     setChapterId(null);
     setFraction(null);
+    setMinutesLeft(null);
+    setChapterStarts([]);
+    setResting(false);
     setEnglish(false);
     setTranslation(null);
     let stopTracking = () => {};
     const stopListening = instance.onLocation((location) => {
       setChapterId(location.chapterId);
       setFraction(location.fraction);
+      setMinutesLeft(location.minutesLeftInSection);
       // A Book that declares no language is judged from its text, which may take a few pages (a title page has too little).
       setEnglish(instance.isEnglish());
+      // A page turned from the keyboard or on the page itself: put the bars away, unless they are being used.
+      if (opened && !barsInUse()) rest();
     });
     const stopStatus = instance.onTranslationStatus(setTranslation);
+    const stopTaps = instance.onTap(() => {
+      clearTimeout(restTimer.current);
+      setResting(!restingNow.current);
+    });
 
     Promise.all([loadBookSource(bookId), getReadingPosition(bookId), fontFaceCss()]).then(
       ([source, saved, fontFaces]) => {
@@ -88,6 +135,9 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
             if (cancelled) return;
             setEnglish(instance.isEnglish());
             setState({ kind: "ready", title, toc });
+            setChapterStarts(instance.chapterStarts());
+            opened = true;
+            restSoon();
           },
           () => {
             if (!cancelled) setState({ kind: "error", message: "This Book could not be opened. Its file may be damaged." });
@@ -109,9 +159,11 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     return () => {
       cancelled = true;
       clearTimeout(retryTimer);
+      clearTimeout(restTimer.current);
       stopTracking();
       stopListening();
       stopStatus();
+      stopTaps();
       instance.close();
       reader.current = null;
       if ((window as { __reader?: Reader }).__reader === instance) delete (window as { __reader?: Reader }).__reader;
@@ -145,11 +197,45 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const ready = state.kind === "ready";
   const chapter = toc.find((entry) => entry.id === chapterId);
   const statusView = translating ? describeStatus(translation) : null;
+  // The bars stay up while they have something to say: a panel, the Book still opening, or translation in trouble.
+  const chromeResting = resting && ready && panel === null && statusView?.tone !== "alert";
+  restingNow.current = chromeResting;
 
   // The panel behind the status pill goes when there is nothing left to tell (the model came back, Retry worked, Translate went off).
   useEffect(() => {
     if (panel === "translation" && !statusView?.panel) setPanel(null);
   }, [panel, statusView?.panel]);
+
+  /** Pointer and focus on the bars: they wake while used, and rest a moment after. */
+  const barEvents = {
+    onPointerEnter: (event: PointerEvent) => {
+      if (event.pointerType === "touch") return; // a finger does not hover: its tap is handled below
+      inBars.current.pointer = true;
+      wake();
+    },
+    onPointerLeave: (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      inBars.current.pointer = false;
+      restSoon();
+    },
+    onFocusIn: () => {
+      inBars.current.focus = true;
+      wake();
+    },
+    onFocusOut: (event: FocusEvent) => {
+      if ((event.currentTarget as Element).contains(event.relatedTarget as Node | null)) return;
+      inBars.current.focus = false;
+      restSoon();
+    },
+    // A tap on a resting bar wakes it, rather than pressing a control the finger cannot see.
+    onClickCapture: (event: MouseEvent) => {
+      if (!restingNow.current || (event as PointerEvent).pointerType !== "touch") return;
+      event.preventDefault();
+      event.stopPropagation();
+      wake();
+      restSoon();
+    },
+  };
 
   /** Closes the open panel; focus goes back to its button unless the caller hands it to the Book. */
   function closePanel(focus: "button" | "book" = "button") {
@@ -187,19 +273,21 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   }
 
   return (
-    <div class="reader-screen">
+    <div class="reader-screen" data-chrome={chromeResting ? "resting" : "shown"}>
       <div class="reader-main">
-        <ReaderTopBar
-          title={ready ? state.title : ""}
-          chapter={chapter?.label || null}
-          open={panel}
-          searchReady={ready}
-          buttons={buttons}
-          onToggle={(next) => setPanel(panel === next ? null : next)}
-          translate={
-            ready && english ? { on: translate, onToggle: toggleTranslate, buttonRef: translateButton, status: statusView } : null
-          }
-        />
+        <div class="reader-bar-zone" {...barEvents}>
+          <ReaderTopBar
+            title={ready ? state.title : ""}
+            chapter={chapter?.label || null}
+            open={panel}
+            searchReady={ready}
+            buttons={buttons}
+            onToggle={(next) => setPanel(panel === next ? null : next)}
+            translate={
+              ready && english ? { on: translate, onToggle: toggleTranslate, buttonRef: translateButton, status: statusView } : null
+            }
+          />
+        </div>
 
         <ConnectionNotice />
 
@@ -222,13 +310,18 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
           )}
         </div>
 
-        <ReaderBottomBar
-          fraction={fraction}
-          chapter={chapterProgress(toc, chapterId)}
-          ready={ready}
-          onPrev={() => reader.current?.prev()}
-          onNext={() => reader.current?.next()}
-        />
+        <div class="reader-bar-zone" {...barEvents}>
+          <ReaderBottomBar
+            fraction={fraction}
+            chapter={chapterProgress(toc, chapterId)}
+            chapterStarts={chapterStarts}
+            minutesLeft={minutesLeft}
+            ready={ready}
+            onPrev={() => reader.current?.prev()}
+            onNext={() => reader.current?.next()}
+            onScrub={(to) => reader.current?.goToFraction(to)}
+          />
+        </div>
       </div>
 
       {panel === "search" && ready && reader.current && (

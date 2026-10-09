@@ -1,14 +1,14 @@
 import type { Frame, Page } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 
-// The design tokens of the three themes, as set down in .scratch/reader-redesign/spec.md. The literals below are copied
+// The design tokens of the four themes, as set down in .scratch/reader-redesign-2/spec.md. The literals below are copied
 // from the spec on purpose: they are what the app must match, not something to compute from the app.
 
 const spec = {
-  light: { bg: "#f5f5f1", surface: "#ffffff", fg: "#1c201e", muted: "#6a716d", border: "#e1e3dd", accent: "#2e6b58", "accent-soft": "#e3efea" },
-  dark: { bg: "#14171a", surface: "#1c2024", fg: "#e7e9e4", muted: "#9aa19c", border: "#2b3035", accent: "#86c7ab", "accent-soft": "#23352e" },
-  // The spec's sepia muted text is #7a6c55, which is 4.2:1 on its ground; one step darker passes the 4.5:1 rule.
-  sepia: { bg: "#f3e9d2", surface: "#fbf4e2", fg: "#3a3023", muted: "#74664d", border: "#e0d3b3", accent: "#8a5a2b", "accent-soft": "#ebddbe" },
+  light: { bg: "#faf8f3", surface: "#ffffff", fg: "#1f1d1a", muted: "#69645b", border: "#ebe6dc", accent: "#a4492a", "accent-soft": "#f6e8e0" },
+  dark: { bg: "#171615", surface: "#201f1d", fg: "#ece8e1", muted: "#a39d93", border: "#2d2b28", accent: "#e8956b", "accent-soft": "#3a2a22" },
+  sepia: { bg: "#f4ecd8", surface: "#fbf5e6", fg: "#3b3022", muted: "#72644b", border: "#e3d6b8", accent: "#8f4f24", "accent-soft": "#ecdcbf" },
+  black: { bg: "#000000", surface: "#121212", fg: "#dedad3", muted: "#9a958d", border: "#222120", accent: "#e08c63", "accent-soft": "#2c1f18" },
 } as const;
 
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16)).join(", ")})`;
@@ -25,7 +25,7 @@ function tokenColor(name: string): string {
   return color;
 }
 
-for (const theme of ["light", "dark", "sepia"] as const) {
+for (const theme of ["light", "dark", "sepia", "black"] as const) {
   test.describe(`${theme} theme`, () => {
     test.beforeEach(async ({ page }) => {
       await page.addInitScript(

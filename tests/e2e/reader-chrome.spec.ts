@@ -299,8 +299,8 @@ test.describe("the Display panel", () => {
     const box = (await panel.boundingBox())!;
     expect(box.y).toBeGreaterThanOrEqual(button.y + button.height - 1); // under the button
     expect(Math.abs(box.x + box.width - (button.x + button.width))).toBeLessThan(60); // at its right edge
-    for (const name of ["Light", "Sepia", "Dark"]) await expect(panel.getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", /true|false/);
-    for (const name of ["The Book's own", "Serif", "Sans-serif", "Chinese serif (宋体)", "Chinese sans (黑体)"]) {
+    for (const name of ["Light", "Sepia", "Dark", "Black"]) await expect(panel.getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", /true|false/);
+    for (const name of ["Original", "Serif", "Sans", "京华老宋体", "黑体"]) {
       await expect(panel.getByRole("button", { name, exact: true })).toBeVisible();
     }
     for (const name of ["Narrow", "Normal", "Wide", "Paginated", "Scrolling"]) await expect(panel.getByRole("button", { name, exact: true })).toBeVisible();
@@ -338,7 +338,7 @@ test.describe("the Display panel", () => {
     await expect.poll(size).toBe(18);
     await expect(panel.getByLabel("Text size")).toHaveValue("18");
     await expect(panel.getByRole("button", { name: "Sepia", exact: true })).toHaveAttribute("aria-pressed", "false");
-    await expect(panel.getByRole("button", { name: "The Book's own", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(panel.getByRole("button", { name: "Original", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(panel.getByRole("button", { name: "Normal", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(panel.getByRole("button", { name: "Paginated", exact: true })).toHaveAttribute("aria-pressed", "true");
     expect(await page.locator("html").getAttribute("data-theme")).toBe("light");
@@ -352,7 +352,7 @@ test.describe("the Display panel", () => {
     await displayPanel(page).getByLabel("Text size").fill("26");
     await page.waitForTimeout(400);
     await expect.poll(() => visibleParagraphs(page)).toContain(place);
-    await displayPanel(page).getByRole("button", { name: "Sans-serif", exact: true }).click();
+    await displayPanel(page).getByRole("button", { name: "Sans", exact: true }).click();
     await page.waitForTimeout(400);
     await expect.poll(() => visibleParagraphs(page)).toContain(place);
 

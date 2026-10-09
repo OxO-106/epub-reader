@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done (superseded by .scratch/reader-redesign-2)
 
 # Reader redesign
 

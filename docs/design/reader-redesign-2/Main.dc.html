@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Library</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libertinus+Serif:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a4492a}a:hover{color:#8f3d21}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; background: #faf8f3; color: #1f1d1a; font-family: 'IBM Plex Sans', system-ui, sans-serif; padding: 28px 64px; display: flex; flex-direction: column; gap: 32px; overflow: hidden">
+  <header style="display: flex; align-items: center; gap: 16px">
+    <div style="display: flex; align-items: center; gap: 10px; flex: 1">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a4492a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2V5z"></path><path d="M8 7h6"></path></svg>
+      <span style="font-family: 'Libertinus Serif', Georgia, serif; font-size: 24px; font-weight: 600; letter-spacing: 0.01em">Reader</span>
+    </div>
+    <label style="display: flex; align-items: center; gap: 10px; width: 320px; height: 44px; box-sizing: border-box; padding: 0 14px; border: 1px solid #ddd7ca; border-radius: 10px; background: #ffffff; color: #69645b; font-size: 15px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+      <input type="search" placeholder="Search by title or author" aria-label="Search the Library" style="flex: 1; border: 0; outline: 0; background: transparent; font: inherit; color: #1f1d1a">
+    </label>
+    <button type="button" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: #a4492a; color: #ffffff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+      Add books
+    </button>
+  </header>
+
+  <a href="Reader.dc.html" style="display: flex; align-items: center; gap: 32px; padding: 28px 32px; border-radius: 14px; background: #f3f0e8; color: inherit; text-decoration: none">
+    <div style="width: 112px; height: 168px; flex: none; border-radius: 4px 8px 8px 4px; background: #7a3e2b; box-shadow: 0 1px 2px rgba(40,30,20,0.08), 0 10px 30px rgba(40,30,20,0.16); display: flex; flex-direction: column; justify-content: flex-end; padding: 14px; box-sizing: border-box; color: #f6ece4; font-family: 'Libertinus Serif', Georgia, serif; font-size: 19px; line-height: 1.1">
+      <span style="width: 22px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.6); margin-bottom: auto"></span>
+      Middlemarch
+    </div>
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8f3d21">Continue reading</span>
+      <span style="font-family: 'Libertinus Serif', Georgia, serif; font-size: 34px; line-height: 1.1">Middlemarch</span>
+      <span style="font-size: 15px; color: #69645b">George Eliot</span>
+      <div style="display: flex; align-items: center; gap: 14px; margin-top: 14px; max-width: 520px">
+        <div style="flex: 1; height: 4px; border-radius: 2px; background: #ddd7ca"><div style="width: 42%; height: 4px; border-radius: 2px; background: #a4492a"></div></div>
+        <span style="font-size: 14px; font-weight: 600">42%</span>
+      </div>
+      <span style="font-size: 13px; color: #69645b">Chapter 23 of 86 · 14 min left in chapter</span>
+    </div>
+    <span style="display: flex; align-items: center; gap: 6px; height: 48px; padding: 0 22px; border-radius: 10px; background: #1f1d1a; color: #faf8f3; font-size: 15px; font-weight: 600">
+      Continue
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+    </span>
+  </a>
+
+  <section style="display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; align-items: baseline; justify-content: space-between">
+      <h2 style="margin: 0; font-family: 'Libertinus Serif', Georgia, serif; font-size: 24px; font-weight: 600">Your Books <span style="font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; font-weight: 400; color: #69645b">· 6</span></h2>
+      <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #69645b">Sort
+        <select aria-label="Sort Books" style="height: 44px; padding: 0 12px; border: 1px solid #ddd7ca; border-radius: 10px; background: #ffffff; font: inherit; color: #1f1d1a">
+          <option>Recently read</option>
+          <option>Title</option>
+          <option>Author</option>
+        </select>
+      </label>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 28px">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="aspect-ratio: 2 / 3; border-radius: 3px 6px 6px 3px; background: #26344f; box-shadow: 0 1px 2px rgba(40,30,20,0.08), 0 8px 22px rgba(40,30,20,0.12); padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; color: #eef1f6; font-family: 'Libertinus Serif', Georgia, serif; font-size: 20px; line-height: 1.1"><span style="width: 20px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.55); margin-bottom: auto"></span>Moby-Dick</div>
+        <span style="font-family: 'Libertinus Serif', Georgia, serif; font-size: 16px; font-weight: 600">Moby-Dick</span>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; color: #69645b"><span>Herman Melville</span><span style="color: #1f1d1a; font-weight: 600">12%</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="aspect-ratio: 2 / 3; border-radius: 3px 6px 6px 3px; background: #a83a2c; box-shadow: 0 1px 2px rgba(40,30,20,0.08), 0 8px 22px rgba(40,30,20,0.12); padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; color: #fbeee9; font-family: 'Libertinus Serif', 'KingHwa_OldSong', '京華老宋体', serif; font-size: 24px; line-height: 1.1"><span style="width: 20px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.55); margin-bottom: auto"></span>红楼梦</div>
+        <span style="font-family: 'Libertinus Serif', 'KingHwa_OldSong', '京華老宋体', serif; font-size: 16px; font-weight: 600">红楼梦</span>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; color: #69645b"><span>曹雪芹</span><span style="color: #8f3d21; font-weight: 600">New</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="aspect-ratio: 2 / 3; border-radius: 3px 6px 6px 3px; background: #2e6b58; box-shadow: 0 1px 2px rgba(40,30,20,0.08), 0 8px 22px rgba(40,30,20,0.12); padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; color: #eaf3ef; font-family: 'Libertinus Serif', Georgia, serif; font-size: 20px; line-height: 1.1"><span style="width: 20px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.55); margin-bottom: auto"></span>Walden</div>
+        <span style="font-family: 'Libertinus Serif', Georgia, serif; font-size: 16px; font-weight: 600">Walden</span>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; color: #69645b"><span>H. D. Thoreau</span><span>Done</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="aspect-ratio: 2 / 3; border-radius: 6px; background: #ffffff; border: 1px solid #ebe6dc; padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; color: #1f1d1a">
+          <span style="align-self: flex-start; padding: 2px 6px; border-radius: 4px; background: #f6e8e0; color: #8f3d21; font-size: 11px; font-weight: 600">MD</span>
+          <span style="height: 3px; border-radius: 2px; background: #ebe6dc; margin-top: 10px"></span>
+          <span style="height: 3px; width: 80%; border-radius: 2px; background: #ebe6dc"></span>
+          <span style="height: 3px; width: 60%; border-radius: 2px; background: #ebe6dc"></span>
+          <span style="margin-top: auto; font-family: 'Libertinus Serif', Georgia, serif; font-size: 18px; line-height: 1.15">Field Notes</span>
+        </div>
+        <span style="font-family: 'Libertinus Serif', Georgia, serif; font-size: 16px; font-weight: 600">Field Notes</span>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; color: #69645b"><span>Markdown</span><span style="color: #1f1d1a; font-weight: 600">64%</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="aspect-ratio: 2 / 3; border-radius: 3px 6px 6px 3px; background: #4c4470; box-shadow: 0 1px 2px rgba(40,30,20,0.08), 0 8px 22px rgba(40,30,20,0.12); padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; color: #f0eef7; font-family: 'Libertinus Serif', Georgia, serif; font-size: 18px; line-height: 1.1"><span style="width: 20px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.55); margin-bottom: auto"></span>Pride and Prejudice</div>
+        <span style="font-family: 'Libertinus Serif', Georgia, serif; font-size: 16px; font-weight: 600">Pride and Prejudice</span>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; color: #69645b"><span>Jane Austen</span><span style="color: #8f3d21; font-weight: 600">New</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="aspect-ratio: 2 / 3; border-radius: 3px 6px 6px 3px; background: #c8a24a; box-shadow: 0 1px 2px rgba(40,30,20,0.08), 0 8px 22px rgba(40,30,20,0.12); padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; color: #2b2210; font-family: 'Libertinus Serif', Georgia, serif; font-size: 20px; line-height: 1.1"><span style="width: 20px; height: 3px; border-radius: 2px; background: rgba(43,34,16,0.45); margin-bottom: auto"></span>Essays</div>
+        <span style="font-family: 'Libertinus Serif', Georgia, serif; font-size: 16px; font-weight: 600">Essays</span>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; color: #69645b"><span>Montaigne</span><span style="color: #1f1d1a; font-weight: 600">71%</span></div>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

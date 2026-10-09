@@ -1,6 +1,6 @@
 /*
- * The Library screen (and the empty Library): header, Continue reading, drop strip, the grid of Books, covers and the
- * delete confirmation. Imported by Library.tsx. Colours come from the tokens in theme.css; the only colours written
+ * The Library screen (and the empty Library): header, Continue reading, the drop overlay, the grid of Books, covers and
+ * the delete confirmation. Imported by Library.tsx. Colours come from the tokens in theme.css; the only colours written
  * here are the cover palette below, which belong to the Books and so do not change with the theme.
  *
  * This file is loaded before theme.css, whose element rules (button, select, input) have the same weight as a bare
@@ -40,16 +40,14 @@
 }
 
 .library {
-  /* Ink one step softer than the text, for secondary controls and the dashed outlines. */
-  --ink-soft: color-mix(in srgb, var(--fg) 78%, var(--bg));
-  --outline: color-mix(in srgb, var(--muted) 55%, var(--bg));
+  --cover-shadow: 0 1px 2px rgb(40 30 20 / 0.08), 0 8px 22px rgb(40 30 20 / 0.12);
   position: relative;
   box-sizing: border-box;
   /* Tall enough that a file dropped anywhere on the window lands on the page. */
   min-height: 100vh;
-  max-width: 74rem;
+  max-width: 76rem;
   margin: 0 auto;
-  padding: 2rem clamp(1rem, 4vw, 3rem) 4.5rem;
+  padding: 1.75rem clamp(1rem, 4.5vw, 4rem) 4.5rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -66,7 +64,8 @@
   white-space: nowrap;
 }
 
-/* Header: wordmark on the left, search and Add books on the right. */
+/* ---- Header: wordmark on the left, search and Add books on the right ---- */
+
 .library-header {
   display: flex;
   flex-wrap: wrap;
@@ -78,86 +77,82 @@
 .wordmark {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 10px;
 }
 
 .wordmark-mark {
-  display: grid;
-  place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 10px;
-  background: var(--accent);
-  color: var(--on-accent);
+  display: flex;
+  color: var(--accent);
 }
 
 .wordmark-name {
   font-family: var(--font-serif);
-  font-size: 1.625rem;
+  font-size: 1.5rem;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
 }
 
 .library-tools {
   display: flex;
-  flex: 0 1 auto;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
   min-width: 0;
-  max-width: 100%;
 }
 
+/* The field is the input itself, the glyph drawn over its start, so the whole box is the target. */
 .library .search-field {
   position: relative;
-  /* An explicit width: the wrapping row measures its items by content, and would otherwise wrap Add books under the search. */
-  width: 18.75rem;
+  display: flex;
+  width: 20rem;
   max-width: 100%;
-  min-width: 0;
   color: var(--muted);
 }
 
 .library .search-field svg {
   position: absolute;
-  inset-inline-start: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
+  top: calc(50% - 9px);
+  left: 14px;
   pointer-events: none;
 }
 
 .library .search {
   box-sizing: border-box;
-  display: block;
   width: 100%;
-  min-height: var(--tap);
-  margin: 0;
-  padding: 0 1rem 0 2.75rem;
+  min-width: 0;
+  height: var(--tap);
+  padding: 0 14px 0 42px;
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--fg);
   font: inherit;
+  outline: 0;
+}
+
+.library .search:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .library .search::placeholder {
   color: var(--muted);
 }
 
-/* Buttons: the accent one (Add books), the dark one (Continue, Choose files in the empty Library) and the quiet one. */
 .library .button-primary,
 .library .button-dark,
 .library .button-quiet {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 8px;
   box-sizing: border-box;
   min-height: var(--tap);
-  padding: 0 1.375rem;
+  padding: 0 18px;
   border: 1px solid transparent;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   font: inherit;
   font-weight: 600;
+  white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
 }
@@ -173,11 +168,9 @@
 }
 
 .library .button-quiet {
-  padding: 0 1rem;
   border-color: var(--border-strong);
   background: var(--surface);
   color: var(--fg);
-  font-weight: 400;
 }
 
 .library button:disabled {
@@ -185,110 +178,123 @@
   cursor: default;
 }
 
-/* Continue reading */
-.continue {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
-}
+/* ---- Continue reading: one link for the whole card ---- */
 
-/* The whole card is the link. */
 .library .continue-link {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 1.5rem 1.75rem;
-  padding: 1.5rem;
-  border-radius: inherit;
+  gap: 2rem;
+  padding: 1.75rem 2rem;
+  border-radius: var(--radius-card);
+  background: var(--raised);
   color: inherit;
   text-decoration: none;
 }
 
 .continue-cover {
   flex: none;
-  display: block;
-  width: 6.5rem;
-  --cover-scale: 1.5;
+  width: 7rem;
+  --cover-scale: 1;
+}
+
+.continue-cover .cover {
+  border-radius: 4px 8px 8px 4px;
 }
 
 .continue-body {
-  display: flex;
-  flex: 1 1 14rem;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.375rem;
+  flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
 }
 
 .eyebrow {
   font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent-ink);
 }
 
 .continue-body h2 {
   margin: 0;
-  font-size: 1.875rem;
-  font-weight: 600;
-  line-height: 1.2;
+  font-size: clamp(1.5rem, 3vw, 2.125rem);
+  font-weight: 400;
+  line-height: 1.12;
   overflow-wrap: anywhere;
 }
 
 .continue-author {
   color: var(--muted);
-  overflow-wrap: anywhere;
 }
 
 .continue-body .progress-row {
-  max-width: 28.75rem;
-  margin-top: 0.625rem;
+  max-width: 32rem;
+  margin-top: 0.75rem;
 }
 
-/* The drop strip, and its large form in the empty Library. */
-.dropzone {
+/* ---- Drop target: the whole window lights up while files are dragged over it ---- */
+
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem 1rem;
-  padding: 1.125rem 1.5rem;
-  border: 1.5px dashed var(--outline);
-  border-radius: 14px;
-  color: var(--ink-soft);
+  padding: 1.5rem;
+  border: 2px dashed transparent;
+  background: transparent;
+  visibility: hidden;
+  pointer-events: none;
 }
 
-.dropzone > svg {
+.drop-overlay.dragging {
+  visibility: visible;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg) 82%);
+}
+
+.drop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 2.5rem;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
   color: var(--accent-ink);
 }
 
-.dropzone.dragging {
-  border-style: solid;
-  border-color: var(--accent);
-  background: var(--accent-soft);
+.drop-title {
+  font-family: var(--font-serif);
+  font-size: 1.375rem;
   color: var(--fg);
 }
 
 .formats {
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  justify-content: center;
+  gap: 6px;
 }
 
-.chip {
-  padding: 3px 10px;
-  border-radius: 12px;
+.library .chip {
+  padding: 2px 9px;
+  border-radius: var(--radius-small);
   background: var(--accent-soft);
   color: var(--accent-ink);
   font-size: 0.75rem;
   font-weight: 600;
 }
 
-/* Messages while and after importing */
+/* ---- Import messages ---- */
+
 .import-status {
   margin: 0;
+  color: var(--muted);
 }
 
 .library .outcomes {
@@ -298,10 +304,10 @@
 }
 
 .library .outcomes li {
-  margin-bottom: 0.25rem;
-  padding: 0.35rem 0.75rem;
-  border-left: 4px solid currentColor;
-  border-radius: 0 var(--radius-small) var(--radius-small) 0;
+  margin-bottom: 6px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0;
   background: var(--surface);
   overflow-wrap: anywhere;
 }
@@ -317,20 +323,23 @@
 .folder-problems h2 {
   margin: 0 0 0.5rem;
   font-size: 1rem;
+  font-weight: 600;
 }
 
-/* The empty Library */
+/* ---- The empty Library ---- */
+
 .library-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.25rem;
-  padding: 1.5rem 0;
+  gap: 1rem;
+  margin: 2rem auto 0;
+  max-width: 34rem;
   text-align: center;
 }
 
 .shelf-board {
-  fill: var(--border);
+  fill: var(--border-strong);
 }
 
 .shelf-book {
@@ -342,41 +351,41 @@
 }
 
 .library-empty h1 {
-  margin: 0;
-  font-size: clamp(1.75rem, 5vw, 2.375rem);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  margin: 0.5rem 0 0;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 400;
   line-height: 1.15;
 }
 
 .library-empty .lede {
-  max-width: 28.75rem;
   margin: 0;
-  font-size: 1.0625rem;
-  line-height: 1.6;
+  max-width: 28rem;
   color: var(--muted);
 }
 
 .dropzone.large {
+  display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
   box-sizing: border-box;
   width: 100%;
-  max-width: 38.75rem;
-  margin-top: 0.75rem;
-  padding: 2.5rem 2rem;
-  border-width: 2px;
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--surface) 55%, var(--bg));
-  color: var(--fg);
+  margin-top: 1rem;
+  padding: 2.25rem 1.5rem;
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface);
 }
 
 .dropzone.large.dragging {
+  border-color: var(--accent);
   background: var(--accent-soft);
 }
 
 .dropzone-icon {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 3.25rem;
   height: 3.25rem;
   border-radius: 50%;
@@ -385,39 +394,37 @@
 }
 
 .dropzone-title {
-  font-size: 1.0625rem;
-  font-weight: 600;
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
 }
 
 .folder-note {
-  max-width: 32.5rem;
   margin: 0.5rem 0 0;
   font-size: 0.875rem;
-  line-height: 1.6;
   color: var(--muted);
 }
 
 .folder-note code {
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--fg) 8%, var(--bg));
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--raised);
   color: var(--fg);
-  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  font-size: 0.8125rem;
+  font-size: 0.9em;
 }
 
-/* Your Books: heading and sort, then the grid. */
+/* ---- Your Books ---- */
+
 .your-books {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.125rem;
 }
 
 .section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .section-head h2 {
@@ -426,24 +433,30 @@
   font-weight: 600;
 }
 
+.book-count {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
 .sort {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  color: var(--ink-soft);
 }
 
 .library .sort select {
-  appearance: none;
   box-sizing: border-box;
   min-height: var(--tap);
-  padding: 0 2rem 0 0.875rem;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: inherit;
+  padding: 0 2.25rem 0 0.875rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--fg);
   font: inherit;
   font-size: 0.875rem;
+  appearance: none;
   cursor: pointer;
 }
 
@@ -454,18 +467,19 @@
 
 .sort svg {
   position: absolute;
-  inset-inline-end: 0.5rem;
+  right: 0.75rem;
+  color: var(--muted);
   pointer-events: none;
 }
 
 .library .empty {
-  margin: 0;
+  color: var(--muted);
 }
 
 .books {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
-  gap: 2rem 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 2rem 1.75rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -474,7 +488,7 @@
 .book {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.125rem;
   min-width: 0;
 }
 
@@ -482,72 +496,84 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  min-width: 0;
   color: inherit;
   text-decoration: none;
+  --cover-scale: 1;
+}
+
+.book-link .cover {
+  border-radius: 3px 6px 6px 3px;
 }
 
 .library .title {
+  font-family: var(--font-serif);
   font-size: 1rem;
   font-weight: 600;
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
 
-.book-link:hover .title,
-.book-link:focus-visible .title {
-  text-decoration: underline;
+.book-link:focus-visible {
+  outline: none;
 }
 
-/* Author on the left, delete on the right. The row is as tall as the 44 px target but pulled in so it takes only a line. */
+.book-link:focus-visible .cover {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .book-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.25rem;
-  min-height: var(--tap);
-  margin-block: -0.7rem;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .author {
   min-width: 0;
   font-size: 0.8125rem;
   color: var(--muted);
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Always visible (never hover-only): a small icon in a 44 px square, tucked into the card's corner. */
 .library .delete-book {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
-  display: grid;
-  place-items: center;
+  box-sizing: border-box;
   width: var(--tap);
   height: var(--tap);
   margin-inline-end: -0.75rem;
   padding: 0;
   border: 0;
-  border-radius: 50%;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--muted);
+  cursor: pointer;
 }
 
-.library .delete-book:hover,
 .library .delete-book:focus-visible {
   color: var(--danger);
 }
 
-/* Progress: a thin bar, then "New", the percentage or "Done". */
+/* ---- Progress under a Book: a thin line and its words ---- */
+
 .progress-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
 }
 
 .progress-bar {
   flex: 1;
-  height: 4px;
+  height: 3px;
   border-radius: 2px;
-  background: var(--border);
+  background: var(--border-strong);
+  overflow: hidden;
 }
 
 .progress-fill {
@@ -557,32 +583,31 @@
 }
 
 .progress-label {
-  font-size: 0.75rem;
+  flex: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--muted);
 }
 
 .progress-label.new {
-  font-weight: 600;
   color: var(--accent-ink);
 }
 
-.progress-row.large {
-  gap: 0.875rem;
+.progress-label.done {
+  color: var(--muted);
+  font-weight: 400;
 }
 
 .progress-row.large .progress-bar {
-  height: 6px;
-  border-radius: 3px;
+  height: 4px;
 }
 
 .progress-row.large .progress-label {
   font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--ink-soft);
 }
 
-/* Covers: a real picture, a document, or a title on a colour. All 2:3. */
+/* ---- Covers ---- */
+
 .cover {
   display: block;
   box-sizing: border-box;
@@ -594,7 +619,7 @@
 .cover-image {
   object-fit: cover;
   background: var(--border);
-  box-shadow: var(--shadow-panel);
+  box-shadow: var(--cover-shadow);
 }
 
 .cover-typographic,
@@ -611,7 +636,7 @@
 .cover-typographic {
   background: var(--cover-bg);
   color: var(--cover-fg);
-  box-shadow: var(--shadow-panel);
+  box-shadow: var(--cover-shadow);
 }
 
 .cover-bar {
@@ -628,7 +653,7 @@
   overflow: hidden;
   font-family: var(--font-serif);
   font-size: calc(var(--cover-scale, 1) * 19cqw);
-  line-height: 1.2;
+  line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
@@ -644,19 +669,23 @@
   font-size: calc(var(--cover-scale, 1) * 10.5cqw);
 }
 
-/* A document: the page colour a shade off the ground, a line of format at the top, rules like text, then the title. */
+/* A document: white paper with a format tag, rules like text, then the title. */
 .cover-document {
-  border: 1px solid var(--border-strong);
-  background: color-mix(in srgb, var(--fg) 5%, var(--bg));
+  border: 1px solid var(--border);
+  background: var(--surface);
   color: var(--fg);
 }
 
 .cover-kind {
-  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  font-size: 9.3cqw;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  align-self: flex-start;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--accent-soft);
   color: var(--accent-ink);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 8.5cqw;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 .cover-text {
@@ -670,7 +699,7 @@
   height: 3px;
   margin-bottom: 7px;
   border-radius: 2px;
-  background: color-mix(in srgb, var(--muted) 40%, transparent);
+  background: var(--border);
 }
 
 .cover-line:nth-child(1) {
@@ -703,7 +732,8 @@
   font-size: calc(var(--cover-scale, 1) * 9.5cqw);
 }
 
-/* The delete confirmation: the native dialog, centred, on the scrim. */
+/* ---- The delete confirmation: the native dialog, centred, on the scrim ---- */
+
 dialog.confirm {
   box-sizing: border-box;
   width: min(28rem, calc(100% - 2rem));
@@ -729,7 +759,7 @@ dialog.confirm h2 {
 
 dialog.confirm p {
   margin: 0 0 1.25rem;
-  color: var(--ink-soft, var(--muted));
+  color: var(--muted);
   line-height: 1.55;
 }
 
@@ -748,7 +778,7 @@ dialog.confirm .actions button {
   min-height: var(--tap);
   padding: 0 1.375rem;
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--fg);
   font: inherit;
@@ -767,79 +797,70 @@ dialog.confirm .actions button:disabled {
 }
 
 /*
- * Phone (the MobileLibrary mockup, 390 px; the same rules serve anything narrower than 40rem):
- *  - the header is the wordmark and a round, icon-only Add books button on one row, the search box on a row of its own;
+ * Phone (anything narrower than 40rem):
+ *  - the header is the wordmark and an icon-only Add books button on one row, the search box on a row of its own;
  *  - Continue reading is a compact card with no button: the whole card is the link;
  *  - the grid is two columns whatever the width (the covers shrink, not the count);
- *  - the drop strip, which a phone cannot use, is left out (Add books, and the empty Library's drop zone, still add Books);
  *  - side and bottom padding keep clear of a notch or home indicator (the page asks for the full screen, see index.html).
  */
 @media (max-width: 40rem) {
   .library {
-    gap: 1.125rem;
-    padding: 1.25rem max(1.25rem, env(safe-area-inset-right)) calc(2.5rem + env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
+    gap: 1.25rem;
+    padding: 1rem max(1.25rem, env(safe-area-inset-right, 0px)) max(3rem, env(safe-area-inset-bottom, 0px)) max(1.25rem, env(safe-area-inset-left, 0px));
   }
 
-  .library-header {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 1.125rem 0.75rem;
-  }
-
-  /* The tools stop being a box of their own: Add books joins the wordmark's row and the search box takes the next one. */
   .library-tools {
     display: contents;
   }
 
   .library .library-header .button-primary {
-    grid-column: 2;
-    grid-row: 1;
-    width: 3rem;
-    min-height: 3rem;
+    order: 2;
+    width: var(--tap);
     padding: 0;
-    border-radius: 50%;
   }
 
-  /* The word stays for screen readers. */
   .library .button-label {
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
-    clip-path: inset(50%);
+    clip: rect(0 0 0 0);
     white-space: nowrap;
   }
 
-  .library .library-header .search-field {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    width: 100%;
-    max-width: none;
+  .library-header {
+    flex-wrap: wrap;
   }
 
-  .library .search {
-    min-height: 3rem;
-    font-size: 1rem; /* 16 px: a smaller field makes iOS zoom in when it is tapped */
+  .wordmark {
+    flex: 1;
+  }
+
+  .library .library-header .search-field {
+    order: 3;
+    flex: 1 0 100%;
+    width: auto;
   }
 
   .library .continue-link {
-    flex-wrap: nowrap;
     gap: 1rem;
     padding: 0.875rem;
   }
 
   .continue-cover {
     width: 4rem;
-    --cover-scale: 1.3;
   }
 
   .library .continue .button-dark {
     display: none;
   }
 
+  .library .continue-body {
+    gap: 0.125rem;
+  }
+
   .library .continue-body h2 {
-    font-size: 1.1875rem;
-    line-height: 1.25;
+    font-size: 1.25rem;
   }
 
   .library .continue-body .progress-row {
@@ -852,14 +873,10 @@ dialog.confirm .actions button:disabled {
 
   .books {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1.25rem 1rem;
-  }
-
-  .library .dropzone:not(.large) {
-    display: none;
+    gap: 1.5rem 1rem;
   }
 
   .dropzone.large {
-    padding: 2rem 1rem;
+    margin-top: 0.5rem;
   }
 }

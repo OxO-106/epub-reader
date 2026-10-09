@@ -149,7 +149,7 @@ test.describe("IBM Plex Sans", () => {
   test("is a choice in the Display settings and sets English text inside a Book", async ({ page }) => {
     await openTypeTest(page);
     await page.getByRole("button", { name: "Display", exact: true }).click();
-    const choice = page.getByRole("button", { name: "IBM Plex Sans", exact: true });
+    const choice = page.getByRole("button", { name: "Plex", exact: true });
     await expect(choice).toHaveAttribute("aria-pressed", "false");
     await choice.click();
     await expect(choice).toHaveAttribute("aria-pressed", "true");
@@ -174,7 +174,7 @@ test.describe("IBM Plex Sans", () => {
   test("its choice is shown in its own typeface", async ({ page }) => {
     await openTypeTest(page);
     await page.getByRole("button", { name: "Display", exact: true }).click();
-    const choice = page.getByRole("button", { name: "IBM Plex Sans", exact: true });
+    const choice = page.getByRole("button", { name: "Plex", exact: true });
     expect(await choice.evaluate((element) => getComputedStyle(element).fontFamily)).toMatch(/^"?IBM Plex Sans/);
     await expect.poll(() => page.evaluate(loadedFamilies)).toContain("IBM Plex Sans");
   });

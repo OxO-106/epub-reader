@@ -110,7 +110,7 @@ for (const flow of ["Paginated", "Scrolling"] as const) {
         () => settings.getByLabel("Text size").fill("30"),
         () => settings.getByLabel("Line spacing").fill("2"),
         () => choose(settings, "Wide"),
-        () => choose(settings, "Sans-serif"),
+        () => choose(settings, "Sans"),
         () => settings.getByLabel("Text size").fill("14"),
       ];
       for (const change of changes) {
@@ -142,7 +142,7 @@ test("a Chinese-capable font can be chosen and is applied to a Chinese Book", as
   await expect.poll(() => bookFrame(page)?.evaluate(() => document.body.innerText).catch(() => "")).toContain("Chapter 1");
   const settings = await openSettings(page);
 
-  await choose(settings, "Chinese serif (宋体)");
+  await choose(settings, "京华老宋体");
 
   await expect
     .poll(() => bookFrame(page)!.evaluate(() => getComputedStyle(document.querySelector("p, h1")!).fontFamily))
@@ -156,7 +156,7 @@ test.describe("remembering the settings on this device", () => {
     await settings.getByLabel("Text size").fill("26");
     await settings.getByLabel("Line spacing").fill("1.9");
     await choose(settings, "Narrow");
-    await choose(settings, "Sans-serif");
+    await choose(settings, "Sans");
     await choose(settings, "Dark");
     await choose(settings, "Scrolling");
 
@@ -166,7 +166,7 @@ test.describe("remembering the settings on this device", () => {
     await expect(reopened.getByLabel("Text size")).toHaveValue("26");
     await expect(reopened.getByLabel("Line spacing")).toHaveValue("1.9");
     await expect(reopened.getByRole("button", { name: "Narrow", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await expect(reopened.getByRole("button", { name: "Sans-serif", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(reopened.getByRole("button", { name: "Sans", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(reopened.getByRole("button", { name: "Dark", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(reopened.getByRole("button", { name: "Scrolling", exact: true })).toHaveAttribute("aria-pressed", "true");
     expect(await textSize(page)).toBe(26);
@@ -190,7 +190,7 @@ test.describe("remembering the settings on this device", () => {
     await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
     expect(await page.locator("html").getAttribute("data-theme")).toBe("sepia");
     await expectLegible(page.locator("body"), 7);
-    expect(parseColor(await page.locator("body").evaluate((el) => getComputedStyle(el).backgroundColor))).toEqual([0xf3, 0xe9, 0xd2]);
+    expect(parseColor(await page.locator("body").evaluate((el) => getComputedStyle(el).backgroundColor))).toEqual([0xf4, 0xec, 0xd8]);
   });
 
   test("the Reader works when browser storage is unavailable", async ({ page }) => {

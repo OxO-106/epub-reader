@@ -99,16 +99,19 @@ export function DisplaySettingsPanel({ settings, onChange, onClose }: Props) {
         <div class="setting-name" id="display-font">
           Font
         </div>
-        <div class="chips" role="group" aria-labelledby="display-font">
+        <div class="font-tiles" role="group" aria-labelledby="display-font">
           {fontFamilies.map((font) => (
             <button
               key={font.value}
               type="button"
-              class={`chip chip-${font.value}`}
+              class={`font-tile font-${font.value}`}
               aria-pressed={settings.fontFamily === font.value}
               onClick={() => set({ fontFamily: font.value })}
             >
-              {font.label}
+              <span class="font-sample" aria-hidden="true">
+                {font.sample}
+              </span>
+              <span class="font-name">{font.label}</span>
             </button>
           ))}
         </div>

@@ -1,15 +1,17 @@
 import type { ComponentChildren, Ref } from "preact";
+import { useState } from "preact/hooks";
 import type { ChapterProgress } from "./chapter-progress.ts";
 import { ChevronLeft, ChevronRight, ListIcon, SearchIcon, TranslateIcon, TypeIcon } from "./ReaderIcons.tsx";
 import { ReadingFraction } from "./ReadingFraction.tsx";
+import { formatFraction } from "./reading-position.ts";
 import { TranslationPill, type StatusView } from "./TranslationStatus.tsx";
 
 /** The panels the top bar opens. At most one is open at a time. "translation" is opened by the status pill, not by a button of its own. */
 export type Panel = "contents" | "search" | "display" | "translation";
 
 /**
- * One button of the top bar: an icon and a label. Where the bar is narrow the label is hidden from the eye only, so
- * the button is still named for assistive technology.
+ * One button of the top bar: an icon, with its word kept for assistive technology and shown as a tooltip. Icons only,
+ * at every width, so the bar stays quiet and the title has the room.
  */
 export function ToolButton({
   label,
@@ -33,6 +35,7 @@ export function ToolButton({
       type="button"
       ref={buttonRef}
       class="bar-button"
+      title={label}
       aria-expanded={open}
       aria-controls={panel === "contents" ? "toc" : panel === "search" ? "book-search" : "display-settings"}
       disabled={disabled}
@@ -68,16 +71,17 @@ interface TopBarProps {
 
 /**
  * The Reader's top bar: a way back to the Library, the Book's title with the chapter under it, and the panel buttons.
+ * While the bars rest (see ReaderScreen) only the chapter stays, as a running head; the controls fade out.
  *
  * Between Search and Display sit the Translate toggle (an English Book only; `aria-pressed`) and, while it is on, the
  * status pill (a `role="status"` slot holding a `reader-status` with a dot and the words; a button when it offers hints
- * or Retry). On a phone the pill shrinks to its dot (the words stay for screen readers) and the title gives up the
- * width, so the bar never wraps; tests/e2e/phone-layouts.spec.ts and layout.spec.ts check it.
+ * or Retry). On a phone the pill shrinks to its dot (the words stay for screen readers), so the bar never wraps;
+ * tests/e2e/phone-layouts.spec.ts and layout.spec.ts check it.
  */
 export function ReaderTopBar({ title, chapter, open, searchReady, buttons, onToggle, translate }: TopBarProps) {
   return (
     <header class="reader-bar reader-top">
-      <a class="bar-button bar-link" href="#/">
+      <a class="bar-button bar-link" href="#/" title="Library">
         <ChevronLeft size={20} />
         <span class="bar-label">Library</span>
       </a>
@@ -101,6 +105,7 @@ export function ReaderTopBar({ title, chapter, open, searchReady, buttons, onTog
             type="button"
             ref={translate.buttonRef}
             class="bar-button translate-button"
+            title="Translate"
             aria-pressed={translate.on}
             onClick={translate.onToggle}
           >
@@ -117,37 +122,108 @@ export function ReaderTopBar({ title, chapter, open, searchReady, buttons, onTog
   );
 }
 
-/** The bottom bar: a thin progress line, Previous and Next, and "Chapter X of Y · N%" (just the percentage when no chapter is known). */
+/** "12 min left in chapter", rounded the way a person would say it; nothing when there is no estimate. */
+export function timeLeft(minutes: number | null): string | null {
+  if (minutes === null || !Number.isFinite(minutes) || minutes < 0) return null;
+  if (minutes < 1) return "Less than a minute left in chapter";
+  const rounded = Math.round(minutes);
+  if (rounded < 60) return `${rounded} min left in chapter`;
+  const hours = Math.floor(rounded / 60);
+  const rest = rounded % 60;
+  return `${hours} h${rest ? ` ${rest} min` : ""} left in chapter`;
+}
+
+/** How finely the scrubber moves: a thousandth of the Book per step, ten per arrow key. */
+const scrubSteps = 1000;
+
+/**
+ * The bottom bar: Previous and Next at the ends and, between them, the progress line of the whole Book with a tick where
+ * each chapter starts. The line is a scrubber (a range input over it): drag or use the arrow keys to move through the
+ * Book, and the place is taken when it is let go. Under it, "Chapter X of Y · N%" (just the percentage when no chapter
+ * is known) and the time left in the chapter.
+ */
 export function ReaderBottomBar({
   fraction,
   chapter,
+  chapterStarts,
+  minutesLeft,
   ready,
   onPrev,
   onNext,
+  onScrub,
 }: {
   fraction: number | null;
   chapter: ChapterProgress | null;
+  /** Where each chapter starts, 0 to 1, for the ticks. */
+  chapterStarts: number[];
+  minutesLeft: number | null;
   ready: boolean;
   onPrev(): void;
   onNext(): void;
+  onScrub(fraction: number): void;
 }) {
+  // While the scrubber is being dragged it shows where it would go, not where the reader is.
+  const [preview, setPreview] = useState<number | null>(null);
+  const shown = preview ?? fraction ?? 0;
+  const left = timeLeft(minutesLeft);
+
   return (
     <footer class="reader-bar reader-bottom">
-      <div class="reader-progress" aria-hidden="true">
-        <span style={{ width: `${Math.round((fraction ?? 0) * 100)}%` }} />
-      </div>
       <div class="reader-nav">
-        <button type="button" class="nav-button" onClick={onPrev} disabled={!ready}>
+        <button type="button" class="nav-button" title="Previous page" onClick={onPrev} disabled={!ready}>
           <ChevronLeft />
           <span class="nav-label">Previous</span>
         </button>
-        {/* One line on a wide bar; on a phone the chapter is stacked over the percentage and the dot goes (reader-chrome.css). */}
-        <p class="reader-position">
-          {chapter && <span class="position-chapter">{`Chapter ${chapter.number} of ${chapter.total}`}</span>}
-          {chapter && fraction !== null && <span class="position-sep"> · </span>}
-          <ReadingFraction fraction={fraction} />
-        </p>
-        <button type="button" class="nav-button nav-next" onClick={onNext} disabled={!ready}>
+        <div class="reader-scrub">
+          <div class="reader-track">
+            <div class="reader-progress" aria-hidden="true">
+              <span style={{ width: `${Math.round(shown * 1000) / 10}%` }} />
+              {chapterStarts.map((start, index) =>
+                start > 0.005 && start < 0.995 ? <i key={index} class="reader-tick" data-passed={start <= shown} style={{ left: `${start * 100}%` }} /> : null,
+              )}
+            </div>
+            <input
+              type="range"
+              class="reader-scrubber"
+              aria-label="Position in Book"
+              min={0}
+              max={scrubSteps}
+              step={1}
+              disabled={!ready}
+              value={Math.round(shown * scrubSteps)}
+              aria-valuetext={formatFraction(shown)}
+              onInput={(event) => setPreview(Number(event.currentTarget.value) / scrubSteps)}
+              onChange={(event) => {
+                setPreview(null);
+                onScrub(Number(event.currentTarget.value) / scrubSteps);
+              }}
+              onKeyDown={(event) => {
+                // Arrows move a percent at a time, not a thousandth.
+                const step = { ArrowRight: 10, ArrowUp: 10, ArrowLeft: -10, ArrowDown: -10 }[event.key];
+                if (step === undefined) return;
+                event.preventDefault();
+                const next = Math.min(scrubSteps, Math.max(0, Number(event.currentTarget.value) + step));
+                event.currentTarget.value = String(next);
+                onScrub(next / scrubSteps);
+              }}
+            />
+            {preview !== null && (
+              <span class="scrub-bubble" aria-hidden="true" style={{ left: `${preview * 100}%` }}>
+                {formatFraction(preview)}
+              </span>
+            )}
+          </div>
+          <div class="reader-meta">
+            {/* One line on a wide bar; on a phone the chapter is stacked over the percentage and the dot goes (reader-chrome.css). */}
+            <p class="reader-position">
+              {chapter && <span class="position-chapter">{`Chapter ${chapter.number} of ${chapter.total}`}</span>}
+              {chapter && fraction !== null && <span class="position-sep"> · </span>}
+              <ReadingFraction fraction={fraction} />
+            </p>
+            {left && <p class="reader-time">{left}</p>}
+          </div>
+        </div>
+        <button type="button" class="nav-button nav-next" title="Next page" onClick={onNext} disabled={!ready}>
           <span class="nav-label">Next</span>
           <ChevronRight />
         </button>

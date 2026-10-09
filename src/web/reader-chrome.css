@@ -1,21 +1,28 @@
 /*
- * The Reader screen's chrome: the top and bottom bars and the three panels (Contents drawer, Search side panel, Display
- * popover). Imported by ReaderScreen.tsx. Colours, radii and fonts all come from the tokens in theme.css; nothing here
- * is a literal colour. Every rule starts with `.reader-screen` so it wins over the element defaults in styles.css and
- * theme.css whatever the order the style sheets load in.
+ * The Reader screen's chrome: the top and bottom bars and the panels (Contents drawer, Search side panel, Display
+ * popover, Translation status). Imported by ReaderScreen.tsx. Colours, radii and fonts all come from the tokens in
+ * theme.css; nothing here is a literal colour. Every rule starts with `.reader-screen` so it wins over the element
+ * defaults in styles.css and theme.css whatever the order the style sheets load in.
+ *
+ * The page is the point: the bars are drawn on the page's own ground with no rules between them and the text, and while
+ * reading they rest (`data-chrome="resting"`, set by ReaderScreen): every control fades out and what is left is a
+ * running head (the chapter) and a running foot (the percentage), as in a printed book. They keep their place while
+ * resting, so the text never moves when they come back. Nothing here depends on :hover; ReaderScreen wakes the bars
+ * on pointer, focus and a tap in the middle of the page.
  *
  * Layout: a row of the main column (top bar, text, bottom bar) and, from 60rem up, the Search panel docked beside it.
  * Below that the Search panel floats over the text between the two bars. The Contents drawer and the Display popover
- * always float over the text, so opening them never re-flows it. Everything is fluid: no fixed widths, only maximums.
+ * always float over the text, so opening them never re-flows it.
  */
 
 .reader-screen {
-  --reader-bar: 64px;
+  --reader-bar: 60px;
   /* The bottom bar's row of controls; taller on a phone. */
-  --reader-nav: 64px;
+  --reader-nav: 68px;
   /* Whole bars, with the safe areas a phone keeps clear (notch above, home indicator below): where the panels start and stop. */
   --bar-top: calc(var(--reader-bar) + env(safe-area-inset-top, 0px));
-  --bar-bottom: calc(var(--reader-nav) + 4px + env(safe-area-inset-bottom, 0px));
+  --bar-bottom: calc(var(--reader-nav) + env(safe-area-inset-bottom, 0px));
+  --fade: opacity 220ms ease, border-color 220ms ease;
   display: flex;
   height: 100vh;
   height: 100dvh;
@@ -32,72 +39,83 @@
   container: reader / inline-size;
 }
 
+/* The wrappers that listen for pointer and focus on a bar; they take no room of their own. */
+.reader-screen .reader-bar-zone {
+  display: contents;
+}
+
 /* ---- Bars ---- */
 
 .reader-screen .reader-bar {
   box-sizing: border-box;
   flex: none;
   background: var(--bg);
+  transition: var(--fade);
 }
 
 .reader-screen .reader-top {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   height: var(--bar-top);
-  padding: env(safe-area-inset-top, 0px) 20px 0;
+  padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right, 0px)) 0 max(8px, env(safe-area-inset-left, 0px));
   border-bottom: 1px solid var(--border);
 }
 
+/* Icon buttons, everywhere: the word is kept for screen readers (and as a tooltip), not drawn. */
 .reader-screen .bar-button {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  flex: none;
   box-sizing: border-box;
-  min-width: var(--tap);
+  width: var(--tap);
   height: var(--tap);
-  padding: 0 14px;
+  padding: 0;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--fg);
   font: inherit;
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
-.reader-screen .bar-link {
-  padding: 0 14px 0 8px;
-  font-weight: 500;
+.reader-screen .bar-label,
+.reader-screen .nav-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
-/* The panel that is open: its button is tinted, as in the mockups. */
+/* The panel that is open: its button is tinted. */
 .reader-screen .bar-button[aria-expanded="true"] {
   background: var(--accent-soft);
   color: var(--accent-ink);
-  font-weight: 600;
 }
 
-/* Translate while it is on: filled with the accent, as in the ReaderBilingual mockup. */
+/* Translate while it is on: filled with the accent. */
 .reader-screen .bar-button[aria-pressed="true"] {
   background: var(--accent);
   color: var(--on-accent);
-  font-weight: 600;
 }
 
 .reader-screen .bar-button:disabled,
 .reader-screen .nav-button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: default;
 }
 
 .reader-screen .type-icon {
-  width: 18px;
+  width: 20px;
   font-family: var(--font-serif);
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
   line-height: 1;
   text-align: center;
@@ -107,14 +125,15 @@
   flex: 1 1 0;
   min-width: 6.5rem;
   text-align: center;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 
 .reader-screen .reader-title {
   margin: 0;
   font-family: var(--font-serif);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -131,54 +150,7 @@
 .reader-screen .reader-tools {
   display: flex;
   align-items: center;
-  gap: 4px;
-}
-
-/* In a narrow column the buttons keep their icons and lose their words (still read out by screen readers). */
-@container reader (max-width: 48rem) {
-  .reader-screen .reader-top {
-    gap: 8px;
-    padding: 0 12px;
-  }
-
-  .reader-screen .reader-nav {
-    padding: 0 12px;
-  }
-
-  .reader-screen .bar-button,
-  .reader-screen .bar-link {
-    width: var(--tap);
-    padding: 0;
-  }
-
-  .reader-screen .bar-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-}
-
-/*
- * While the status pill is showing, its words need room: in a medium bar (up to 64rem) every button except Translate
- * keeps just its icon, so Translate and the pill, the newest controls, stay in words. Below 48rem all of them are icons.
- */
-@container reader (max-width: 64rem) {
-  .reader-screen .reader-top:has(.reader-status) :is(.bar-button:not(.translate-button), .bar-link) {
-    width: var(--tap);
-    padding: 0;
-  }
-
-  .reader-screen .reader-top:has(.reader-status) :is(.bar-button:not(.translate-button), .bar-link) .bar-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
+  gap: 2px;
 }
 
 .reader-screen .reader-bottom {
@@ -186,56 +158,167 @@
   border-top: 1px solid var(--border);
 }
 
-.reader-screen .reader-progress {
-  height: 3px;
-  background: var(--border);
-}
-
-.reader-screen .reader-progress > span {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-}
-
 .reader-screen .reader-nav {
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   height: var(--reader-nav);
-  padding: 0 20px;
+  padding: 0 max(8px, env(safe-area-inset-right, 0px)) 0 max(8px, env(safe-area-inset-left, 0px));
 }
 
 .reader-screen .nav-button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  flex: none;
   box-sizing: border-box;
+  width: var(--tap);
   height: var(--tap);
-  padding: 0 18px 0 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-pill);
-  background: var(--surface);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
   color: var(--fg);
   font: inherit;
   cursor: pointer;
+  transition: var(--fade);
 }
 
-.reader-screen .nav-next {
-  padding: 0 12px 0 18px;
-  border-color: transparent;
+/* ---- The scrubber: the whole Book as a line, a tick at each chapter, draggable ---- */
+
+.reader-screen .reader-scrub {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.reader-screen .reader-track {
+  position: relative;
+  height: var(--tap);
+  transition: var(--fade);
+}
+
+.reader-screen .reader-progress {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(50% - 2px);
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-strong);
+}
+
+.reader-screen .reader-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
   background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 600;
 }
 
-.reader-screen .reader-position {
+.reader-screen .reader-tick {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 8px;
+  margin-inline-start: -1px;
+  border-radius: 1px;
+  background: var(--muted);
+  opacity: 0.55;
+}
+
+.reader-screen .reader-tick[data-passed="true"] {
+  background: var(--bg);
+  opacity: 0.9;
+}
+
+/* The range input lies over the line: invisible track, a round thumb on the end of the filled part. */
+.reader-screen .reader-scrubber {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+}
+
+.reader-screen .reader-scrubber:disabled {
+  cursor: default;
+}
+
+.reader-screen .reader-scrubber::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+}
+
+.reader-screen .reader-scrubber::-moz-range-track {
+  height: 4px;
+  background: transparent;
+}
+
+.reader-screen .reader-scrubber::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  background: var(--accent);
+  appearance: none;
+}
+
+.reader-screen .reader-scrubber::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.reader-screen .reader-scrubber:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+  border-radius: var(--radius-small);
+}
+
+/* While dragging: where the reader would land. */
+.reader-screen .scrub-bubble {
+  position: absolute;
+  bottom: calc(100% - 4px);
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  border-radius: var(--radius-small);
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.reader-screen .reader-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: -12px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.reader-screen .reader-position,
+.reader-screen .reader-time {
   margin: 0;
   min-width: 0;
-  font-size: 14px;
-  color: var(--muted);
-  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
 }
 
@@ -243,6 +326,39 @@
   font-weight: 600;
   color: var(--fg);
   opacity: 1;
+}
+
+/* ---- Resting: the controls fade, a running head and foot stay ---- */
+
+.reader-screen :is(.bar-link, .reader-tools, .reader-title, .nav-button, .reader-track, .reader-time, .position-chapter, .position-sep) {
+  transition: var(--fade);
+}
+
+.reader-screen[data-chrome="resting"] .reader-bar {
+  border-color: transparent;
+}
+
+.reader-screen[data-chrome="resting"] :is(.bar-link, .reader-tools, .nav-button, .reader-track, .reader-time, .position-chapter, .position-sep),
+.reader-screen[data-chrome="resting"] .reader-heading:has(.reader-chapter) .reader-title {
+  opacity: 0;
+}
+
+/* The running foot: the percentage alone, quiet, in the middle. */
+.reader-screen[data-chrome="resting"] .reader-meta {
+  justify-content: center;
+}
+
+.reader-screen[data-chrome="resting"] .reader-position .reading-fraction {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-screen,
+  .reader-screen * {
+    --fade: none;
+    transition: none !important;
+  }
 }
 
 /* ---- The text, and what floats over it ---- */
@@ -266,6 +382,7 @@
   top: 1rem;
   z-index: 1;
   margin: 0;
+  color: var(--muted);
   text-align: center;
 }
 
@@ -285,13 +402,12 @@
   align-items: center;
   justify-content: space-between;
   height: var(--reader-bar);
-  padding: 0 12px 0 24px;
-  border-bottom: 1px solid var(--border);
+  padding: 0 8px 0 20px;
 }
 
 .reader-screen .panel-head h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
 }
 
@@ -305,9 +421,9 @@
   height: var(--tap);
   padding: 0;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   background: transparent;
-  color: var(--fg);
+  color: var(--muted);
   cursor: pointer;
 }
 
@@ -317,13 +433,14 @@
   overflow-y: auto;
 }
 
-/* ---- Contents: a modal drawer with a scrim, under the top bar ---- */
+/* ---- Contents: a modal drawer from the left, over a scrim ---- */
 
 .reader-screen .scrim {
   position: absolute;
   inset: 0;
   z-index: 3;
   background: var(--scrim);
+  animation: fade-in 180ms ease;
 }
 
 .reader-screen .contents-drawer {
@@ -331,19 +448,32 @@
   inset-block: 0;
   inset-inline-start: 0;
   z-index: 4;
-  width: min(380px, 88%);
-  border-inline-end: 1px solid var(--border);
+  width: min(360px, 88%);
   box-shadow: var(--shadow-panel);
+  animation: fade-in 180ms ease;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-screen .scrim,
+  .reader-screen .contents-drawer {
+    animation: none;
+  }
 }
 
 .reader-screen .toc {
-  padding: 16px 12px;
+  padding: 4px 10px 20px;
 }
 
 .reader-screen .toc ol {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -356,14 +486,21 @@
   box-sizing: border-box;
   width: 100%;
   min-height: var(--tap);
-  padding: 6px 12px 6px calc(12px + var(--depth, 0) * 16px);
+  padding: 8px 12px 8px calc(12px + var(--depth, 0) * 16px);
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: none;
   color: var(--fg);
   font: inherit;
+  font-size: 15px;
+  line-height: 1.35;
   text-align: start;
   cursor: pointer;
+}
+
+.reader-screen li[style*="--depth:0"] > .toc-item {
+  font-family: var(--font-serif);
+  font-size: 16px;
 }
 
 .reader-screen .toc-item[aria-current="location"] {
@@ -372,15 +509,15 @@
   font-weight: 600;
 }
 
-/* The word is drawn, not written into the button, so the button's name stays the chapter's title. */
+/* A dot, drawn rather than written, so the button's name stays the chapter's title. */
 .reader-screen .toc-item[aria-current="location"]::after {
-  content: "Reading";
-  content: "Reading" / "";
+  content: "";
   flex: none;
+  width: 7px;
+  height: 7px;
   margin-inline-start: 12px;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .reader-screen .toc-item:focus-visible,
@@ -391,8 +528,8 @@
 /* ---- Search: docked beside the text on a wide window, over it on a narrow one ---- */
 
 .reader-screen .reader-search {
-  flex: 0 0 400px;
-  width: 400px;
+  flex: 0 0 380px;
+  width: 380px;
   border-inline-start: 1px solid var(--border);
 }
 
@@ -404,7 +541,7 @@
     bottom: var(--bar-bottom);
     inset-inline-end: 0;
     flex: none;
-    width: min(400px, 100%);
+    width: min(380px, 100%);
     box-shadow: var(--shadow-panel);
   }
 }
@@ -413,32 +550,33 @@
   flex: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 20px 24px 12px;
+  gap: 10px;
+  padding: 4px 20px 12px;
 }
 
-/* The form is the pill (glyph, field, Clear button side by side), so no control is drawn on top of another. */
+/* The form is the field (glyph, input, Clear button side by side), so no control is drawn on top of another. */
 .reader-screen .search-field {
   box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 48px;
+  height: 46px;
   margin: 0;
-  padding-inline: 16px 2px;
-  border: 2px solid var(--accent);
-  border-radius: 24px;
-  background: var(--surface);
+  padding-inline: 14px 1px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--bg);
 }
 
 .reader-screen .search-field:focus-within {
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .reader-screen .search-glyph {
   display: flex;
   flex: none;
-  padding-inline-end: 8px;
+  padding-inline-end: 6px;
   color: var(--muted);
   pointer-events: none;
 }
@@ -451,21 +589,18 @@
   margin: 0;
   padding: 0;
   border: 0;
+  border-radius: 0;
   background: transparent;
   color: var(--fg);
   font: inherit;
   font-size: 16px;
-  /* The pill shows the focus (see above) and the Clear button is ours, not the browser's. */
+  /* The field shows the focus (see above) and the Clear button is ours, not the browser's. */
   outline: 0;
 }
 
 .reader-screen .search-field input[type="search"]::-webkit-search-cancel-button {
   appearance: none;
   display: none;
-}
-
-.reader-screen .search-clear {
-  color: var(--muted);
 }
 
 .reader-screen .search-summary {
@@ -487,7 +622,7 @@
 
 .reader-screen .search-progress {
   flex: 0 0 90px;
-  height: 4px;
+  height: 3px;
   border-radius: 2px;
   background: var(--border);
 }
@@ -500,7 +635,8 @@
 }
 
 .reader-screen .search-results {
-  padding: 4px 12px 24px;
+  padding: 0 10px 24px;
+  border-top: 1px solid var(--border);
 }
 
 .reader-screen .search-chapter-head {
@@ -508,25 +644,27 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: 18px 12px 6px;
-}
-
-.reader-screen .search-chapter:first-child .search-chapter-head {
-  padding-top: 12px;
+  padding: 18px 12px 4px;
 }
 
 .reader-screen .search-chapter h3 {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--accent-ink);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .reader-screen .search-chapter-count {
   flex: none;
-  font-size: 12px;
+  min-width: 1.5em;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  font-size: 11px;
+  text-align: center;
   color: var(--muted);
 }
 
@@ -541,20 +679,20 @@
   box-sizing: border-box;
   width: 100%;
   min-height: var(--tap);
-  padding: 12px 14px;
+  padding: 10px 12px;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   background: none;
   color: var(--fg);
   font-family: var(--font-serif);
-  font-size: 16px;
-  line-height: 1.7;
+  font-size: 15.5px;
+  line-height: 1.6;
   text-align: start;
   cursor: pointer;
 }
 
 .reader-screen .search-match mark {
-  padding: 0;
+  padding: 0 1px;
   border-radius: 3px;
   background: var(--mark);
   color: inherit;
@@ -562,7 +700,7 @@
 
 .reader-screen .search-match[aria-current="location"] {
   background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1.5px var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 /* ---- Display: a popover under the Display button ---- */
@@ -570,16 +708,23 @@
 .reader-screen .display-panel {
   position: absolute;
   top: 8px;
-  inset-inline-end: 20px;
+  inset-inline-end: 12px;
   z-index: 4;
-  gap: 22px;
-  width: min(380px, calc(100% - 40px));
+  gap: 20px;
+  width: min(360px, calc(100% - 24px));
   max-height: calc(100% - 16px);
   overflow-y: auto;
-  padding: 22px;
+  padding: 20px;
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-panel);
+  animation: fade-in 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-screen .display-panel {
+    animation: none;
+  }
 }
 
 .reader-screen .display-panel > * {
@@ -593,8 +738,10 @@
 
 .reader-screen .setting-name,
 .reader-screen .setting-head label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
@@ -607,7 +754,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .reader-screen .setting-head output {
@@ -617,20 +764,20 @@
 }
 
 .reader-screen .swatches {
-  display: flex;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .reader-screen .swatch {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   box-sizing: border-box;
   min-width: 0;
-  height: 68px;
+  height: 64px;
   padding: 0;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
@@ -645,13 +792,13 @@
 }
 
 .reader-screen .swatch-label {
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .reader-screen .swatch[aria-pressed="true"] {
   border-color: transparent;
   font-weight: 600;
-  box-shadow: 0 0 0 2.5px var(--accent);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
 }
 
 .reader-screen .range-row {
@@ -682,51 +829,88 @@
   height: var(--tap);
   margin: 0;
   padding: 0;
+  border: 0;
+  background: transparent;
   accent-color: var(--accent);
   cursor: pointer;
 }
 
-.reader-screen .chips {
-  display: flex;
-  flex-wrap: wrap;
+/* Fonts: a grid of tiles like the theme swatches, each with a sample drawn in the font it stands for. */
+.reader-screen .font-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.reader-screen .chip {
+.reader-screen .font-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
   box-sizing: border-box;
-  min-height: var(--tap);
-  padding: 0 14px;
+  min-width: 0;
+  height: 60px;
+  padding: 0 4px;
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--fg);
   font: inherit;
-  font-size: 14px;
   cursor: pointer;
 }
 
-/* Each choice is set in the font it stands for. */
-.reader-screen .chip-serif,
-.reader-screen .chip-cjk-serif {
+.reader-screen .font-sample {
+  font-size: 19px;
+  line-height: 1.1;
+}
+
+.reader-screen .font-name {
+  max-width: 100%;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reader-screen .font-book .font-sample {
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+}
+
+.reader-screen .font-serif .font-sample {
   font-family: var(--font-serif);
+  font-size: 20px;
 }
 
-.reader-screen .chip-plex {
-  font-family: "IBM Plex Sans", var(--font-sans);
+.reader-screen .font-sans .font-sample {
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
 }
 
-.reader-screen .chip[aria-pressed="true"] {
-  border-color: transparent;
-  background: var(--accent);
-  color: var(--on-accent);
+.reader-screen .font-plex .font-sample {
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
+.reader-screen .font-cjk-serif .font-sample {
+  font-family: "KingHwa Web", "KingHwa_OldSong", "京華老宋体", "Songti SC", "SimSun", serif;
+}
+
+.reader-screen .font-cjk-sans .font-sample {
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+}
+
+.reader-screen .font-tile[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
   font-weight: 600;
 }
 
 .reader-screen .segments {
   display: flex;
   padding: 3px;
-  border-radius: 25px;
-  background: var(--accent-soft);
+  border-radius: calc(var(--radius-control) + 3px);
+  background: var(--raised);
 }
 
 .reader-screen .segments button {
@@ -736,7 +920,7 @@
   min-height: var(--tap);
   padding: 0 8px;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--fg);
   font: inherit;
@@ -747,7 +931,7 @@
 .reader-screen .segments button[aria-pressed="true"] {
   background: var(--surface);
   font-weight: 600;
-  box-shadow: 0 1px 3px color-mix(in srgb, var(--fg) 22%, transparent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--fg) 18%, transparent);
 }
 
 .reader-screen .text-button {
@@ -768,14 +952,13 @@
 /*
  * ---- Translation status in the top bar: a pill on a wide bar, a dot on a phone ----
  * The slot is a polite live region. Inside it, `.reader-status` is either a plain span or, when there is something to do
- * (hints for "Not set up", hints and Retry for trouble), a real button 44 px high whose face is the 32 px pill, so the
- * target is a fingertip tall while the pill stays as light as in the mockup.
+ * (hints for "Not set up", hints and Retry for trouble), a real button 44 px high whose face is the 30 px pill.
  */
 
 .reader-screen .reader-status-slot {
   display: inline-flex;
   align-items: center;
-  margin-inline-end: 6px;
+  margin-inline: 2px 4px;
 }
 
 .reader-screen .reader-status {
@@ -800,14 +983,14 @@
 .reader-screen .reader-status-face {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   box-sizing: border-box;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 16px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 15px;
   background: var(--accent-soft);
   color: var(--accent-ink);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -829,8 +1012,8 @@
 
 .reader-screen .reader-status-dot {
   flex: none;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: currentColor;
 }
@@ -856,7 +1039,7 @@
 
 .reader-screen .translation-panel {
   gap: 12px;
-  width: min(400px, calc(100% - 40px));
+  width: min(400px, calc(100% - 24px));
   font-size: 14px;
   line-height: 1.55;
 }
@@ -867,7 +1050,7 @@
 
 .reader-screen .translation-panel h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
 }
 
@@ -879,10 +1062,10 @@
 
 .reader-screen .translation-panel code {
   padding: 1px 5px;
-  border-radius: 6px;
-  background: var(--accent-soft);
-  color: var(--accent-ink);
-  font-size: 0.92em;
+  border-radius: 5px;
+  background: var(--raised);
+  color: var(--fg);
+  font-size: 0.9em;
   overflow-wrap: anywhere;
 }
 
@@ -893,7 +1076,7 @@
   min-height: var(--tap);
   padding: 0 22px;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   background: var(--accent);
   color: var(--on-accent);
   font: inherit;
@@ -902,22 +1085,23 @@
 }
 
 /*
- * ---- Phone (the MobileReader mockup, 390 px; the same rules serve anything narrower than 40rem) ----
- *  - the top bar is one row of 44 px icon buttons (the words stay for screen readers) and the title and chapter in the
- *    middle. It holds the Translate button and the status dot at 360 px without wrapping;
- *  - the bottom bar has large icon Previous and Next buttons, with "Chapter X of Y" stacked over the percentage;
+ * ---- Phone (anything narrower than 40rem) ----
+ *  - the top bar is one row of 44 px icon buttons and the title and chapter in the middle. It holds the Translate button
+ *    and the status dot at 360 px without wrapping;
+ *  - the bottom bar has larger Previous and Next buttons, with "Chapter X of Y" stacked over the percentage under the
+ *    scrubber; the time left gives way;
  *  - Contents and Search are full-width sheets between the bars; Display is a bottom sheet that leaves the top of the
  *    text in view, so a change can be seen; each has its own Close button (Escape works as everywhere);
  *  - the bars keep clear of the notch, the home indicator and, in landscape, the rounded sides (safe-area insets).
  */
 @media (max-width: 40rem) {
   .reader-screen {
-    --reader-bar: 60px;
-    --reader-nav: 72px;
+    --reader-bar: 56px;
+    --reader-nav: 76px;
   }
 
   .reader-screen .reader-top {
-    gap: 4px;
+    gap: 2px;
     padding-inline: max(4px, env(safe-area-inset-left, 0px)) max(4px, env(safe-area-inset-right, 0px));
   }
 
@@ -926,7 +1110,7 @@
   }
 
   .reader-screen .reader-title {
-    font-size: 15px;
+    font-size: 14.5px;
   }
 
   /*
@@ -973,39 +1157,35 @@
   }
 
   .reader-screen .reader-nav {
-    padding: 0 max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
+    gap: 4px;
+    padding: 0 max(6px, env(safe-area-inset-right, 0px)) 4px max(6px, env(safe-area-inset-left, 0px));
   }
 
-  /* Previous and Next: 56 x 48 buttons with just the arrow. */
-  .reader-screen .nav-button,
-  .reader-screen .nav-next {
-    justify-content: center;
-    width: 56px;
+  /* Previous and Next: 52 x 48, an easy thumb target either side of the scrubber. */
+  .reader-screen .nav-button {
+    width: 52px;
     height: 48px;
-    padding: 0;
   }
 
-  .reader-screen .nav-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+  /* Two short lines, on purpose: the chapter, then the percentage. */
+  .reader-screen .reader-meta {
+    justify-content: center;
+    margin-top: -10px;
   }
 
-  /* Two short lines, on purpose: the chapter, then the percentage a size larger. */
+  .reader-screen .reader-time {
+    display: none;
+  }
+
   .reader-screen .reader-position {
     display: flex;
-    flex: 1;
     flex-direction: column;
     align-items: center;
     line-height: 1.3;
   }
 
   .reader-screen .position-chapter {
-    font-size: 13px;
-    white-space: nowrap;
+    font-size: 12px;
   }
 
   .reader-screen .position-sep {
@@ -1013,22 +1193,17 @@
   }
 
   .reader-screen .reader-position .reading-fraction {
-    font-size: 15px;
+    font-size: 13px;
   }
 
   /* Contents: the whole space between the bars. */
   .reader-screen .contents-drawer {
     width: 100%;
-    border-inline-end: 0;
     box-shadow: none;
   }
 
   .reader-screen .panel-head {
     padding-inline: 20px 8px;
-  }
-
-  .reader-screen .panel-head h2 {
-    font-size: 20px;
   }
 
   /* Search: the same, between the bars (it already covers the text below 60rem). */
@@ -1040,11 +1215,11 @@
   }
 
   .reader-screen .search-top {
-    padding: 16px 20px 8px;
+    padding: 4px 16px 10px;
   }
 
   .reader-screen .search-results {
-    padding-inline: 8px;
+    padding-inline: 6px;
   }
 
   /* Display: a sheet that rests on the bottom bar, as tall as its settings up to two thirds of the text area, then it scrolls. */
@@ -1056,7 +1231,7 @@
     max-height: 68%;
     padding: 0 20px 24px;
     border-width: 1px 0 0;
-    border-radius: 20px 20px 0 0;
+    border-radius: 18px 18px 0 0;
   }
 
   .reader-screen .sheet-head {
@@ -1066,7 +1241,10 @@
     display: flex;
     margin: 0 -20px -8px;
     padding-inline: 20px 8px;
-    border-bottom: 0;
     background: var(--surface);
+  }
+
+  .reader-screen .swatch {
+    height: 58px;
   }
 }

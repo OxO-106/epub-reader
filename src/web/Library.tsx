@@ -197,14 +197,14 @@ export function Library() {
             </section>
           )}
 
-          <section class={`dropzone${dragging ? " dragging" : ""}`} data-testid="dropzone" aria-label="Add books">
-            <UploadIcon />
-            <span>Drop files anywhere on this page to add them</span>
-            {formats}
-            <button type="button" class="button-quiet" onClick={() => picker.current?.click()} disabled={pickerBusy}>
-              Choose files
-            </button>
-          </section>
+          {/* Shown only while files are dragged over the page: the whole window is the drop target. */}
+          <div class={`drop-overlay${dragging ? " dragging" : ""}`} data-testid="dropzone" aria-hidden="true">
+            <div class="drop-card">
+              <UploadIcon size={28} />
+              <span class="drop-title">Drop to add to your Library</span>
+              {formats}
+            </div>
+          </div>
         </>
       )}
 
@@ -234,7 +234,10 @@ export function Library() {
       {!empty && (
         <section class="your-books" aria-label="Your Books">
           <div class="section-head">
-            <h2>Your Books</h2>
+            <h2>
+              Your Books
+              {state.kind === "ready" && !searching && <span class="book-count"> · {books.length}</span>}
+            </h2>
             <label class="sort">
               <select aria-label="Sort Books" value={sort} onChange={(event) => onSort(event.currentTarget.value as SortKey)}>
                 {sortOptions.map((option) => (

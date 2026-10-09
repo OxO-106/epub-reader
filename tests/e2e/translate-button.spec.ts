@@ -301,9 +301,10 @@ test.describe("the status pill", () => {
 // ---- The bilingual style --------------------------------------------------------------------------------------------
 
 const themes = {
-  light: { page: "#f5f5f1", ink: "#3f4743", tint: "#ebf2ee", bar: "#d6e5de", alert: "#b3261e", alertTint: "#ecd8d3" },
-  dark: { page: "#14171a", ink: "#c3cdc7", tint: "#1c2622", bar: "#2a3a33", alert: "#ff8f85", alertTint: "#352829" },
-  sepia: { page: "#f3e9d2", ink: "#4b3f2e", tint: "#ece0c4", bar: "#dccfa9", alert: "#9c2a1b", alertTint: "#e7ceb8" },
+  light: { page: "#faf8f3", ink: "#4a4640", tint: "#f1ede4", bar: "#e2dccf", alert: "#b3261e", alertTint: "#f5dfd9" },
+  dark: { page: "#171615", ink: "#c9c3b9", tint: "#23211e", bar: "#36332e", alert: "#ff8f85", alertTint: "#3a2928" },
+  sepia: { page: "#f4ecd8", ink: "#4b3f2e", tint: "#ece1c6", bar: "#ddd0ab", alert: "#9c2a1b", alertTint: "#ebd2bd" },
+  black: { page: "#000000", ink: "#bcb7af", tint: "#141312", bar: "#292725", alert: "#ff8f85", alertTint: "#301f1e" },
 } as const;
 
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16)).join(", ")})`;

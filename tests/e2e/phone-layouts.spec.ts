@@ -304,7 +304,7 @@ for (const phone of phones) {
     });
 
     test.describe("in every theme", () => {
-      for (const theme of ["light", "dark", "sepia"]) {
+      for (const theme of ["light", "dark", "sepia", "black"]) {
         test(`the Library, the Reader and the Display sheet fit in the ${theme} theme`, async ({ page }) => {
           await page.addInitScript((value) => localStorage.setItem("reader.display", JSON.stringify({ theme: value })), theme);
           await importBooks(page, "sample.epub", "chinese-search.epub");

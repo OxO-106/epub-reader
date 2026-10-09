@@ -55,6 +55,8 @@ export interface ReaderLocation {
   fraction: number;
   /** The `TocEntry.id` of the current chapter, when the Book has a table of contents. */
   chapterId: number | null;
+  /** Estimated minutes of reading left in the current section of the Book (usually a chapter); null when not known. */
+  minutesLeftInSection: number | null;
 }
 
 /** One hit in the Book: the matched text with the words around it. */
@@ -133,8 +135,20 @@ export interface Reader {
   onTranslationStatus(listener: (status: TranslationStatus) => void): () => void;
   /** Tries a block whose translation failed again (`TranslationStatus.failed` lists their ids), or all of them when no id is given. */
   retryTranslation(blockId?: number): void;
+  /** Moves to a place given as a fraction of the whole Book (0 to 1), as a progress scrubber asks. */
+  goToFraction(fraction: number): Promise<void>;
+  /**
+   * Where each top-level chapter of the table of contents starts, as a fraction of the whole Book, for marks on a progress
+   * line. Known once `open` has resolved; empty for a Book without a table of contents.
+   */
+  chapterStarts(): number[];
   /** Calls `listener` whenever the visible place changes. Returns a function that stops listening. */
   onLocation(listener: (location: ReaderLocation) => void): () => void;
+  /**
+   * Calls `listener` when the reader taps or clicks the page somewhere that does not turn it (the middle of a page, or
+   * anywhere on a scrolled one), which is how the Reader screen shows and hides its bars. Returns a function that stops listening.
+   */
+  onTap(listener: () => void): () => void;
   /** Removes the Book and everything the Reader added to its container. */
   close(): void;
 }
@@ -143,6 +157,8 @@ export interface Reader {
 export function createReader(container: HTMLElement): Reader {
   let view: View | null = null;
   const listeners = new Set<(location: ReaderLocation) => void>();
+  const tapListeners = new Set<() => void>();
+  let toc: TocEntry[] = [];
   let display: DisplaySettings | null = null;
   let fontFaces = "";
 
@@ -296,11 +312,12 @@ export function createReader(container: HTMLElement): Reader {
 
   /** `x` is in page coordinates. Clicks on the edges turn pages in paginated mode only. */
   function onClick(event: MouseEvent, x: number, doc: Document | null) {
-    if (event.defaultPrevented || event.button !== 0 || !view || scrolled()) return;
+    if (event.defaultPrevented || event.button !== 0 || !view) return;
     if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
     if (!clickMayTurnPage(event.target, doc?.getSelection())) return;
-    const edge = edgeAt(x, container.getBoundingClientRect());
+    const edge = scrolled() ? null : edgeAt(x, container.getBoundingClientRect());
     if (edge) turnToward(edge);
+    else for (const listener of tapListeners) listener();
   }
 
   function closeBook() {
@@ -332,6 +349,7 @@ export function createReader(container: HTMLElement): Reader {
           position: detail.cfi,
           fraction: detail.fraction ?? 0,
           chapterId: detail.tocItem?.id ?? null,
+          minutesLeftInSection: typeof detail.time?.section === "number" ? detail.time.section : null,
         };
         for (const listener of listeners) listener(location);
         translation.refresh(); // a jump or a page turn moves the window
@@ -380,7 +398,8 @@ export function createReader(container: HTMLElement): Reader {
         () => {},
       );
       await opening;
-      return { title: titleOf(book), toc: flattenToc(book.toc ?? []) };
+      toc = flattenToc(book.toc ?? []);
+      return { title: titleOf(book), toc };
     },
     async goTo(target) {
       requireView();
@@ -439,9 +458,33 @@ export function createReader(container: HTMLElement): Reader {
       fontFaces = css;
       applyDisplay();
     },
+    async goToFraction(fraction) {
+      await turns.cancel();
+      await view?.goToFraction(Math.min(1, Math.max(0, fraction)));
+    },
+    chapterStarts() {
+      if (!view) return [];
+      const starts = view.getSectionFractions();
+      return toc
+        .filter((entry) => entry.depth === 0)
+        .map((entry) => {
+          try {
+            const index = view!.resolveNavigation(entry.target)?.index;
+            return typeof index === "number" ? (starts[index] ?? null) : null;
+          } catch {
+            return null;
+          }
+        })
+        .filter((start): start is number => start !== null && Number.isFinite(start))
+        .map((start) => Math.min(1, Math.max(0, start - Number.EPSILON)));
+    },
     onLocation(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
+    },
+    onTap(listener) {
+      tapListeners.add(listener);
+      return () => tapListeners.delete(listener);
     },
     close() {
       closeBook();
