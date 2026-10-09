@@ -6,6 +6,15 @@ Add a line under **Unreleased** with every change a user would notice; `npm run 
 
 ## [Unreleased]
 
+### Added
+
+- Settings are saved by the server (`settings.json` in the data folder) and served at `/api/settings`; translation settings (model server address, model, key, how many paragraphs at once) apply without a restart. Environment variables still work and win over saved settings.
+- Browser tests for the resting bars and the progress scrubber.
+
+### Fixed
+
+- After a toolbar button was clicked with the mouse, the Reader's bars no longer stay up for good.
+
 ## [0.1.0] - 2026-10-09
 
 The first versioned release: everything Reader can do so far.

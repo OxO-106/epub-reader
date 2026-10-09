@@ -13,6 +13,8 @@ import { securityHeaders } from "./security.ts";
 import type { LibraryFolder } from "./library-folder.ts";
 import type { Storage } from "./storage.ts";
 import { serveFrontEnd } from "./static.ts";
+import { settingsRoutes } from "./settings-routes.ts";
+import type { SettingsStore } from "./settings.ts";
 import { translateRoutes } from "./translate-routes.ts";
 import type { Translator } from "./translate.ts";
 
@@ -24,8 +26,10 @@ export interface AppContext {
   libraryFolder: LibraryFolder;
   /** Folder holding the built front end. */
   webDir: string;
-  /** Live translation through the configured model server. */
-  translator: Translator;
+  /** Live translation through the configured model server. A function: Settings can replace the translator while running. */
+  translator: () => Translator;
+  /** The Settings screen's store. */
+  settings: SettingsStore;
   /** Folder with the Chinese font pieces made by `npm run fonts:build`. May not exist. */
   fontsDir: string;
 }
@@ -60,7 +64,7 @@ const isBookId = (id: string) => /^[0-9a-f]{64}$/.test(id);
 
 const notFound = (c: Context) => c.json({ error: "Not found" }, 404);
 
-export function createApp({ db, storage, libraryFolder, webDir, translator, fontsDir }: AppContext): Hono {
+export function createApp({ db, storage, libraryFolder, webDir, translator, settings, fontsDir }: AppContext): Hono {
   const app = new Hono();
   app.use(securityHeaders);
 
@@ -158,6 +162,7 @@ export function createApp({ db, storage, libraryFolder, webDir, translator, font
   app.get("/api/library-folder", (c) => c.json({ failures: libraryFolder.failures() }));
 
   app.route("/api/translate", translateRoutes(translator));
+  app.route("/api/settings", settingsRoutes(settings));
   // Whether the Chinese font is in the fonts folder, and where its style sheet is; the front end declares it only if so.
   app.get("/api/fonts", (c) => c.json(fontsInfo(fontsDir)));
 

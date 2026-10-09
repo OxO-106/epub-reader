@@ -59,46 +59,62 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
  * The base URL without a trailing slash or a pasted-in `/v1`, so both `http://host:8080` and `http://host:8080/v1`
  * work. Anything that is not an http(s) address is a startup error rather than a quiet "not set up".
  */
-function parseTranslateUrl(value: string): string {
+export function parseTranslateUrl(value: string, label = "READER_TRANSLATE_URL", keyLabel = "READER_TRANSLATE_API_KEY"): string {
   let url: URL;
   try {
-    url = new URL(value);
+    url = new URL(value.trim());
   } catch {
     // The value is never repeated: it can carry a password.
-    throw new ConfigError("READER_TRANSLATE_URL is not a web address. Use something like http://127.0.0.1:8080.");
+    throw new ConfigError(`${label} is not a web address. Use something like http://127.0.0.1:8080.`);
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new ConfigError("READER_TRANSLATE_URL must start with http:// or https://.");
+    throw new ConfigError(`${label} must start with http:// or https://.`);
   }
   if (url.username || url.password) {
-    throw new ConfigError(
-      "READER_TRANSLATE_URL must not contain a user name or password. Put the key in READER_TRANSLATE_API_KEY instead.",
-    );
+    throw new ConfigError(`${label} must not contain a user name or password. Put the key in ${keyLabel} instead.`);
   }
   return `${url.origin}${url.pathname}`.replace(/\/+$/, "").replace(/\/v1$/, "");
 }
 
-function parseConcurrency(value: string | undefined): number {
+export function parseConcurrency(value: string | undefined, label = "READER_TRANSLATE_CONCURRENCY"): number {
   if (value === undefined || value.trim() === "") return 1;
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1) {
-    throw new ConfigError(`READER_TRANSLATE_CONCURRENCY must be a whole number of 1 or more (got "${value}").`);
+    throw new ConfigError(`${label} must be a whole number of 1 or more (got "${value}").`);
   }
   return parsed;
+}
+
+/**
+ * Settings saved from the Settings screen (settings.ts keeps them in the data folder). Each is used only when neither
+ * an explicit option nor its environment variable gives a value. Already validated when they were saved.
+ */
+export interface SavedSettings {
+  translateUrl?: string;
+  translateModel?: string;
+  translateApiKey?: string;
+  translateConcurrency?: number;
+  libraryDir?: string;
+  host?: string;
+  tailscale?: boolean;
+  port?: number;
 }
 
 /** Empty and blank variables count as unset. */
 const nonBlank = (value: string | undefined) => (value?.trim() ? value.trim() : undefined);
 
-function resolveTranslate(overrides: Partial<TranslateConfig> = {}, env: NodeJS.ProcessEnv): TranslateConfig {
+function resolveTranslate(overrides: Partial<TranslateConfig> = {}, env: NodeJS.ProcessEnv, saved: SavedSettings): TranslateConfig {
   const fromEnv = nonBlank(env.READER_TRANSLATE_URL);
   // `"url" in overrides`: tests pass `url: undefined` to mean "not set up" whatever the environment says.
-  const url = "url" in overrides ? overrides.url : fromEnv === undefined ? undefined : parseTranslateUrl(fromEnv);
+  const url = "url" in overrides ? overrides.url : fromEnv === undefined ? saved.translateUrl : parseTranslateUrl(fromEnv);
+  const concurrencyFromEnv = nonBlank(env.READER_TRANSLATE_CONCURRENCY);
   return {
     url,
-    model: "model" in overrides ? overrides.model : nonBlank(env.READER_TRANSLATE_MODEL),
-    apiKey: "apiKey" in overrides ? overrides.apiKey : nonBlank(env.READER_TRANSLATE_API_KEY),
-    concurrency: overrides.concurrency ?? parseConcurrency(env.READER_TRANSLATE_CONCURRENCY),
+    model: "model" in overrides ? overrides.model : (nonBlank(env.READER_TRANSLATE_MODEL) ?? saved.translateModel),
+    apiKey: "apiKey" in overrides ? overrides.apiKey : (nonBlank(env.READER_TRANSLATE_API_KEY) ?? saved.translateApiKey),
+    concurrency:
+      overrides.concurrency ??
+      (concurrencyFromEnv !== undefined ? parseConcurrency(concurrencyFromEnv) : (saved.translateConcurrency ?? 1)),
     maxQueue: overrides.maxQueue ?? 64,
     // A paragraph is a few hundred tokens; even a slow laptop finishes one inside three minutes.
     requestTimeoutMs: overrides.requestTimeoutMs ?? 180_000,
@@ -110,23 +126,26 @@ function resolveTranslate(overrides: Partial<TranslateConfig> = {}, env: NodeJS.
 }
 
 /**
- * Resolves configuration from explicit overrides, then READER_* environment
- * variables, then defaults. Relative folders resolve against the current directory.
+ * Resolves configuration from explicit overrides, then READER_* environment variables, then the settings saved from
+ * the Settings screen, then defaults. Relative folders resolve against the current directory.
  */
 export function resolveConfig(
   overrides: ConfigOverrides = {},
   env: NodeJS.ProcessEnv = process.env,
+  saved: SavedSettings = {},
 ): Config {
   return {
     dataDir: resolve(overrides.dataDir ?? env.READER_DATA_DIR ?? "data"),
-    libraryDir: resolve(overrides.libraryDir ?? env.READER_LIBRARY_DIR ?? "library"),
+    libraryDir: resolve(overrides.libraryDir ?? env.READER_LIBRARY_DIR ?? saved.libraryDir ?? "library"),
     librarySettleMs: overrides.librarySettleMs ?? 1000,
     libraryRescanMs: overrides.libraryRescanMs ?? 60_000,
     webDir: resolve(overrides.webDir ?? env.READER_WEB_DIR ?? resolve(repoRoot, "dist/web")),
     fontsDir: resolve(overrides.fontsDir ?? env.READER_FONTS_DIR ?? "fonts"),
-    host: overrides.host ?? env.READER_HOST ?? "127.0.0.1",
-    tailscale: overrides.tailscale ?? ["1", "true"].includes(env.READER_TAILSCALE?.toLowerCase() ?? ""),
-    port: overrides.port ?? Number(env.READER_PORT ?? 5174),
-    translate: resolveTranslate(overrides.translate, env),
+    host: overrides.host ?? env.READER_HOST ?? saved.host ?? "127.0.0.1",
+    tailscale:
+      overrides.tailscale ??
+      (env.READER_TAILSCALE !== undefined ? ["1", "true"].includes(env.READER_TAILSCALE.toLowerCase()) : (saved.tailscale ?? false)),
+    port: overrides.port ?? Number(env.READER_PORT ?? saved.port ?? 5174),
+    translate: resolveTranslate(overrides.translate, env, saved),
   };
 }

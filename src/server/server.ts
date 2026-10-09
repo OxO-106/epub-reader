@@ -7,11 +7,16 @@ import { importBook } from "./import.ts";
 import { watchLibraryFolder } from "./library-folder.ts";
 import { listenOnAddresses, selectListenAddresses, type NetworkInterfaces } from "./listen.ts";
 import { openStorage } from "./storage.ts";
+import { createSettingsStore, readSettingsFile } from "./settings.ts";
 import { createTranslator } from "./translate.ts";
 
 export interface ServerOptions extends ConfigOverrides {
   /** Where to look for the Tailscale address. Defaults to this PC's real network interfaces; tests inject their own. */
   networkInterfaces?: NetworkInterfaces;
+  /** The READER_* variables to read. Defaults to the process environment; tests pass their own to stay independent of the shell. */
+  env?: NodeJS.ProcessEnv;
+  /** Lets the Settings screen restart the server. Given by a host that can (the desktop app); without it the screen asks the reader to. */
+  restart?: () => void;
 }
 
 export interface RunningServer {
@@ -25,8 +30,10 @@ export interface RunningServer {
 
 /** Starts the Reader server. Used by `main.ts` and, unchanged, by the tests. */
 export async function startServer(options: ServerOptions = {}): Promise<RunningServer> {
-  const { networkInterfaces, ...overrides } = options;
-  const config = resolveConfig(overrides);
+  const { networkInterfaces, env = process.env, restart, ...overrides } = options;
+  // The data folder comes first: it holds the saved settings that the rest of the configuration may use.
+  const dataDir = resolveConfig(overrides, env).dataDir;
+  const config = resolveConfig(overrides, env, readSettingsFile(dataDir).values);
   // Before anything is created: asking for Tailscale on a PC without it is a startup error, never a quiet fallback.
   const addresses = selectListenAddresses({ host: config.host, tailscale: config.tailscale, networkInterfaces });
 
@@ -41,13 +48,26 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     settleMs: config.librarySettleMs,
     rescanMs: config.libraryRescanMs,
   });
+  let translator = createTranslator(config.translate);
+  const settings = createSettingsStore({
+    dataDir: config.dataDir,
+    overrides,
+    env,
+    running: config,
+    // A request already running keeps the translator it started with; the next one uses the new settings.
+    onTranslateChange: (next) => {
+      translator = createTranslator(next);
+    },
+    restart,
+  });
   const app = createApp({
     db,
     storage,
     libraryFolder,
     webDir: config.webDir,
     fontsDir: config.fontsDir,
-    translator: createTranslator(config.translate),
+    translator: () => translator,
+    settings,
   });
 
   /** The folder watcher imports through the database, so it stops first. */
@@ -65,15 +85,20 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   }
 
   const resolved: Config = { ...config, port: listener.port };
+  let closing: Promise<void> | undefined;
   const base = config.host.includes(":") ? `[${config.host}]` : config.host;
 
   return {
     config: resolved,
     url: `http://${base}:${listener.port}`,
     addresses,
-    async close() {
-      await listener.close();
-      await stopBackgroundWork();
+    // Safe to call more than once: a host may close on several signals.
+    close() {
+      closing ??= (async () => {
+        await listener.close();
+        await stopBackgroundWork();
+      })();
+      return closing;
     },
   };
 }

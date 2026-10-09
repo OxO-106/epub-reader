@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { fromOwnOrigin, isJson, readLimited } from "./request-guards.ts";
 import type { TranslateEvent, Translator } from "./translate.ts";
 
 /** Longest paragraph (or context) accepted, in characters. Real paragraphs are far shorter. */
@@ -18,54 +19,6 @@ const errorResponse = (status: 400 | 403 | 413 | 415 | 503, code: string, messag
   Response.json({ error: { code, message } }, { status });
 
 /**
- * True when the request came from a page of this app: an `Origin` header (browsers send one on every cross-site POST)
- * names the host the request itself arrived on, over http or https. No `Origin` (curl, tests, other programs) passes.
- */
-function fromOwnOrigin(origin: string | undefined, host: string | undefined): boolean {
-  if (origin === undefined) return true;
-  try {
-    const url = new URL(origin);
-    return (url.protocol === "http:" || url.protocol === "https:") && host !== undefined && url.host.toLowerCase() === host.toLowerCase();
-  } catch {
-    return false; // "null" and anything else that is not an address
-  }
-}
-
-/**
- * The request body as text, or undefined when it is larger than `limit` bytes. A declared Content-Length over the limit
- * is refused without reading; otherwise the stream is counted as it arrives and abandoned at the limit, so a chunked
- * body (no Content-Length) or one that lies about its length cannot make the server buffer more.
- */
-async function readLimited(request: Request, limit: number): Promise<string | undefined> {
-  const declared = Number(request.headers.get("content-length"));
-  if (declared > limit) {
-    await request.body?.cancel().catch(() => {});
-    return undefined;
-  }
-  if (!request.body) return "";
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > limit) {
-        await reader.cancel().catch(() => {});
-        return undefined;
-      }
-      chunks.push(value);
-    }
-  } catch {
-    return ""; // the connection broke mid-body; the empty body is then answered as malformed
-  }
-  return new TextDecoder().decode(Buffer.concat(chunks));
-}
-
-const isJson =(contentType: string | undefined) => contentType?.split(";")[0]!.trim().toLowerCase() === "application/json";
-
-/**
  * POST /api/translate        body {"text": "...", "context": "..."?, "names": ["..."]?} (JSON). `names` are names the
  *   caller already knows, so one that starts a sentence is still treated as a name (see translate-names.ts).
  *   200 application/x-ndjson, one JSON event per line: {"delta":"..."} zero or more times, then exactly one of
@@ -78,10 +31,11 @@ const isJson =(contentType: string | undefined) => contentType?.split(";")[0]!.t
  * The browser going away (aborting its fetch) cancels the response stream, which drops the request from the queue or
  * aborts the upstream request. Nothing about the text is logged or stored.
  */
-export function translateRoutes(translator: Translator): Hono {
+export function translateRoutes(currentTranslator: () => Translator): Hono {
   const routes = new Hono();
 
-  routes.get("/status", async (c) => c.json(await translator.status(), 200, { "cache-control": "no-store" }));
+  // The translator is looked up per request: Settings can replace it while the server runs.
+  routes.get("/status", async (c) => c.json(await currentTranslator().status(), 200, { "cache-control": "no-store" }));
 
   routes.post("/", async (c) => {
     // A web page on another site can POST text/plain to this address without a preflight, and the model would run for
@@ -123,6 +77,7 @@ export function translateRoutes(translator: Translator): Hono {
     if (text.length > maxTextLength || (typeof context === "string" && context.length > maxTextLength)) {
       return errorResponse(413, "bad-request", "The text is too long to translate.");
     }
+    const translator = currentTranslator();
     if (!translator.configured) {
       return errorResponse(503, "not-configured", "Translation is not set up on this server.");
     }
