@@ -15,6 +15,7 @@ import type { FoliateBook, RelocateDetail, TocItem, View } from "../vendor/folia
 import { makeCustomBook, type CustomBook } from "./custom-book.ts";
 import { marginSizes, type DisplaySettings } from "../display-settings.ts";
 import { bookStyles } from "./book-styles.ts";
+import { normalizeFontSizes } from "./font-scale.ts";
 import { clickMayTurnPage, createTurnQueue, directionForKey, edgeAt, keyMayTurnPage, type Direction } from "./page-turn.ts";
 import { sha1 } from "./sha1.ts";
 import { resolveLanguage } from "./chinese.ts";
@@ -348,6 +349,8 @@ export function createReader(container: HTMLElement): Reader {
       // Key and click events inside the Book's iframes do not reach this page, so listen inside each one too.
       next.addEventListener("load", (event) => {
         const { doc } = (event as CustomEvent<{ doc: Document }>).detail;
+        // Reflowable pages only (a fixed layout has no display styles): see font-scale.ts.
+        if (next.renderer?.setStyles) normalizeFontSizes(doc);
         setChineseLanguage(doc);
         english ??= looksEnglish((doc.body?.textContent ?? "").slice(0, 8000));
         attachTranslation(doc);

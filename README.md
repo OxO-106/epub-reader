@@ -78,6 +78,10 @@ $env:READER_PORT = "8080"; npm start
 
 English text is set in Libertinus Serif, which is installed with `npm install` (the package `@fontsource/libertinus-serif`, SIL Open Font License; the notice is in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)) and bundled into the front end. The interface itself is set in the system sans-serif font.
 
+**IBM Plex Sans** is one of the choices in the Reader's Display settings (Font). It is installed the same way (the package `@fontsource/ibm-plex-sans`, SIL Open Font License, notice in the same file) and bundled, so it needs nothing from you. It has no Chinese, so Chinese text in a Book set in it uses the system's Chinese sans-serif font.
+
+**Text size** (Display settings) scales all of a Book's text, including text the Book sizes for itself with CSS keywords (`small`, `x-large`), pixels or points, which would otherwise ignore the setting. The Book's own proportions are kept: small print stays smaller than body text and chapter titles stay larger. The number is the base size; a Book whose body text is "small" in its own design shows it at about 80% of that number, so raise the setting for such a Book.
+
 Chinese text is set in 京华老宋体 (KingHwa_OldSong). Its licence is not stated, so **it is not in this repository** and must never be committed. If you have it installed on your PC, cut it into web pieces once; the server then serves them to every device that opens the Reader, the phone included, and the Library and every Book use the font for Chinese. Without it, everything still works and Chinese falls back to the system's Chinese serif font.
 
 ```

@@ -484,3 +484,33 @@ writeFileSync(join(out, "no-heading.md"), "Just a few words, with no heading any
   ];
   writeFileSync(join(out, "english.md"), `${markdown.join("\n")}\n`);
 }
+
+// A Book that sizes its text the ways real ones do: CSS keywords (small, x-large), px, pt, percentages, a size relative to
+// its parent and an inline style. Only text sized relative to the page's base size follows the Text size setting by itself;
+// the rest has to be scaled by the Reader (tests/e2e/font-size.spec.ts). Every paragraph has an id to measure.
+{
+  const sample = "The quick brown fox jumps over the lazy dog while the long afternoon turns slowly toward the evening.";
+  const body = [
+    `<p id="plain">${sample} (no size rule: follows the page)</p>`,
+    `<p id="kw" class="kw">${sample} (keyword small)</p>`,
+    `<p id="px" class="px">${sample} (14px)</p>`,
+    `<p id="pt" class="pt">${sample} (12pt)</p>`,
+    `<p id="pct" class="pct">${sample} (90 percent)</p>`,
+    `<p id="inline" style="font-size: 20px">${sample} (inline 20px)</p>`,
+    `<h2 id="head" class="head">A heading in keyword x-large</h2>`,
+    `<p id="outer" class="kw">Outer text in keyword small with <span id="inner" class="inner">an inner span in smaller</span> inside it.</p>`,
+  ].join("");
+  writeFileSync(
+    join(out, "sizes.epub"),
+    epub({
+      metadata: `${id(8)}<dc:title>Sized Book</dc:title><dc:creator>Test Author</dc:creator><dc:language>en</dc:language>${modified}`,
+      chapters: [
+        { title: "Chapter 1", body },
+        { title: "Chapter 2", body: "A second chapter, so there is a table of contents." },
+      ],
+      style:
+        ".kw { font-size: small; } .px { font-size: 14px; } .pt { font-size: 12pt; } .pct { font-size: 90%; }\n" +
+        ".head { font-size: x-large; } .inner { font-size: smaller; }\n",
+    }),
+  );
+}

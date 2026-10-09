@@ -711,6 +711,10 @@
   font-family: var(--font-serif);
 }
 
+.reader-screen .chip-plex {
+  font-family: "IBM Plex Sans", var(--font-sans);
+}
+
 .reader-screen .chip[aria-pressed="true"] {
   border-color: transparent;
   background: var(--accent);

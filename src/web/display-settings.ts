@@ -6,7 +6,7 @@
 
 export type Theme = "light" | "dark" | "sepia";
 export type Flow = "paginated" | "scrolled";
-export type FontFamily = "book" | "serif" | "sans" | "cjk-serif" | "cjk-sans";
+export type FontFamily = "book" | "serif" | "sans" | "plex" | "cjk-serif" | "cjk-sans";
 export type Margins = "narrow" | "medium" | "wide";
 
 export interface DisplaySettings {
@@ -64,6 +64,10 @@ const hansSerifStack = `${kingHwaWeb}, ${libertinus}, ${kingHwaInstalled}, ${lat
 const hantSerifStack = `${kingHwaWeb}, ${libertinus}, ${kingHwaInstalled}, ${latinSerif}, ${hantSerif}, serif`;
 const sansStack = `${latinSans}, ${hansSans}, sans-serif`;
 const hantSansStack = `${latinSans}, ${hantSans}, sans-serif`;
+/** IBM Plex Sans (bundled, see fonts.ts) for English; it has no Chinese, so Chinese text goes to the system's Chinese sans fonts. */
+const plexName = '"IBM Plex Sans"';
+const plexStack = `${plexName}, ${latinSans}, ${hansSans}, sans-serif`;
+const hantPlexStack = `${plexName}, ${latinSans}, ${hantSans}, sans-serif`;
 
 export interface FontChoice {
   value: FontFamily;
@@ -78,11 +82,13 @@ export interface FontChoice {
 
 const serif = { stack: serifStack, hansStack: hansSerifStack, hantStack: hantSerifStack };
 const sans = { stack: sansStack, hansStack: sansStack, hantStack: hantSansStack };
+const plex = { stack: plexStack, hansStack: plexStack, hantStack: hantPlexStack };
 
 export const fontFamilies: FontChoice[] = [
   { value: "book", label: "The Book's own", stack: null, hansStack: null, hantStack: null },
   { value: "serif", label: "Serif", ...serif },
   { value: "sans", label: "Sans-serif", ...sans },
+  { value: "plex", label: "IBM Plex Sans", ...plex },
   { value: "cjk-serif", label: "Chinese serif (宋体)", ...serif },
   { value: "cjk-sans", label: "Chinese sans (黑体)", ...sans },
 ];

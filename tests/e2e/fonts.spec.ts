@@ -145,6 +145,41 @@ test.describe("Libertinus Serif", () => {
   });
 });
 
+test.describe("IBM Plex Sans", () => {
+  test("is a choice in the Display settings and sets English text inside a Book", async ({ page }) => {
+    await openTypeTest(page);
+    await page.getByRole("button", { name: "Display", exact: true }).click();
+    const choice = page.getByRole("button", { name: "IBM Plex Sans", exact: true });
+    await expect(choice).toHaveAttribute("aria-pressed", "false");
+    await choice.click();
+    await expect(choice).toHaveAttribute("aria-pressed", "true");
+
+    const frame = bookFrame(page)!;
+    await expect.poll(() => frame.evaluate(familyOf, "quick brown fox")).toMatch(/^"?IBM Plex Sans/);
+    expect(await frame.evaluate(declaredFamilies)).toContain("IBM Plex Sans");
+    await expect.poll(() => frame.evaluate(loadedFamilies)).toContain("IBM Plex Sans");
+    expect(familiesOf(await drawnWith(page, "quick brown fox"))).toEqual(["IBM Plex Sans"]);
+  });
+
+  test("is remembered, and Chinese text in the same Book still gets a Chinese font", async ({ page }) => {
+    await openTypeTest(page, "plex");
+    const frame = bookFrame(page)!;
+
+    expect(await frame.evaluate(familyOf, "quick brown fox")).toMatch(/^"?IBM Plex Sans/);
+    // Plex Sans has no Chinese: the characters come from the system's fonts, one em wide as in any ordinary Chinese font.
+    expect(await width(frame, "中")).toBeCloseTo(1, 1);
+    expect(await width(frame, "国")).toBeCloseTo(1, 1);
+  });
+
+  test("its choice is shown in its own typeface", async ({ page }) => {
+    await openTypeTest(page);
+    await page.getByRole("button", { name: "Display", exact: true }).click();
+    const choice = page.getByRole("button", { name: "IBM Plex Sans", exact: true });
+    expect(await choice.evaluate((element) => getComputedStyle(element).fontFamily)).toMatch(/^"?IBM Plex Sans/);
+    await expect.poll(() => page.evaluate(loadedFamilies)).toContain("IBM Plex Sans");
+  });
+});
+
 test.describe("without the Chinese font on the server", () => {
   test("nothing is declared for it, nothing fails, and the fallback fonts draw the Chinese", async ({ page }) => {
     const problems = collectProblems(page);

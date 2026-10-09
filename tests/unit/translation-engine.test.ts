@@ -65,7 +65,11 @@ describe("when something around the engine throws", () => {
     await vi.waitFor(() => expect(engine.status()).toMatchObject({ state: "ready", translated: 4, waiting: 0, failed: [] }), {
       timeout: 2000,
     });
-    expect(elements.map((element) => element.getAttribute("data-reader-tx"))).toEqual(["done", "done", "done", "done"]);
+    // The page is written one animation frame after the status says "ready", so wait for it rather than look at once.
+    await vi.waitFor(
+      () => expect(elements.map((element) => element.getAttribute("data-reader-tx"))).toEqual(["done", "done", "done", "done"]),
+      { timeout: 2000 },
+    );
     expect(throwing).toHaveBeenCalled();
     expect(healthy).toHaveBeenCalled(); // one listener's trouble does not hide updates from the next
     engine.dispose();
