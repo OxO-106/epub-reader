@@ -95,6 +95,8 @@ Options, each as a parameter (after `--` when run through npm, for example `npm 
 
 The script refuses to listen on any address other than the loopback one without an API key.
 
+A key given with `-ApiKey` is part of the PowerShell command line, which other programs on the PC can see in the process list (and which the console history keeps). The safer route is the environment variable: set `$env:LLAMA_API_KEY = "<key>"` in the window first and leave `-ApiKey` out. The script hands the key to llama-server through its environment either way, never on llama-server's own command line.
+
 The command it runs, with the reason for each flag (the flags are the ones the benchmark used):
 
 ```
@@ -261,7 +263,7 @@ Start Tailscale before the model server, because the address does not exist othe
 New-NetFirewallRule -DisplayName "Reader translation model (Tailscale only)" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080 -RemoteAddress 100.64.0.0/10
 ```
 
-Do not create a rule for any address, and do not forward the port on a router. The address is plain `http`, but inside the tailnet the traffic is encrypted by Tailscale. To remove the rule later: `Remove-NetFirewallRule -DisplayName "Reader translation model (Tailscale only)"`.
+Do not create a rule for any address, and do not forward the port on a router. The address is plain `http`, but inside the tailnet the traffic is encrypted by Tailscale (acceptable here; elsewhere use `https` or a network you trust, because the Book's text and the key travel in every request). Prefer `$env:LLAMA_API_KEY` to `-ApiKey` where other people can see this PC's process list. To remove the rule later: `Remove-NetFirewallRule -DisplayName "Reader translation model (Tailscale only)"`.
 
 ### Point the app at it
 

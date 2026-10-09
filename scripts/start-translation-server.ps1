@@ -35,7 +35,9 @@
 
 .PARAMETER ApiKey
   Makes llama-server require "Authorization: Bearer <key>". Passed to the server through the environment, not on
-  its command line, so it does not show up in the process list.
+  its command line, so it does not show up in the process list. A value typed after -ApiKey here IS part of this
+  script's own PowerShell command line, which other programs can see in the process list: where that matters, set
+  $env:LLAMA_API_KEY first and leave -ApiKey out.
 
 .PARAMETER StartupTimeoutSec
   How long to wait for the model to load. Default 180 (the laptop needs about 10 s once the file is in the cache).
