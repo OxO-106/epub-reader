@@ -64,10 +64,16 @@ function parseTranslateUrl(value: string): string {
   try {
     url = new URL(value);
   } catch {
-    throw new ConfigError(`READER_TRANSLATE_URL is not a web address: "${value}". Use something like http://127.0.0.1:8080.`);
+    // The value is never repeated: it can carry a password.
+    throw new ConfigError("READER_TRANSLATE_URL is not a web address. Use something like http://127.0.0.1:8080.");
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new ConfigError(`READER_TRANSLATE_URL must start with http:// or https:// (got "${value}").`);
+    throw new ConfigError("READER_TRANSLATE_URL must start with http:// or https://.");
+  }
+  if (url.username || url.password) {
+    throw new ConfigError(
+      "READER_TRANSLATE_URL must not contain a user name or password. Put the key in READER_TRANSLATE_API_KEY instead.",
+    );
   }
   return `${url.origin}${url.pathname}`.replace(/\/+$/, "").replace(/\/v1$/, "");
 }

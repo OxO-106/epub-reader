@@ -1057,6 +1057,40 @@ describe("configuration", () => {
     expect(() => translateOf({ READER_TRANSLATE_URL: url })).toThrow(/READER_TRANSLATE_URL/);
   });
 
+  it.each([
+    ["not a url with sEcReT in it", /not a web address/],
+    ["ftp://adm1n:sEcReT@host", /must start with http:\/\/ or https:\/\//],
+    ["sEcReT:8080", /must start with http:\/\/ or https:\/\//],
+  ])("never repeats the unusable URL %s in the error", (url, why) => {
+    let message = "";
+    try {
+      translateOf({ READER_TRANSLATE_URL: url });
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toMatch(/READER_TRANSLATE_URL/);
+    expect(message).toMatch(why);
+    expect(message).not.toContain("sEcReT");
+    expect(message).not.toContain(url);
+  });
+
+  it.each(["http://adm1n:sEcReT@host:8080", "https://:sEcReT@host", "http://adm1n@host"])(
+    "refuses credentials inside the URL %s and points to READER_TRANSLATE_API_KEY, without repeating them",
+    (url) => {
+      let message = "";
+      try {
+        translateOf({ READER_TRANSLATE_URL: url });
+      } catch (error) {
+        expect(error).toBeInstanceOf(ConfigError);
+        message = (error as Error).message;
+      }
+      expect(message).toMatch(/READER_TRANSLATE_URL/);
+      expect(message).toMatch(/READER_TRANSLATE_API_KEY/);
+      expect(message).not.toContain("sEcReT");
+      expect(message).not.toContain("adm1n");
+    },
+  );
+
   it("allows one request at a time unless READER_TRANSLATE_CONCURRENCY says otherwise", () => {
     expect(translateOf({}).concurrency).toBe(1);
     expect(translateOf({ READER_TRANSLATE_CONCURRENCY: "" }).concurrency).toBe(1);
