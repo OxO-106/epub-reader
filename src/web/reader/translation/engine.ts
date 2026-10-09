@@ -5,7 +5,7 @@
 // Everything is in memory. A Translation exists only while its block is near the reader and goes when the reader
 // moves away, when translation is switched off, or when the Book section is replaced.
 import { findBlocks, type Block } from "./blocks.ts";
-import { backendTrouble, fetchStatus, translateBlock } from "./client.ts";
+import { backendTrouble, fetchStatus, translateBlock, type TranslateOutcome } from "./client.ts";
 import { collectNames } from "./names.ts";
 import { stateAttribute, textAttribute, type BlockState } from "./style.ts";
 
@@ -128,7 +128,14 @@ export function createTranslationEngine(options: EngineOptions = {}): Translatio
       next.failed.join() === lastStatus.failed.join();
     if (same) return;
     lastStatus = next;
-    for (const listener of [...listeners]) listener(next);
+    // A listener that throws must not stop the others, nor the engine: it is called from the middle of the work loop.
+    for (const listener of [...listeners]) {
+      try {
+        listener(next);
+      } catch (error) {
+        console.error("translation: a status listener threw", error);
+      }
+    }
   }
 
   // ---- showing translations -------------------------------------------------------------------------------------
@@ -289,28 +296,48 @@ export function createTranslationEngine(options: EngineOptions = {}): Translatio
     const mine: Job = { entry, abort };
     job = mine;
     let text = "";
-    void translateBlock(
-      { text: entry.block.text, context, names: current.names },
-      abort.signal,
-      (delta) => {
-        if (job !== mine) return;
+    let broke = false; // an update threw: the block is failed, whatever the request then says
+    const internal: TranslateOutcome = { kind: "failed", failure: { code: "internal", message: "The translation could not be shown." } };
+
+    /** Ends the job whatever happens while doing so: the job is released and the loop goes on. */
+    const settle = (outcome: TranslateOutcome) => {
+      if (job !== mine) return; // abandoned meanwhile
+      job = null;
+      try {
+        const result = broke ? internal : outcome;
+        if (result.kind === "done") {
+          failuresInARow = 0;
+          setState(entry, "done", text);
+        } else if (result.kind === "aborted") {
+          setState(entry, "none");
+        } else {
+          fail(entry, result.failure.code);
+        }
+      } catch (error) {
+        console.error("translation: could not finish a block", error);
+        entry.state = "failed";
+        entry.text = "";
+        entry.attempts++;
+      } finally {
+        emit();
+        schedulePump(0);
+      }
+    };
+
+    translateBlock({ text: entry.block.text, context, names: current.names }, abort.signal, (delta) => {
+      if (job !== mine || broke) return;
+      try {
         text += delta;
         setState(entry, "streaming", text);
         emit();
-      },
-    ).then((outcome) => {
-      if (job !== mine) return; // abandoned meanwhile
-      job = null;
-      if (outcome.kind === "done") {
-        failuresInARow = 0;
-        setState(entry, "done", text);
-      } else if (outcome.kind === "aborted") {
-        setState(entry, "none");
-      } else {
-        fail(entry, outcome.failure.code);
+      } catch (error) {
+        console.error("translation: could not show a block", error);
+        broke = true;
+        abort.abort();
       }
-      emit();
-      schedulePump(0);
+    }).then(settle, () => {
+      broke = true; // translateBlock never rejects; if it somehow does, the block fails and the loop goes on
+      settle(internal);
     });
   }
 
