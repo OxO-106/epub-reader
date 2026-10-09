@@ -219,6 +219,9 @@ same package to read a PDF's title and author. pdf.js is licensed under the Apac
 (<https://www.apache.org/licenses/LICENSE-2.0>); its `LICENSE` file is in the package. Two of its style sheets are
 vendored with foliate-js (`src/web/vendor/foliate-js/vendor/pdfjs/`).
 
+To draw a PDF's first page as its cover, the server uses `@napi-rs/canvas` (MIT licence; it contains Skia, under a
+BSD-style licence), which pdfjs-dist installs as its canvas for Node. It runs on the server only.
+
 ## 京华老宋体 (KingHwa_OldSong)
 
 The original font file, version 2.002, is included at `assets/fonts/KingHwa_OldSong-2.002.ttf`, unmodified. Its own
