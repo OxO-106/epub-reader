@@ -4,6 +4,9 @@ import type { TranslateEvent, Translator } from "./translate.ts";
 /** Longest paragraph (or context) accepted, in characters. Real paragraphs are far shorter. */
 export const maxTextLength = 20_000;
 
+/** Largest request body accepted, in bytes. A paragraph, its context and the name list come to a few KiB at most. */
+export const maxBodyBytes = 128 * 1024;
+
 /** Most names a request may list, and the longest one, in characters. */
 export const maxNames = 500;
 export const maxNameLength = 80;
@@ -28,14 +31,47 @@ function fromOwnOrigin(origin: string | undefined, host: string | undefined): bo
   }
 }
 
-const isJson = (contentType: string | undefined) => contentType?.split(";")[0]!.trim().toLowerCase() === "application/json";
+/**
+ * The request body as text, or undefined when it is larger than `limit` bytes. A declared Content-Length over the limit
+ * is refused without reading; otherwise the stream is counted as it arrives and abandoned at the limit, so a chunked
+ * body (no Content-Length) or one that lies about its length cannot make the server buffer more.
+ */
+async function readLimited(request: Request, limit: number): Promise<string | undefined> {
+  const declared = Number(request.headers.get("content-length"));
+  if (declared > limit) {
+    await request.body?.cancel().catch(() => {});
+    return undefined;
+  }
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) {
+        await reader.cancel().catch(() => {});
+        return undefined;
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return ""; // the connection broke mid-body; the empty body is then answered as malformed
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks));
+}
+
+const isJson =(contentType: string | undefined) => contentType?.split(";")[0]!.trim().toLowerCase() === "application/json";
 
 /**
  * POST /api/translate        body {"text": "...", "context": "..."?, "names": ["..."]?} (JSON). `names` are names the
  *   caller already knows, so one that starts a sentence is still kept in English (see translate-names.ts).
  *   200 application/x-ndjson, one JSON event per line: {"delta":"..."} zero or more times, then exactly one of
  *   {"done":true} or {"error":{"code","message"}}. Trouble before any text is sent is a plain JSON error with a
- *   non-200 status: 503 "not-configured", 400 "bad-request", 413 "bad-request" (text too long), 403 "forbidden-origin"
+ *   non-200 status: 503 "not-configured", 400 "bad-request", 413 "bad-request" (text too long, or a body over
+ *   128 KiB), 503 "busy" (the waiting line is full), 403 "forbidden-origin"
  *   (an Origin header that is not this server's own), 415 "unsupported-media-type" (not application/json).
  * GET  /api/translate/status -> {"configured":bool,"reachable":bool,"model":string|null}
  *
@@ -58,9 +94,11 @@ export function translateRoutes(translator: Translator): Hono {
     }
     // The body is parsed here, so a malformed one is answered with a fixed sentence and never with a parser message
     // (Node's JSON errors quote the start of the input).
+    const raw = await readLimited(c.req.raw, maxBodyBytes);
+    if (raw === undefined) return errorResponse(413, "bad-request", "The request is too large.");
     let body: unknown;
     try {
-      body = await c.req.json();
+      body = JSON.parse(raw);
     } catch {
       return errorResponse(400, "bad-request", "The request body must be JSON.");
     }
@@ -87,6 +125,11 @@ export function translateRoutes(translator: Translator): Hono {
     }
     if (!translator.configured) {
       return errorResponse(503, "not-configured", "Translation is not set up on this server.");
+    }
+
+    // Answered before the stream starts, so the browser sees a plain 503 and not a stream that opens with an error.
+    if (translator.busy) {
+      return errorResponse(503, "busy", "Too many translations are waiting. Try again in a moment.");
     }
 
     const abort = new AbortController();

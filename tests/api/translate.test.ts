@@ -271,6 +271,53 @@ describe("requests the server turns away", () => {
   });
 });
 
+describe("the size of a request", () => {
+  const limit = 128 * 1024;
+
+  it("refuses a body over 128 KiB with a 413 and never calls the model", async () => {
+    const { model, server } = await setup();
+
+    const response = await post(server, { text: "Hello.", names: [], padding: "x".repeat(limit) });
+
+    expect(response.status).toBe(413);
+    expect(((await response.json()) as { error: { code: string } }).error.code).toBe("bad-request");
+    expect(model.requests).toHaveLength(0);
+  });
+
+  it("accepts a body just under the limit", async () => {
+    const { server } = await setup();
+
+    const response = await post(server, { text: "Hello.", padding: "x".repeat(limit - 200) });
+
+    expect(response.status).toBe(200);
+    await response.body?.cancel();
+  });
+
+  it("cannot be got round with a chunked body that has no Content-Length", async () => {
+    const { model, server } = await setup();
+    const piece = new TextEncoder().encode("x".repeat(16 * 1024));
+    let sent = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        // Starts like JSON and never stops: 1 MiB in all, far more than a server should keep reading.
+        controller.enqueue(sent === 0 ? new TextEncoder().encode('{"text":"') : piece);
+        if (++sent > 64) controller.close();
+      },
+    });
+
+    const response = await fetch(`${server.url}/api/translate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+      duplex: "half",
+    } as RequestInit).catch(() => null);
+
+    // Either the 413 reaches the sender, or the server cut the connection off once the limit was passed.
+    if (response) expect(response.status).toBe(413);
+    expect(model.requests).toHaveLength(0);
+  });
+});
+
 describe("requests from other web sites", () => {
   const host = (server: TestServer) => new URL(server.url).host;
   const send = (server: TestServer, headers: Record<string, string>, body = JSON.stringify({ text: "Hello." })) =>
@@ -669,6 +716,71 @@ describe("limiting the load on the model", () => {
 
     expect(failed.events[0]).toMatchObject({ error: { code: "backend-error" } });
     expect(next.events.at(-1)).toEqual({ done: true });
+  });
+});
+
+describe("a full queue", () => {
+  const waiting = () => new Promise((resolve) => setTimeout(resolve, 100));
+
+  it("answers 503 busy once too many requests are waiting, without calling the model for it", async () => {
+    const release = gate();
+    const { model, server } = await setup({ reply: { waitFor: release.promise } }, { maxQueue: 2 });
+    const running = translate(server, { text: "running" });
+    await model.until(() => model.requests.length === 1);
+    const queued = [translate(server, { text: "queued 1" }), translate(server, { text: "queued 2" })];
+    await waiting();
+
+    const refused = await post(server, { text: "one too many" });
+
+    expect(refused.status).toBe(503);
+    expect(await refused.json()).toEqual({
+      error: { code: "busy", message: "Too many translations are waiting. Try again in a moment." },
+    });
+    release.resolve();
+    const results = await Promise.all([running, ...queued]);
+    expect(results.every((r) => r.events.at(-1) && "done" in r.events.at(-1)!)).toBe(true);
+    expect(model.chatRequests().map((r) => r.user).join()).not.toContain("one too many");
+  });
+
+  it("takes requests again as soon as the queue has room", async () => {
+    const release = gate();
+    const { model, server } = await setup({ reply: { waitFor: release.promise } }, { maxQueue: 1 });
+    const running = translate(server, { text: "running" });
+    await model.until(() => model.requests.length === 1);
+    const queued = translate(server, { text: "queued" });
+    await waiting();
+    expect((await post(server, { text: "refused" })).status).toBe(503);
+
+    release.resolve();
+    await Promise.all([running, queued]);
+    const after = await translate(server, { text: "after" });
+
+    expect(after.events.at(-1)).toEqual({ done: true });
+  });
+
+  it("frees the slot of a request that was abandoned while it waited", async () => {
+    const release = gate();
+    const { model, server } = await setup({ reply: { waitFor: release.promise } }, { maxQueue: 1 });
+    const running = translate(server, { text: "running" });
+    await model.until(() => model.requests.length === 1);
+    const abandoned = new AbortController();
+    const leaving = translate(server, { text: "leaving" }, { signal: abandoned.signal });
+    await waiting();
+    abandoned.abort();
+    await expect(leaving).rejects.toThrow();
+    await waiting();
+
+    const replacement = translate(server, { text: "replacement" });
+    await waiting();
+    release.resolve();
+
+    expect((await replacement).events.at(-1)).toEqual({ done: true });
+    await running;
+  });
+
+  it("allows 64 waiting requests unless told otherwise", () => {
+    expect(resolveConfig({}, {}).translate.maxQueue).toBe(64);
+    expect(resolveConfig({ translate: { maxQueue: 5 } }, {}).translate.maxQueue).toBe(5);
   });
 });
 

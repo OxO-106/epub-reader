@@ -15,6 +15,7 @@ export type TranslateEvent =
 export type TranslateErrorCode =
   | "not-configured" // READER_TRANSLATE_URL is not set
   | "bad-request" // the request itself is unusable
+  | "busy" // too many requests are already waiting for the model
   | "unreachable" // nothing answered at the model server's address
   | "backend-error" // the model server answered with an error
   | "refused" // the model declined to translate (content filter)
@@ -54,19 +55,30 @@ class TranslateError extends Error {
 /** A first-in-first-out gate: at most `limit` holders at once, the rest wait in arrival order. */
 class Gate {
   #limit: number;
+  #maxWaiting: number;
   #running = 0;
   #waiting: Array<() => void> = [];
-  constructor(limit: number) {
+  constructor(limit: number, maxWaiting: number) {
     this.#limit = limit;
+    this.#maxWaiting = maxWaiting;
   }
 
-  /** Resolves with a release function when a place is free; rejects (leaving the queue) when `signal` aborts first. */
+  /** No place is free and the line is as long as it may get. */
+  get full(): boolean {
+    return this.#running >= this.#limit && this.#waiting.length >= this.#maxWaiting;
+  }
+
+  /**
+   * Resolves with a release function when a place is free; rejects (leaving the queue) when `signal` aborts first, and
+   * rejects at once with a "busy" error when the line is full.
+   */
   acquire(signal: AbortSignal): Promise<() => void> {
     signal.throwIfAborted();
     if (this.#running < this.#limit) {
       this.#running++;
       return Promise.resolve(this.#release());
     }
+    if (this.full) return Promise.reject(new TranslateError("busy", message.busy));
     return new Promise((resolve, reject) => {
       const turn = () => {
         signal.removeEventListener("abort", leave);
@@ -94,6 +106,7 @@ class Gate {
 }
 
 const message = {
+  busy: "Too many translations are waiting. Try again in a moment.",
   unreachable: "The translation server could not be reached.",
   timeout: "The translation took too long.",
   stalled: "The translation server stopped answering.",
@@ -106,6 +119,8 @@ const message = {
 export interface Translator {
   /** READER_TRANSLATE_URL is set. */
   readonly configured: boolean;
+  /** Every place is taken and the waiting line is full: a new request would be turned away. */
+  readonly busy: boolean;
   status(): Promise<TranslateStatus>;
   /**
    * Translates one paragraph. Yields chunks, then `{ done: true }` or `{ error }` (never throws for backend trouble).
@@ -123,7 +138,7 @@ const requestHeaders = (config: TranslateConfig, json = false): Record<string, s
 });
 
 export function createTranslator(config: TranslateConfig): Translator {
-  const gate = new Gate(config.concurrency);
+  const gate = new Gate(config.concurrency, config.maxQueue);
   const base = config.url;
 
   // ---- status -------------------------------------------------------------------------------------------------
@@ -328,5 +343,12 @@ export function createTranslator(config: TranslateConfig): Translator {
     }
   }
 
-  return { configured: base !== undefined, status, translate };
+  return {
+    configured: base !== undefined,
+    get busy() {
+      return gate.full;
+    },
+    status,
+    translate,
+  };
 }

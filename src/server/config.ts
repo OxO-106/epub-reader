@@ -16,6 +16,8 @@ export interface TranslateConfig {
   apiKey: string | undefined;
   /** At most this many requests run on the model server at once; the rest wait their turn (READER_TRANSLATE_CONCURRENCY). */
   concurrency: number;
+  /** At most this many requests wait for a place; one more is turned away with 503 "busy". Not an environment variable. */
+  maxQueue: number;
   /** A running request is cut off after this long in all (ms). */
   requestTimeoutMs: number;
   /** A running request is cut off when the model server sends nothing for this long (ms). */
@@ -91,6 +93,7 @@ function resolveTranslate(overrides: Partial<TranslateConfig> = {}, env: NodeJS.
     model: "model" in overrides ? overrides.model : nonBlank(env.READER_TRANSLATE_MODEL),
     apiKey: "apiKey" in overrides ? overrides.apiKey : nonBlank(env.READER_TRANSLATE_API_KEY),
     concurrency: overrides.concurrency ?? parseConcurrency(env.READER_TRANSLATE_CONCURRENCY),
+    maxQueue: overrides.maxQueue ?? 64,
     // A paragraph is a few hundred tokens; even a slow laptop finishes one inside three minutes.
     requestTimeoutMs: overrides.requestTimeoutMs ?? 180_000,
     // Waiting for the first token includes loading the model on a server that unloads it when idle.
