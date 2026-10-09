@@ -18,6 +18,18 @@ function fail(message: string): never {
   process.exit(1);
 }
 
+/** Runs a step whose errors are messages for the person releasing, not crashes. */
+function attempt<T>(step: () => T): T {
+  try {
+    return step();
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
+}
+
+const npmCli = process.env.npm_execpath;
+if (!npmCli) fail("Run this through npm: npm run release -- <patch|minor|major|x.y.z>");
+
 const request = process.argv[2];
 if (!request) fail("Say which version: npm run release -- <patch|minor|major|x.y.z>");
 if (git("status", "--porcelain")) fail("The working tree has changes. Commit or stash them first.");
@@ -25,20 +37,19 @@ if (git("rev-parse", "--abbrev-ref", "HEAD") !== "main") fail("Releases are cut 
 
 const manifestPath = join(root, "package.json");
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as { version: string };
-const version = bumpVersion(manifest.version, request);
+const version = attempt(() => bumpVersion(manifest.version, request));
 if (git("tag", "--list", `v${version}`)) fail(`The tag v${version} already exists.`);
 
 const changelogPath = join(root, "CHANGELOG.md");
 const today = new Date().toISOString().slice(0, 10);
-const changelog = releaseChangelog(readFileSync(changelogPath, "utf8"), version, today, "https://github.com/OxO-106/epub-reader");
+const changelog = attempt(() =>
+  releaseChangelog(readFileSync(changelogPath, "utf8"), version, today, "https://github.com/OxO-106/epub-reader"),
+);
 writeFileSync(changelogPath, changelog);
 
-// npm updates package.json and package-lock.json together and keeps their formatting.
-execFileSync(process.platform === "win32" ? "npm.cmd" : "npm", ["version", version, "--no-git-tag-version"], {
-  cwd: root,
-  stdio: "inherit",
-  shell: process.platform === "win32",
-});
+// npm updates package.json and package-lock.json together and keeps their formatting. It is run through the npm that
+// started this script (npm sets npm_execpath), so no shell is needed on Windows.
+execFileSync(process.execPath, [npmCli, "version", version, "--no-git-tag-version"], { cwd: root, stdio: "inherit" });
 
 git("add", "package.json", "package-lock.json", "CHANGELOG.md");
 git("commit", "-m", `Release v${version}`);
