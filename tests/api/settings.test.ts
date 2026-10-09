@@ -335,6 +335,14 @@ describe("the rules for each setting", () => {
     for (const bad of ["300.1.1.1", "example.com", "1.2.3"]) expect(() => specs.host.parse(bad), bad).toThrow(SettingsError);
   });
 
+  it("refuses a library folder that is really a file, and accepts one that does not exist yet", async () => {
+    const root = await mkdtemp(join(tmpdir(), "reader-settings-"));
+    cleanups.push(() => rm(root, { recursive: true, force: true }));
+    await writeFile(join(root, "a-file.txt"), "x");
+    expect(() => specs.libraryDir.parse(join(root, "a-file.txt"))).toThrow(/a file, not a folder/);
+    expect(specs.libraryDir.parse(join(root, "Books"))).toBe(join(root, "Books"));
+  });
+
   it("needs the library folder as a full path", () => {
     expect(() => specs.libraryDir.parse("relative/folder")).toThrow(/full path/);
     expect(specs.libraryDir.parse(process.platform === "win32" ? "D:\\Books" : "/home/me/Books")).toBeTruthy();

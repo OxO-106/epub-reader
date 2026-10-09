@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useId, useState } from "preact/hooks";
-import { getSettings, saveSettings, SettingsRefusal, testTranslation, type SettingInfo, type SettingKey, type SettingsView } from "./api.ts";
+import { getSettings, restartReader, saveSettings, SettingsRefusal, testTranslation, type SettingInfo, type SettingKey, type SettingsView } from "./api.ts";
 import { ConnectionNotice } from "./ConnectionNotice.tsx";
 import { ChevronLeft } from "./ReaderIcons.tsx";
 import "./settings.css";
@@ -46,7 +46,13 @@ export function SettingsScreen() {
       <h1>Settings</h1>
       <ConnectionNotice />
       {view ? (
-        <TranslationSection view={view} onSaved={setView} />
+        <>
+          {view.restartNeeded && <RestartNotice view={view} />}
+          <TranslationSection view={view} onSaved={setView} />
+          <LibrarySection view={view} onSaved={setView} />
+          <NetworkSection view={view} onSaved={setView} />
+          <AboutSection view={view} />
+        </>
       ) : failed ? (
         <p role="alert" class="settings-message">
           The settings could not be loaded. Check that Reader is still running, then reload this page.
@@ -309,6 +315,250 @@ function TranslationSection({ view, onSaved }: { view: SettingsView; onSaved(vie
           {outcome?.text}
         </p>
       </form>
+    </Section>
+  );
+}
+
+/** Shown while a saved setting waits for Reader to restart: which ones, and a way to restart where the host offers one. */
+function RestartNotice({ view }: { view: SettingsView }) {
+  const [state, setState] = useState<"idle" | "restarting" | "failed">("idle");
+  const names: Partial<Record<SettingKey, string>> = {
+    libraryDir: "the library folder",
+    host: "who can connect",
+    tailscale: "who can connect",
+    port: "the port",
+  };
+  const waiting = [...new Set((Object.keys(view.settings) as SettingKey[]).filter((key) => view.settings[key].pending).map((key) => names[key] ?? key))];
+
+  async function restart() {
+    setState("restarting");
+    try {
+      await restartReader();
+      // The server goes away and comes back; reload once it answers again.
+      for (let attempt = 0; attempt < 60; attempt++) {
+        await new Promise((done) => setTimeout(done, 1000));
+        try {
+          if ((await fetch("/api/settings", { cache: "no-store" })).ok) {
+            location.reload();
+            return;
+          }
+        } catch {
+          // still restarting
+        }
+      }
+      setState("failed");
+    } catch {
+      setState("failed");
+    }
+  }
+
+  return (
+    <div class="settings-restart" role="status">
+      <p>
+        Restart Reader to apply your changes to {waiting.join(" and ")}.{" "}
+        {!view.canRestart && "Stop Reader (Ctrl+C in its window, or Quit in the tray icon\u2019s menu) and start it again."}
+        {state === "failed" && " Reader did not come back by itself; start it again by hand."}
+      </p>
+      {view.canRestart && (
+        <button type="button" class="settings-button primary" onClick={restart} disabled={state === "restarting"}>
+          {state === "restarting" ? "Restarting…" : "Restart now"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Save button, outcome line and field errors shared by the smaller sections. */
+function useSave(onSaved: (view: SettingsView) => void) {
+  const [errors, setErrors] = useState<Partial<Record<SettingKey, string>>>({});
+  const [busy, setBusy] = useState(false);
+  const [outcome, setOutcome] = useState<Outcome>(null);
+  async function save(changes: Partial<Record<SettingKey, unknown>>, done: (view: SettingsView) => string) {
+    setBusy(true);
+    setOutcome(null);
+    setErrors({});
+    try {
+      const next = await saveSettings(changes);
+      onSaved(next);
+      setOutcome({ kind: "ok", text: done(next) });
+    } catch (error) {
+      if (error instanceof SettingsRefusal && error.key) setErrors({ [error.key]: error.message });
+      else setOutcome({ kind: "problem", text: error instanceof SettingsRefusal ? error.message : "Reader could not be reached. Check that it is still running." });
+    } finally {
+      setBusy(false);
+    }
+  }
+  const clear = (key: SettingKey) => {
+    setErrors((now) => ({ ...now, [key]: undefined }));
+    setOutcome(null);
+  };
+  return { errors, busy, outcome, save, clear };
+}
+
+const savedNeedsRestart = (next: SettingsView) => (next.restartNeeded ? "Saved. It takes effect when Reader restarts." : "Saved.");
+
+function SaveRow({ busy, outcome }: { busy: boolean; outcome: Outcome }) {
+  return (
+    <>
+      <div class="settings-actions">
+        <button type="submit" class="settings-button primary" disabled={busy}>
+          {busy ? "Saving…" : "Save"}
+        </button>
+      </div>
+      <p role="status" class={`settings-outcome${outcome ? ` ${outcome.kind}` : ""}`}>
+        {outcome?.text}
+      </p>
+    </>
+  );
+}
+
+function LibrarySection({ view, onSaved }: { view: SettingsView; onSaved(view: SettingsView): void }) {
+  const info = view.settings.libraryDir;
+  const [folder, setFolder] = useState(String(info.value ?? ""));
+  const { errors, busy, outcome, save, clear } = useSave(onSaved);
+  return (
+    <Section
+      title="Library folder"
+      description="Books copied into this folder are added to your Library by themselves. Reader makes the folder if it does not exist yet."
+    >
+      <form
+        class="settings-form"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          void save({ libraryDir: folder.trim() || null }, savedNeedsRestart);
+        }}
+      >
+        <Field
+          name="libraryDir"
+          label="Folder"
+          hint={"The folder\u2019s full path, such as D:\\Books or /home/me/Books. Leave it empty for the default."}
+          info={info}
+          value={folder}
+          error={errors.libraryDir}
+          onInput={(value) => {
+            setFolder(value);
+            clear("libraryDir");
+          }}
+        />
+        {!info.fixed && <SaveRow busy={busy} outcome={outcome} />}
+      </form>
+    </Section>
+  );
+}
+
+type Reach = "local" | "tailscale" | "address";
+
+function NetworkSection({ view, onSaved }: { view: SettingsView; onSaved(view: SettingsView): void }) {
+  const s = view.settings;
+  const host = String(s.host.value ?? "127.0.0.1");
+  const initial: Reach = s.tailscale.value ? "tailscale" : host === "127.0.0.1" || host === "localhost" || host === "::1" ? "local" : "address";
+  const [reach, setReach] = useState<Reach>(initial);
+  const [address, setAddress] = useState(initial === "address" ? host : "");
+  const [port, setPort] = useState(String(s.port.value ?? 5174));
+  const { errors, busy, outcome, save, clear } = useSave(onSaved);
+  const fixed = s.host.fixed || s.tailscale.fixed;
+  const choices: { value: Reach; label: string; hint: string }[] = [
+    { value: "local", label: "This PC only", hint: "The safest choice. Other devices cannot connect." },
+    { value: "tailscale", label: "This PC and my Tailscale network", hint: "Your phone and other devices on your tailnet can connect. Tailscale must be running." },
+    { value: "address", label: "A specific address of this PC", hint: "For example its address on your home network. Anyone who can reach that address can use Reader." },
+  ];
+
+  function submit(event: Event) {
+    event.preventDefault();
+    const changes: Partial<Record<SettingKey, unknown>> = {};
+    if (!fixed) {
+      changes.tailscale = reach === "tailscale";
+      changes.host = reach === "address" ? address.trim() : null;
+    }
+    if (!s.port.fixed) changes.port = port.trim() || null;
+    void save(changes, savedNeedsRestart);
+  }
+
+  return (
+    <Section
+      title="Network"
+      description={
+        <>
+          Who can reach Reader. There is no login: anyone who can reach it can read and change your Library, so only open it to networks you
+          trust. See <a href="https://github.com/OxO-106/epub-reader/blob/main/docs/network-access.md">reaching Reader from other devices</a>.
+        </>
+      }
+    >
+      <form class="settings-form" noValidate onSubmit={submit}>
+        <fieldset class="settings-choices" disabled={fixed}>
+          <legend class="settings-label">Who can connect</legend>
+          {choices.map((choice) => (
+            <label key={choice.value} class="settings-choice">
+              <input
+                type="radio"
+                name="reach"
+                value={choice.value}
+                checked={reach === choice.value}
+                onChange={() => {
+                  setReach(choice.value);
+                  clear("host");
+                }}
+              />
+              <span>
+                <span class="settings-choice-label">{choice.label}</span>
+                <span class="settings-hint">{choice.hint}</span>
+              </span>
+            </label>
+          ))}
+          {fixed && <p class="settings-note">{fixedNote(s.host.fixed ? "host" : "tailscale", s.host.fixed ? s.host : s.tailscale)}</p>}
+        </fieldset>
+        {reach === "address" && (
+          <Field
+            name="host"
+            label="Address"
+            hint="An IP address of this PC, such as 192.168.1.20."
+            info={s.host}
+            value={address}
+            error={errors.host}
+            inputMode="url"
+            onInput={(value) => {
+              setAddress(value);
+              clear("host");
+            }}
+          />
+        )}
+        <Field
+          name="port"
+          label="Port"
+          hint="Change it only if another program uses 5174."
+          info={s.port}
+          value={port}
+          error={errors.port}
+          inputMode="numeric"
+          onInput={(value) => {
+            setPort(value);
+            clear("port");
+          }}
+        />
+        {!(fixed && s.port.fixed) && <SaveRow busy={busy} outcome={outcome} />}
+      </form>
+    </Section>
+  );
+}
+
+function AboutSection({ view }: { view: SettingsView }) {
+  return (
+    <Section title="About" description="Reader is free software for reading your own books on your own machines.">
+      <dl class="settings-about">
+        <dt>Version</dt>
+        <dd>{view.about.version}</dd>
+        <dt>Data folder</dt>
+        <dd>
+          <code>{view.about.dataDir}</code>
+          <span class="settings-hint">Your Library, Reading positions and settings. Back this folder up.</span>
+        </dd>
+      </dl>
+      <p class="settings-links">
+        <a href="https://github.com/OxO-106/epub-reader#readme">Documentation</a>
+        <a href="https://github.com/OxO-106/epub-reader/issues/new/choose">Report a problem</a>
+        <a href="https://github.com/OxO-106/epub-reader/blob/main/CHANGELOG.md">What is new</a>
+      </p>
     </Section>
   );
 }

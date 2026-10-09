@@ -5,7 +5,7 @@
 // setting given by an option or the environment is fixed: the screen shows it and cannot change it. Translation
 // settings apply at once (the server rebuilds its translator); the others are read when the server starts, so a saved
 // change waits for a restart, which the host may offer through `restart`.
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import {
   ConfigError,
@@ -112,7 +112,16 @@ export const specs: Record<SettingKey, Spec> = {
     restart: true,
     parse: (input) => {
       const value = text("libraryDir", 1024)(input);
-      if (value !== undefined && !isAbsolute(value)) throw new SettingsError("libraryDir", "Give the folder's full path.");
+      if (value === undefined) return undefined;
+      if (!isAbsolute(value)) throw new SettingsError("libraryDir", "Give the folder's full path.");
+      // A folder that does not exist yet is made when Reader starts; something else already there cannot be used.
+      let isFile = false;
+      try {
+        isFile = !statSync(value).isDirectory();
+      } catch {
+        // missing: fine
+      }
+      if (isFile) throw new SettingsError("libraryDir", "That is a file, not a folder.");
       return value;
     },
     fromOption: (o) => o.libraryDir !== undefined,

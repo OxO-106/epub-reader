@@ -94,6 +94,54 @@ test.describe("when the app is started with a model server", () => {
   });
 });
 
+test("choosing who can connect is saved for the next start, and the screen says Reader must restart", async ({ page }) => {
+  await openSettings(page);
+  const network = page.getByRole("region", { name: "Network" });
+  await expect(network.getByRole("radio", { name: /This PC only/ })).toBeChecked();
+  await expect(page.locator(".settings-restart")).toHaveCount(0);
+
+  await network.getByRole("radio", { name: /my Tailscale network/ }).check();
+  await network.getByRole("button", { name: "Save" }).click();
+
+  await expect(network.getByRole("status")).toHaveText("Saved. It takes effect when Reader restarts.");
+  const notice = page.locator(".settings-restart");
+  await expect(notice).toContainText("Restart Reader to apply your changes to who can connect.");
+  await expect(notice).toContainText("Stop Reader");
+  await expect(notice.getByRole("button", { name: "Restart now" })).toHaveCount(0); // plain npm start cannot restart itself
+
+  // It is still saved after a reload; choosing this PC only again clears the notice.
+  await page.reload();
+  await expect(network.getByRole("radio", { name: /my Tailscale network/ })).toBeChecked();
+  await network.getByRole("radio", { name: /This PC only/ }).check();
+  await network.getByRole("button", { name: "Save" }).click();
+  await expect(notice).toHaveCount(0);
+});
+
+test("a specific address must be an IP address of this PC", async ({ page }) => {
+  await openSettings(page);
+  const network = page.getByRole("region", { name: "Network" });
+
+  await network.getByRole("radio", { name: /A specific address/ }).check();
+  await network.getByLabel("Address", { exact: true }).fill("my-laptop.example");
+  await network.getByRole("button", { name: "Save" }).click();
+
+  await expect(network.getByLabel("Address", { exact: true })).toHaveAttribute("aria-invalid", "true");
+  await expect(network).toContainText("Give an IP address of this PC");
+});
+
+test("a setting the app fixed (here the library folder and the port) is shown with a note, and About names the version and data folder", async ({ page, server }) => {
+  await openSettings(page);
+
+  const library = page.getByRole("region", { name: "Library folder" });
+  await expect(library.getByLabel("Folder")).toHaveValue(server.libraryDir);
+  await expect(library.getByLabel("Folder")).toHaveAttribute("readonly", "");
+  await expect(library).toContainText("Set by the app running Reader");
+  const about = page.getByRole("region", { name: "About" });
+  await expect(about).toContainText(/Version\s*\d+\.\d+\.\d+/);
+  await expect(about).toContainText(server.dataDir);
+  await expect(about.getByRole("link", { name: "Report a problem" })).toHaveAttribute("href", /issues/);
+});
+
 for (const size of [
   { width: 1280, height: 800 },
   { width: 390, height: 844 },
