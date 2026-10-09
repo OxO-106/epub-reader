@@ -28,7 +28,8 @@
     "fixtures": "node scripts/make-fixtures.ts",
     "translate:server": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-translation-server.ps1",
     "fonts:build": "python scripts/build-fonts.py",
-    "release": "node scripts/release.ts"
+    "release": "node scripts/release.ts",
+    "screenshots": "node scripts/screenshots.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",

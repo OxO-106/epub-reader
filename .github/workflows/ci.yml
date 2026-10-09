@@ -87,6 +87,11 @@ jobs:
       - name: Build and run the browser tests
         run: npm run test:e2e
 
+      # The README's screenshots come from this script; running it here (output thrown away) keeps it working.
+      - name: Screenshot script still works
+        if: runner.os == 'Linux'
+        run: npm run screenshots -- --out "${{ runner.temp }}/screenshots"
+
       - name: Upload the Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
