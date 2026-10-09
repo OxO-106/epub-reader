@@ -8,8 +8,9 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Locator, Page } from "@playwright/test";
-import { expectLayoutFits, expectNoHoverOnlyContent } from "../support/layout.ts";
+import { expectLayoutFits, expectNoHoverOnlyContent, expectTopBarFits } from "../support/layout.ts";
 import { expect, test } from "./fixtures.ts";
+import { labelOf, passageOf } from "./translation-helpers.ts";
 
 const fixture = (name: string) => join(dirname(fileURLToPath(import.meta.url)), "../fixtures", name);
 
@@ -20,7 +21,7 @@ const sizes = [
 ];
 
 /** Opens every top-bar button that toggles a panel, checks the layout with it open, and closes it again. */
-async function checkEachPanel(page: Page, where: string) {
+async function checkEachPanel(page: Page, where: string, query = "黛玉") {
   const toggles = page.locator("header button[aria-expanded]:visible");
   const count = await toggles.count();
   for (let i = 0; i < count; i++) {
@@ -35,7 +36,7 @@ async function checkEachPanel(page: Page, where: string) {
     // A panel with a search field is looked at again with results in it.
     const field = page.locator("[role=search] input[type=search]:visible");
     if ((await field.count()) > 0) {
-      await field.fill("黛玉");
+      await field.fill(query);
       await field.press("Enter");
       await expect(page.locator(".search-match").first()).toBeVisible();
       await expect(page.getByRole("status").filter({ hasText: /matches/ })).toBeVisible();
@@ -118,6 +119,73 @@ for (const size of sizes) {
       await expect(page.getByRole("alert").filter({ hasText: "Cannot reach the server" })).toBeVisible({ timeout: 10_000 });
       await expectLayoutFits(page, "in the Reader with the unreachable notice");
       await page.unroute("**/api/**");
+    });
+
+    // An English Book with Translate on: the Translate button and the status pill are in the top bar in each of their states.
+    test.describe("with Translate on", () => {
+      test.setTimeout(60_000);
+
+      async function openEnglishBook(page: Page) {
+        await page.goto("/");
+        await page.locator("input[type=file]").setInputFiles(fixture("long.epub"));
+        await page.getByRole("link", { name: /Long Book/ }).click();
+        await expect(page.getByRole("button", { name: "Next" })).toBeEnabled();
+        await expect(page.getByRole("button", { name: "Translate", exact: true })).toBeVisible();
+        await page.getByRole("button", { name: "Translate", exact: true }).click();
+        await expect(page.getByRole("button", { name: "Translate", exact: true })).toHaveAttribute("aria-pressed", "true");
+      }
+
+      /** The bar, the whole screen and every panel the bar opens, in the current state. `minTitle`: see expectTopBarFits. */
+      async function checkReader(page: Page, where: string, minTitle?: number) {
+        await expectLayoutFits(page, where);
+        await expectTopBarFits(page, where, minTitle);
+        await expectNoHoverOnlyContent(page);
+        await checkEachPanel(page, where, "lamp");
+        await expectTopBarFits(page, where, minTitle);
+      }
+
+      test.describe("and a model", () => {
+        test.use({ withModel: true });
+
+        test("fits while translating ahead and when ready", async ({ page, model }) => {
+          let release!: () => void;
+          const gate = new Promise<void>((resolve) => (release = resolve));
+          model.setReply({ chunks: ["灯火渐暗。"], waitFor: gate });
+          await openEnglishBook(page);
+          await expect(page.getByRole("status").filter({ hasText: "Translating ahead" })).toBeVisible();
+          await checkReader(page, "while translating ahead");
+
+          release();
+          await expect(page.getByRole("status").filter({ hasText: "Ready" })).toBeVisible({ timeout: 20_000 });
+          await checkReader(page, "when ready");
+        });
+
+        test("fits with 'Some paragraphs failed' and its panel open", async ({ page, model }) => {
+          model.setReply((request) => (labelOf(passageOf(request.user))?.paragraph === 2 ?{ status: 500, body: "{}" } : { chunks: ["灯火渐暗。"] }));
+          await openEnglishBook(page);
+          await expect(page.getByRole("button", { name: "Some paragraphs failed" })).toBeVisible({ timeout: 20_000 });
+          await checkReader(page, "with 'Some paragraphs failed'", size.width < 400 ? 60 : 100);
+        });
+      });
+
+      test.describe("and a model server that cannot be reached", () => {
+        test.use({ translateUrl: "http://127.0.0.1:9" });
+
+        test("fits with 'Backend unreachable' and its panel open", async ({ page }) => {
+          await openEnglishBook(page);
+          await expect(page.getByRole("button", { name: "Backend unreachable" })).toBeVisible({ timeout: 20_000 });
+          // On a phone the status is a 44 px button, and the title gives up some room for it.
+          await checkReader(page, "with 'Backend unreachable'", size.width < 400 ? 60 : 100);
+        });
+      });
+
+      test.describe("and no model set up", () => {
+        test("fits with 'Not set up' and its panel open", async ({ page }) => {
+          await openEnglishBook(page);
+          await expect(page.getByRole("button", { name: "Not set up" })).toBeVisible({ timeout: 20_000 });
+          await checkReader(page, "with 'Not set up'", size.width < 400 ? 60 : 100);
+        });
+      });
     });
   });
 }

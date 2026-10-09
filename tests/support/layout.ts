@@ -101,6 +101,59 @@ export async function expectLayoutFits(page: Page, where: string, within?: strin
   expect(problems, `layout problems ${where}`).toEqual([]);
 }
 
+/**
+ * The Reader's top bar as a whole, with whatever it holds (the Translate button and status pill included): one row, every
+ * part inside the window, no two parts overlapping (the generic check above sees only controls; the status pill is
+ * often a plain span), the status words not cut off while they are shown, and the title not squeezed away. `minTitle`
+ * is the narrowest the title may get; the bar gives it up room when a status button needs a fingertip of its own.
+ */
+export async function expectTopBarFits(page: Page, where: string, minTitle = 100) {
+  const problems = await page.evaluate((minTitle) => {
+    const found: string[] = [];
+    const bar = document.querySelector("header.reader-top");
+    if (!bar) return ["there is no top bar"];
+    const width = document.documentElement.clientWidth;
+    if (bar.getBoundingClientRect().height > 72) found.push(`the top bar wrapped (${Math.round(bar.getBoundingClientRect().height)} px high)`);
+    if (bar.scrollWidth > bar.clientWidth + 1) found.push(`the top bar's content is wider than the bar (${bar.scrollWidth} > ${bar.clientWidth})`);
+    const parts = [...bar.querySelectorAll(".bar-link, .reader-heading, .reader-tools > *")].map((el) => ({ el, rect: el.getBoundingClientRect() }));
+    const name = (el: Element) => `<${el.tagName.toLowerCase()}.${String(el.className).split(" ")[0]}> "${((el as HTMLElement).innerText || el.getAttribute("aria-label") || "").trim().slice(0, 24)}"`;
+    for (const { el, rect } of parts) {
+      if (rect.left < -0.5 || rect.right > width + 0.5) found.push(`${name(el)} is outside the window (${Math.round(rect.left)}..${Math.round(rect.right)} of ${width})`);
+    }
+    for (let i = 0; i < parts.length; i++) {
+      for (let j = i + 1; j < parts.length; j++) {
+        const a = parts[i]!.rect;
+        const b = parts[j]!.rect;
+        if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1) {
+          found.push(`${name(parts[i]!.el)} overlaps ${name(parts[j]!.el)}`);
+        }
+      }
+    }
+    // A button squeezed below the width of its icon and words would draw them beyond its edges, over its neighbours.
+    for (const button of bar.querySelectorAll<HTMLElement>(".bar-button, .bar-link, .reader-status-button")) {
+      const own = button.getBoundingClientRect();
+      if (own.width === 0) continue;
+      for (const part of button.querySelectorAll<HTMLElement>("svg, .type-icon, .bar-label, .reader-status-face")) {
+        const rect = part.getBoundingClientRect();
+        if (rect.width <= 2) continue; // hidden from the eye (a label kept for screen readers)
+        if (rect.left < own.left - 0.5 || rect.right > own.right + 0.5) found.push(`${name(button)} does not hold its own content (${Math.round(rect.left)}..${Math.round(rect.right)} outside ${Math.round(own.left)}..${Math.round(own.right)})`);
+      }
+    }
+    // The words of the status, where they are shown (a phone shows only the dot), lie wholly inside the pill.
+    for (const text of bar.querySelectorAll<HTMLElement>(".reader-status-text")) {
+      const rect = text.getBoundingClientRect();
+      if (rect.width <= 2) continue;
+      const face = text.closest(".reader-status-face")!.getBoundingClientRect();
+      if (text.scrollWidth > text.clientWidth + 1) found.push(`the status words are clipped (${text.scrollWidth} > ${text.clientWidth})`);
+      if (rect.left < face.left - 0.5 || rect.right > face.right + 0.5) found.push("the status words spill out of the pill");
+    }
+    const title = bar.querySelector(".reader-heading")!.getBoundingClientRect();
+    if (title.width < minTitle) found.push(`the title is only ${Math.round(title.width)} px wide (wanted ${minTitle})`);
+    return found;
+  }, minTitle);
+  expect(problems, `top bar problems ${where}`).toEqual([]);
+}
+
 /** Nothing may appear, or become usable, only on hover: no :hover rule may show, hide, move or resize anything. */
 export async function expectNoHoverOnlyContent(page: Page) {
   const offenders = await page.evaluate(() => {

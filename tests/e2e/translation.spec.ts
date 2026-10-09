@@ -48,11 +48,13 @@ test.describe("scrolling mode", () => {
     const requestsBefore = model.chatRequests().length;
 
     await setTranslation(page, true);
-    await untilReady(page, onScreen.length + 3);
+    // A Translation roughly doubles the height of its paragraph (the tinted gloss), so the screenful ahead holds fewer
+    // paragraphs than it did when `onScreen` was measured on bare English: at least one more than those on screen.
+    await untilReady(page, onScreen.length + 1);
 
     const order = asked(model).slice(requestsBefore);
     expect(order.slice(0, onScreen.length)).toEqual(onScreen);
-    expect(order.length).toBeGreaterThan(onScreen.length + 2);
+    expect(order.length).toBeGreaterThan(onScreen.length);
     expect(order).toEqual([...order].sort((a, b) => a - b)); // strictly in reading order
     expect(Math.min(...order)).toBe(onScreen[0]); // nothing above the screen
     expect(model.peakInFlight()).toBe(1); // one block at a time

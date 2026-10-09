@@ -1,6 +1,6 @@
-// Shared by the translation specs: opening a Book with the model stand-in behind the app, driving the Reader through its
-// translation methods (window.__reader, a seam the Reader screen offers until the Translate button exists), and reading
-// what the Book's document shows.
+// Shared by the translation specs: opening a Book with the model stand-in behind the app, switching translation on and off
+// with the real Translate button, reading the Reader's state through window.__reader (a seam the Reader screen offers for
+// tests: status, goTo, next, onLocation, retryTranslation), and reading what the Book's document shows.
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Frame, Page } from "@playwright/test";
@@ -9,7 +9,6 @@ import { expect, type ModelStandIn, type StandInReply } from "./fixtures.ts";
 export const fixture = (name: string) => join(dirname(fileURLToPath(import.meta.url)), "../fixtures", name);
 
 type ReaderHandle = {
-  setTranslation(on: boolean): void;
   translationStatus(): { state: string; translated: number; waiting: number; failed: number[] };
   retryTranslation(id?: number): void;
   isEnglish(): boolean;
@@ -142,7 +141,13 @@ export async function trackPosition(page: Page) {
   return () => page.evaluate(() => (window as any).__position as string | null);
 }
 
-export const setTranslation =(page: Page, on: boolean) => page.evaluate((on) => window.__reader!.setTranslation(on), on);
+/** Turns translation on or off with the Translate button, as a reader does (it does nothing when it is already so). */
+export async function setTranslation(page: Page, on: boolean) {
+  const button = page.getByRole("button", { name: "Translate" });
+  await expect(button).toBeVisible();
+  if ((await button.getAttribute("aria-pressed")) !== String(on)) await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", String(on));
+}
 export const translationStatus = (page: Page) => page.evaluate(() => window.__reader!.translationStatus());
 
 /** The source part of the user message the model gets: the paragraph itself, not the background information. */

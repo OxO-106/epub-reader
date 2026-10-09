@@ -181,7 +181,7 @@ test.describe("the Contents drawer", () => {
     await expect(drawer(page)).toBeVisible();
     const inside = () => page.evaluate(() => !!document.activeElement?.closest("[role=dialog]"));
 
-    expect(await inside()).toBe(true); // focus moved in when it opened
+    await expect.poll(inside).toBe(true); // focus moved in when it opened (an effect, so a moment after the drawer shows)
     for (let tab = 0; tab < 6; tab++) {
       await page.keyboard.press("Tab");
       expect(await inside(), `after Tab ${tab + 1}`).toBe(true);

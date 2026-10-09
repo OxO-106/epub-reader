@@ -5,7 +5,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Locator, Page } from "@playwright/test";
-import { expectLayoutFits } from "../support/layout.ts";
+import { expectLayoutFits, expectTopBarFits } from "../support/layout.ts";
 import { expect, test } from "./fixtures.ts";
 
 const fixture = (name: string) => join(dirname(fileURLToPath(import.meta.url)), "../fixtures", name);
@@ -137,37 +137,41 @@ for (const phone of phones) {
         expect((await box(page.getByRole("heading", { level: 1 }))).width).toBeGreaterThan(110);
       });
 
-      test("keeps room in the top bar for a Translate button and a compact status indicator", async ({ page }) => {
-        await importBooks(page, "chinese-search.epub");
-        await openBook(page, /石头记/);
-        const before = await box(page.getByRole("heading", { level: 1 }));
+      test.describe("with Translate on (an English Book)", () => {
+        test.use({ withModel: true });
 
-        // What translation will add (see ReaderBars.tsx): one more icon button and the status pill, between Search and Display.
-        await page.evaluate(() => {
-          const tools = document.querySelector(".reader-tools")!;
-          const display = [...tools.querySelectorAll("button")].find((b) => b.textContent!.includes("Display"))!;
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "bar-button";
-          button.setAttribute("aria-label", "Translate");
-          button.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h9M8 3v2M5 9c2 4 5 6 8 7M12 5c-1 5-4 8-8 10M14 21l4-9 4 9M15.5 18h5"/></svg><span class="bar-label">Translate</span>';
-          const status = document.createElement("span");
-          status.className = "reader-status";
-          status.setAttribute("role", "status");
-          status.innerHTML = '<span class="reader-status-dot"></span><span class="reader-status-text">Translating ahead</span>';
-          tools.insertBefore(button, display);
-          tools.insertBefore(status, display);
+        test("adds an icon-only Translate button and a compact status dot, and the title keeps its room", async ({ page, model }) => {
+          model.setReply({ chunks: ["灯火渐暗。"] });
+          await importBooks(page, "long.epub");
+          await openBook(page, /Long Book/);
+          const before = await box(page.getByRole("heading", { level: 1 }));
+
+          const translate = page.getByRole("button", { name: "Translate", exact: true });
+          await expect(translate).toHaveAttribute("aria-pressed", "false");
+          await translate.click();
+          await expect(translate).toHaveAttribute("aria-pressed", "true");
+          await expect(page.getByRole("status").filter({ hasText: "Ready" })).toHaveCount(1, { timeout: 20_000 });
+
+          // Icon only, a fingertip big, named for screen readers.
+          const button = await box(translate);
+          expect(button.width).toBeGreaterThanOrEqual(44);
+          expect(button.width).toBeLessThanOrEqual(56);
+          expect(button.height).toBeGreaterThanOrEqual(44);
+          expect((await box(translate.locator(".bar-label"))).width).toBeLessThanOrEqual(1);
+
+          await expectLayoutFits(page, "with a Translate button and status in the top bar", "header");
+          await expectTopBarFits(page, "with a Translate button and status in the top bar");
+          const after = await box(page.getByRole("heading", { level: 1 }));
+          expect(after.width).toBeGreaterThan(100);
+          expect(before.width - after.width).toBeLessThan(90);
+          // Nothing wrapped: the bar is still one row high.
+          expect((await box(page.locator("header.reader-bar"))).height).toBeLessThan(72);
+          // The status is a dot, not a pill: the words are for screen readers.
+          const status = await box(page.locator(".reader-status"));
+          expect(status.width).toBeLessThanOrEqual(24);
+          await expect(page.locator(".reader-status-text")).toHaveText("Ready");
+          expect((await box(page.locator(".reader-status-text"))).width).toBeLessThanOrEqual(1);
         });
-
-        await expectLayoutFits(page, "with a Translate button and status in the top bar", "header");
-        const after = await box(page.getByRole("heading", { level: 1 }));
-        expect(after.width).toBeGreaterThan(100);
-        expect(before.width - after.width).toBeLessThan(90);
-        // Nothing wrapped: the bar is still one row high.
-        expect((await box(page.locator("header.reader-bar"))).height).toBeLessThan(72);
-        const status = await box(page.locator(".reader-status"));
-        expect(status.width).toBeLessThanOrEqual(24); // a dot, not a pill: the words are for screen readers
-        await expect(page.getByRole("status").filter({ hasText: "Translating ahead" })).toHaveCount(1);
       });
 
       test("has a bottom bar with large Previous and Next buttons and the chapter and percentage stacked on purpose", async ({ page }) => {

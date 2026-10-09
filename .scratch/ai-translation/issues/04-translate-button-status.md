@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] The button appears only for English Books (declared language, or clearly English by the language guess) and its on/off state persists on this device (works with storage blocked)
-- [ ] The status pill reflects the engine's states; 'Not set up' and 'Backend unreachable' explain what to do without blocking reading
-- [ ] The bilingual style matches the design in light, dark and sepia, is legible (existing contrast rules), and uses the redesign tokens and the Chinese font stack when available
-- [ ] The top bar fits at 900 px, 390 px and 360 px with the new controls; the layout test covers it
-- [ ] Playwright journeys cover turning Translate on and off, the states of the pill, and the Reading position round trip
+- [x] The button appears only for English Books (declared language, or clearly English by the language guess) and its on/off state persists on this device (works with storage blocked)
+- [x] The status pill reflects the engine's states; 'Not set up' and 'Backend unreachable' explain what to do without blocking reading
+- [x] The bilingual style matches the design in light, dark and sepia, is legible (existing contrast rules), and uses the redesign tokens and the Chinese font stack when available
+- [x] The top bar fits at 900 px, 390 px and 360 px with the new controls; the layout test covers it
+- [x] Playwright journeys cover turning Translate on and off, the states of the pill, and the Reading position round trip
