@@ -8,7 +8,7 @@
   max-width: 44rem;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 1.25rem clamp(1rem, 4.5vw, 2.5rem) 4rem;
+  padding: calc(1.25rem + env(safe-area-inset-top, 0px)) max(clamp(1rem, 4.5vw, 2.5rem), env(safe-area-inset-right, 0px)) calc(4rem + env(safe-area-inset-bottom, 0px)) max(clamp(1rem, 4.5vw, 2.5rem), env(safe-area-inset-left, 0px));
   font-size: 0.9375rem;
   line-height: 1.5;
 }

@@ -29,6 +29,9 @@ export default defineConfig({
   use: {
     headless: true,
     trace: ci ? "retain-on-failure" : "off",
+    // The app's service worker would answer some requests itself, out of sight of a test that watches or reroutes them;
+    // only tests/e2e/installable.spec.ts lets it run.
+    serviceWorkers: "block",
     ...browser,
   },
 });

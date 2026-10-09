@@ -17,6 +17,7 @@ Add a line under **Unreleased** with every change a user would notice; `npm run 
 - Highlights: select text in a Book and choose one of four colours; the passage stays highlighted on every device. Tap a highlight to recolour or delete it (with Undo). Works with the mouse, touch and the keyboard; not in PDFs.
 - Notes on highlights, and a Highlights panel listing a Book's highlights in reading order by chapter (choose one to go to it; recolour, write a note or delete from the list), with export to Markdown. The Library shows how many highlights a Book has.
 - Translation keeps each name the same: the first time a name is met, its Chinese form is decided and saved in the Book's Glossary, and every later paragraph uses it, on every device. A Glossary panel (for English Books) lists the names, most frequent first: change a form and the text on screen is translated again; add or remove names; export a Glossary and import it into the next volume of a series.
+- Reader can be installed as an app (Add to Home Screen on iPhone, Install on Android and desktop browsers): its own icon, full screen in the theme's colours, clear of the notch and home indicator; it starts even when the PC cannot be reached, and updates itself the next time it starts online.
 - Browser tests for the resting bars and the progress scrubber.
 
 ### Fixed

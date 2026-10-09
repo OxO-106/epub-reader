@@ -1,6 +1,18 @@
 :root {
   color-scheme: light dark;
   font-family: var(--font-sans); /* the tokens are in theme.css */
+  /* iOS would enlarge text on its own in landscape. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* While a Book is open the page does not bounce or zoom on a double tap (a pinch still zooms, for accessibility). */
+html:has(.reader-screen) {
+  overscroll-behavior: none;
+}
+
+.reader-screen {
+  touch-action: manipulation;
 }
 
 body {

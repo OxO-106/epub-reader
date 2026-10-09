@@ -14,7 +14,10 @@ afterEach(async () => {
 const books = async (s: TestServer) =>
   ((await (await fetch(`${s.url}/api/books`)).json()) as { books: Array<{ id: string; title: string; author: string | null; format: string; hasCover: boolean }> }).books;
 
-describe("importing PDFs", () => {
+// The first PDF of a run loads pdf.js and the canvas module, which takes seconds on a cold CI machine.
+const slow = { timeout: 30_000 };
+
+describe("importing PDFs", slow, () => {
   it("adds a PDF with the title and author from its document information", async () => {
     server = await startTestServer();
 
@@ -77,7 +80,7 @@ describe("importing PDFs", () => {
   });
 });
 
-describe("PDF covers", () => {
+describe("PDF covers", slow, () => {
   /** Width and height of a baseline JPEG, from its start-of-frame marker. */
   function jpegSize(data: Buffer): { width: number; height: number } {
     for (let at = 2; at + 9 < data.length; ) {

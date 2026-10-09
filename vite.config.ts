@@ -1,4 +1,5 @@
-import { cpSync, createReadStream, existsSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { cpSync, createReadStream, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -84,9 +85,38 @@ function pdfjsFromPackage(): Plugin {
   };
 }
 
+/**
+ * The service worker (issue #30): written after the build as `sw.js` at the root, with the list of the app's own files
+ * (the shell: index.html, the scripts, styles, bundled fonts and icons) and a version made from their contents, so a new
+ * build is a new worker with a new cache. The worker's code is `src/web/sw-template.js`.
+ */
+function serviceWorker(): Plugin {
+  return {
+    name: "reader-service-worker",
+    apply: "build",
+    enforce: "post",
+    generateBundle(_options, bundle) {
+      const shell = Object.keys(bundle)
+        .filter((file) => /\.(js|css|woff2|html|png|svg|webmanifest)$/.test(file) && !file.startsWith("assets/vendor/"))
+        .map((file) => (file === "index.html" ? "/" : `/${file}`));
+      // index.html is written after this hook runs, so the page itself is named here.
+      const icons = ["/", "/manifest.webmanifest", "/icons/icon.svg", "/icons/icon-32.png", "/icons/icon-180.png", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/maskable-512.png"];
+      const hash = createHash("sha256");
+      for (const [file, item] of Object.entries(bundle).sort(([a], [b]) => a.localeCompare(b))) {
+        hash.update(file);
+        hash.update(item.type === "chunk" ? item.code : typeof item.source === "string" ? item.source : Buffer.from(item.source));
+      }
+      const version = hash.digest("hex").slice(0, 16);
+      const template = readFileSync(join(root, "sw-template.js"), "utf8");
+      const code = template.replace('"__VERSION__"', JSON.stringify(version)).replace("[] /* __SHELL__ */", JSON.stringify([...new Set([...shell, ...icons])].sort()));
+      this.emitFile({ type: "asset", fileName: "sw.js", source: code });
+    },
+  };
+}
+
 export default defineConfig({
   root,
-  plugins: [foliateUnusedFormats(), pdfjsFromPackage(), preact()],
+  plugins: [foliateUnusedFormats(), pdfjsFromPackage(), preact(), serviceWorker()],
   build: { outDir, emptyOutDir: true },
   server: {
     port: 5173,

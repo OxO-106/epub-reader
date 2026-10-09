@@ -48,6 +48,8 @@
   max-width: 76rem;
   margin: 0 auto;
   padding: 1.75rem clamp(1rem, 4.5vw, 4rem) 4.5rem;
+  /* Installed on a phone the page runs under the status bar (index.html): keep the header below it. */
+  padding-top: calc(1.75rem + env(safe-area-inset-top, 0px));
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -836,7 +838,7 @@ dialog.confirm .actions button:disabled {
 @media (max-width: 40rem) {
   .library {
     gap: 1.25rem;
-    padding: 1rem max(1.25rem, env(safe-area-inset-right, 0px)) max(3rem, env(safe-area-inset-bottom, 0px)) max(1.25rem, env(safe-area-inset-left, 0px));
+    padding: calc(1rem + env(safe-area-inset-top, 0px)) max(1.25rem, env(safe-area-inset-right, 0px)) max(3rem, env(safe-area-inset-bottom, 0px)) max(1.25rem, env(safe-area-inset-left, 0px));
   }
 
   .library-tools {

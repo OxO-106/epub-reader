@@ -248,4 +248,6 @@ export function saveDisplay(settings: DisplaySettings): void {
 /** Colours the whole app (Library, Reader screen, table of contents) with the theme, through `data-theme` on `<html>`. */
 export function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
+  // The browser's bars (and an installed app's status bar) take the page's ground colour.
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", themes[theme].background);
 }
