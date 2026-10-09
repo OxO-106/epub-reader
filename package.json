@@ -1,6 +1,17 @@
 {
   "name": "reader",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "A local-first reader for EPUB, Markdown and plain text, with live Chinese translation by a model on your own machine.",
+  "license": "MIT",
+  "author": "Zihan Chen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OxO-106/epub-reader.git"
+  },
+  "homepage": "https://github.com/OxO-106/epub-reader#readme",
+  "bugs": {
+    "url": "https://github.com/OxO-106/epub-reader/issues"
+  },
   "private": true,
   "type": "module",
   "engines": {
