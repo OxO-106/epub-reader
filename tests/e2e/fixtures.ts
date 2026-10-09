@@ -47,8 +47,9 @@ export const test = base.extend<ServerFixtures & ServerOptions>({
     const fontsDir = join(root, "fonts");
     if (standInFont) await writeStandInFonts(fontsDir);
     const url = translateUrl ?? (withModel ? model.url : undefined);
-    // `url: undefined` also shields the test from READER_TRANSLATE_* in the developer's shell.
-    const server = await startServer({ dataDir, libraryDir, fontsDir, port: 0, translate: { url } });
+    // `env: {}` shields the test from READER_* in the developer's shell. Without a model the translation address is left
+    // unset rather than given as an option, so the Settings screen can still change it.
+    const server = await startServer({ dataDir, libraryDir, fontsDir, port: 0, env: {}, ...(url ? { translate: { url } } : {}) });
     try {
       await use({ url: server.url, dataDir, libraryDir, fontsDir });
     } finally {

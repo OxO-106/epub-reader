@@ -1,8 +1,9 @@
 import { useEffect, useState } from "preact/hooks";
 import { Library } from "./Library.tsx";
 import { ReaderScreen } from "./ReaderScreen.tsx";
+import { SettingsScreen } from "./SettingsScreen.tsx";
 
-/** The two screens, chosen by the URL hash so the server needs no per-screen routes: `#/` and `#/read/<book id>`. */
+/** The screens, chosen by the URL hash so the server needs no per-screen routes: `#/`, `#/read/<book id>` and `#/settings`. */
 export function App() {
   const [hash, setHash] = useState(location.hash);
   useEffect(() => {
@@ -12,5 +13,7 @@ export function App() {
   }, []);
 
   const bookId = /^#\/read\/([0-9a-f]{64})$/.exec(hash)?.[1];
-  return bookId ? <ReaderScreen key={bookId} bookId={bookId} /> : <Library />;
+  if (bookId) return <ReaderScreen key={bookId} bookId={bookId} />;
+  if (hash === "#/settings") return <SettingsScreen />;
+  return <Library />;
 }

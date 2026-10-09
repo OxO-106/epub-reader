@@ -130,3 +130,77 @@ export async function listLibraryFolderFailures(): Promise<LibraryFolderFailure[
   const body = (await response.json()) as { failures: LibraryFolderFailure[] };
   return body.failures;
 }
+
+// ---- Settings ---------------------------------------------------------------------------------------------------
+
+export type SettingKey =
+  | "translateUrl"
+  | "translateModel"
+  | "translateApiKey"
+  | "translateConcurrency"
+  | "libraryDir"
+  | "host"
+  | "tailscale"
+  | "port";
+
+export interface SettingInfo {
+  /** The effective value; null for a secret (see `set`) or when unset. */
+  value: string | number | boolean | null;
+  source: "app" | "environment" | "saved" | "default";
+  /** Given by an environment variable or the app hosting Reader: it cannot be changed here. */
+  fixed: boolean;
+  /** Read only when Reader starts. */
+  restart: boolean;
+  /** Saved, but Reader still runs with another value until it restarts. */
+  pending: boolean;
+  /** For the API key: whether one is set. */
+  set?: boolean;
+}
+
+export interface SettingsView {
+  settings: Record<SettingKey, SettingInfo>;
+  restartNeeded: boolean;
+  canRestart: boolean;
+  about: { version: string; dataDir: string };
+}
+
+/** What the server refused, and for which setting. */
+export class SettingsRefusal extends Error {
+  key: string | undefined;
+  constructor(message: string, key?: string) {
+    super(message);
+    this.key = key;
+  }
+}
+
+async function settingsAnswer<T>(response: Response): Promise<T> {
+  if (response.ok) return (await response.json()) as T;
+  const body = (await response.json().catch(() => null)) as { error?: { message?: string; key?: string } } | null;
+  throw new SettingsRefusal(body?.error?.message ?? `The server answered ${response.status}.`, body?.error?.key);
+}
+
+const json = (method: string, body: unknown): RequestInit => ({
+  method,
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+export async function getSettings(): Promise<SettingsView> {
+  return settingsAnswer(await apiFetch("/api/settings"));
+}
+
+/** Saves a partial change (null clears a saved value). Throws SettingsRefusal with the key at fault. */
+export async function saveSettings(changes: Partial<Record<SettingKey, unknown>>): Promise<SettingsView> {
+  return settingsAnswer(await apiFetch("/api/settings", json("PUT", changes)));
+}
+
+/** Whether a model server answers at this address (nothing is saved). An empty key uses the saved one. */
+export async function testTranslation(candidate: { url: string; model?: string; apiKey?: string }): Promise<{ reachable: boolean; model: string | null }> {
+  return settingsAnswer(await apiFetch("/api/settings/test-translation", json("POST", candidate)));
+}
+
+/** Asks the app hosting Reader to restart it. */
+export async function restartReader(): Promise<void> {
+  const response = await apiFetch("/api/settings/restart", json("POST", {}));
+  if (!response.ok) await settingsAnswer(response);
+}

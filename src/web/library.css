@@ -173,6 +173,17 @@
   color: var(--fg);
 }
 
+.library .settings-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: var(--radius-control);
+  color: var(--muted);
+}
+
 .library button:disabled {
   opacity: 0.55;
   cursor: default;
@@ -811,6 +822,10 @@ dialog.confirm .actions button:disabled {
 
   .library-tools {
     display: contents;
+  }
+
+  .library .settings-link {
+    order: 2;
   }
 
   .library .library-header .button-primary {

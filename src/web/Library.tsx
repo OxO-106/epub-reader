@@ -10,6 +10,7 @@ import {
   LogoIcon,
   PlusIcon,
   SearchIcon,
+  SettingsIcon,
   ShelfIllustration,
   UploadIcon,
 } from "./library-icons.tsx";
@@ -138,6 +139,9 @@ export function Library() {
               />
             </div>
           )}
+          <a class="settings-link" href="#/settings" aria-label="Settings" title="Settings">
+            <SettingsIcon />
+          </a>
           <button type="button" class="button-primary" onClick={() => picker.current?.click()} disabled={pickerBusy}>
             <PlusIcon />
             <span class="button-label">Add books</span>

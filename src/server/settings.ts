@@ -75,7 +75,7 @@ export const specs: Record<SettingKey, Spec> = {
     restart: false,
     parse: (input) => {
       const value = text("translateUrl")(input);
-      return value === undefined ? undefined : rule("translateUrl", (v) => parseTranslateUrl(v, "The address", "the API key"))(value);
+      return value === undefined ? undefined : rule("translateUrl", (v) => parseTranslateUrl(v, "The address", "the API key field"))(value);
     },
     fromOption: (o) => o.translate !== undefined && "url" in o.translate,
     read: (c) => c.translate.url,

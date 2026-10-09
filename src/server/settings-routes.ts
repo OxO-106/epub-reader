@@ -69,7 +69,7 @@ export function settingsRoutes(store: SettingsStore): Hono {
     if (typeof body.url !== "string" || body.url.trim() === "") return errorResponse(400, "invalid", "Give the model server's address.", "translateUrl");
     let url: string;
     try {
-      url = parseTranslateUrl(body.url, "The address", "the API key");
+      url = parseTranslateUrl(body.url, "The address", "the API key field");
     } catch (error) {
       if (error instanceof ConfigError) return errorResponse(400, "invalid", error.message, "translateUrl");
       throw error;
