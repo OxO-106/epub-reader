@@ -7,7 +7,7 @@ const outDir = fileURLToPath(new URL("./dist/web", import.meta.url));
 
 /**
  * The vendored foliate-js keeps only the files Reader needs. Its view.js still names the readers for
- * formats Reader does not support (comics, FB2, MOBI, PDF) and text-to-speech in dynamic imports,
+ * formats Reader does not support (comics, FB2, PDF) and text-to-speech in dynamic imports,
  * which Reader never reaches because it builds its Books itself. This stands in for those files so
  * the build resolves them; reaching one anyway fails with a clear message.
  */
@@ -18,7 +18,7 @@ function foliateUnusedFormats(): Plugin {
     name: "foliate-unused-formats",
     enforce: "pre",
     resolveId(source, importer) {
-      if (importer?.includes("/vendor/foliate-js/") && /^\.\/(comic-book|fb2|mobi|pdf|tts)\.js$/.test(source)) return stub;
+      if (importer?.includes("/vendor/foliate-js/") && /^\.\/(comic-book|fb2|pdf|tts)\.js$/.test(source)) return stub;
     },
     load(id) {
       if (id !== stub) return;
@@ -26,8 +26,6 @@ function foliateUnusedFormats(): Plugin {
         `export const makeComicBook = ${unsupported("Comic book format")};`,
         `export const makeFB2 = ${unsupported("The FB2 format")};`,
         `export const makePDF = ${unsupported("PDF")};`,
-        `export const isMOBI = async () => false;`,
-        `export class MOBI {}`,
         `export class TTS {}`,
       ].join("\n");
     },
