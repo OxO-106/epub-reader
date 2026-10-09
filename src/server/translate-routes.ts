@@ -11,15 +11,32 @@ export const maxNameLength = 80;
 const encoder = new TextEncoder();
 const line = (event: TranslateEvent) => encoder.encode(`${JSON.stringify(event)}\n`);
 
-const errorResponse = (status: 400 | 413 | 503, code: string, message: string) =>
+const errorResponse = (status: 400 | 403 | 413 | 415 | 503, code: string, message: string) =>
   Response.json({ error: { code, message } }, { status });
+
+/**
+ * True when the request came from a page of this app: an `Origin` header (browsers send one on every cross-site POST)
+ * names the host the request itself arrived on, over http or https. No `Origin` (curl, tests, other programs) passes.
+ */
+function fromOwnOrigin(origin: string | undefined, host: string | undefined): boolean {
+  if (origin === undefined) return true;
+  try {
+    const url = new URL(origin);
+    return (url.protocol === "http:" || url.protocol === "https:") && host !== undefined && url.host.toLowerCase() === host.toLowerCase();
+  } catch {
+    return false; // "null" and anything else that is not an address
+  }
+}
+
+const isJson = (contentType: string | undefined) => contentType?.split(";")[0]!.trim().toLowerCase() === "application/json";
 
 /**
  * POST /api/translate        body {"text": "...", "context": "..."?, "names": ["..."]?} (JSON). `names` are names the
  *   caller already knows, so one that starts a sentence is still kept in English (see translate-names.ts).
  *   200 application/x-ndjson, one JSON event per line: {"delta":"..."} zero or more times, then exactly one of
  *   {"done":true} or {"error":{"code","message"}}. Trouble before any text is sent is a plain JSON error with a
- *   non-200 status: 503 "not-configured", 400 "bad-request", 413 "bad-request" (text too long).
+ *   non-200 status: 503 "not-configured", 400 "bad-request", 413 "bad-request" (text too long), 403 "forbidden-origin"
+ *   (an Origin header that is not this server's own), 415 "unsupported-media-type" (not application/json).
  * GET  /api/translate/status -> {"configured":bool,"reachable":bool,"model":string|null}
  *
  * The browser going away (aborting its fetch) cancels the response stream, which drops the request from the queue or
@@ -31,6 +48,14 @@ export function translateRoutes(translator: Translator): Hono {
   routes.get("/status", async (c) => c.json(await translator.status(), 200, { "cache-control": "no-store" }));
 
   routes.post("/", async (c) => {
+    // A web page on another site can POST text/plain to this address without a preflight, and the model would run for
+    // it. Browsers label such a request with its Origin, and only a JSON content type forces the preflight we refuse.
+    if (!fromOwnOrigin(c.req.header("origin"), c.req.header("host"))) {
+      return errorResponse(403, "forbidden-origin", "Requests from other web sites are not accepted.");
+    }
+    if (!isJson(c.req.header("content-type"))) {
+      return errorResponse(415, "unsupported-media-type", "The request must be sent as application/json.");
+    }
     // The body is parsed here, so a malformed one is answered with a fixed sentence and never with a parser message
     // (Node's JSON errors quote the start of the input).
     let body: unknown;

@@ -271,6 +271,88 @@ describe("requests the server turns away", () => {
   });
 });
 
+describe("requests from other web sites", () => {
+  const host = (server: TestServer) => new URL(server.url).host;
+  const send = (server: TestServer, headers: Record<string, string>, body = JSON.stringify({ text: "Hello." })) =>
+    fetch(`${server.url}/api/translate`, { method: "POST", headers, body });
+
+  it("refuses a body that is not labelled as JSON with a 415, even a 'simple' text/plain one a web page could send", async () => {
+    const { model, server } = await setup();
+
+    const response = await send(server, { "content-type": "text/plain" });
+
+    expect(response.status).toBe(415);
+    const { error } = (await response.json()) as { error: { code: string; message: string } };
+    expect(error.code).toBe("unsupported-media-type");
+    expect(error.message).toMatch(/application\/json/);
+    expect(model.requests).toHaveLength(0);
+  });
+
+  it("refuses a body with no content type at all with a 415", async () => {
+    const { model, server } = await setup();
+
+    const response = await send(server, {});
+
+    expect(response.status).toBe(415);
+    expect(model.requests).toHaveLength(0);
+  });
+
+  it("accepts the JSON content type with a charset, in any letter case", async () => {
+    const { server } = await setup();
+
+    const response = await send(server, { "content-type": "Application/JSON; charset=utf-8" });
+
+    expect(response.status).toBe(200);
+    await response.body?.cancel();
+  });
+
+  it("refuses a request from another site's origin with a 403, before the model is asked", async () => {
+    const { model, server } = await setup();
+
+    for (const origin of ["http://evil.example", "https://evil.example", "null", `http://${host(server)}.evil.example`, "http://127.0.0.1:1"]) {
+      const response = await send(server, { "content-type": "application/json", origin });
+      expect(response.status, origin).toBe(403);
+      expect(((await response.json()) as { error: { code: string } }).error.code).toBe("forbidden-origin");
+    }
+    expect(model.requests).toHaveLength(0);
+  });
+
+  it("tells a foreign origin it is refused before it can learn anything about the body", async () => {
+    const { server } = await setup();
+
+    const response = await send(server, { "content-type": "text/plain", origin: "http://evil.example" });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("accepts the app's own origin, over http or https and with the port", async () => {
+    const { server } = await setup();
+
+    for (const origin of [`http://${host(server)}`, `https://${host(server)}`]) {
+      const response = await send(server, { "content-type": "application/json", origin });
+      expect(response.status, origin).toBe(200);
+      await response.body?.cancel();
+    }
+  });
+
+  it("accepts a request with no Origin header (curl, other programs)", async () => {
+    const { server } = await setup();
+
+    const response = await send(server, { "content-type": "application/json" });
+
+    expect(response.status).toBe(200);
+    await response.body?.cancel();
+  });
+
+  it("still lets anyone read the status", async () => {
+    const { server } = await setup();
+
+    const response = await fetch(`${server.url}/api/translate/status`, { headers: { origin: "http://evil.example" } });
+
+    expect(response.status).toBe(200);
+  });
+});
+
 describe("keeping names in English", () => {
   const paragraph = "Mr. Bennet replied that he had not, and Mrs. Long left for Netherfield Park on Monday.";
   const before = "She told Mrs. Long that England was cold, and Mr. Bennet laughed.";
