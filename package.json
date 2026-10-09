@@ -44,7 +44,7 @@
   "devDependencies": {
     "@playwright/test": "^1.64.0",
     "@preact/preset-vite": "^2.10.6",
-    "@types/node": "^24.19.1",
+    "@types/node": "^26.6.4",
     "@types/yauzl": "^3.4.0",
     "fflate": "^0.8.3",
     "iconv-lite": "^0.7.3",
