@@ -1,5 +1,5 @@
 // Proper names learned from a whole loaded section, sent with every translate request so that a name that starts a
-// sentence ("Elizabeth smiled.") is still kept in English: the server's own detector only finds a name that starts a
+// sentence ("Elizabeth smiled.") is still treated as a name (transliterated, ADR 0150): the server's own detector only finds a name that starts a
 // sentence when it has been seen in the middle of one (translate-names.ts). Kept deliberately simple and cheap: the
 // server owns the stop-list and the real detection, this only collects capitalised words that are not sentence-initial.
 import stopListSource from "../../../server/name-stop-list.txt?raw";

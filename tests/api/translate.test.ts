@@ -5,6 +5,9 @@ import { ConfigError, resolveConfig, type TranslateConfig } from "../../src/serv
 import { deadModelUrl, startModelStandIn, type ModelStandIn, type StandInOptions } from "../helpers/model-stand-in.ts";
 import { startTestServer, translate, type StreamedEvent, type TestServer } from "./helpers.ts";
 
+const nameRule =
+  "Transliterate every name of a person or place into Chinese characters by its sound (音译), using its usual Chinese form if it is well known; never translate what a name means.";
+
 const cleanups: Array<() => Promise<unknown>> = [];
 afterEach(async () => {
   vi.restoreAllMocks();
@@ -103,7 +106,7 @@ describe("translating a paragraph", () => {
     await translate(server, { text: "The fox jumped." });
 
     expect(model.chatRequests()[0]!.user).toBe(
-      "Translate the following text into Simplified Chinese. Tokens like [[1]] are names: keep them exactly as written. " +
+      `Translate the following text into Simplified Chinese. ${nameRule} ` +
         "Note that you must ONLY output the translated result without any additional explanation:\n\nThe fox jumped.",
     );
   });
@@ -116,7 +119,7 @@ describe("translating a paragraph", () => {
     expect(model.chatRequests()[0]!.user).toBe(
       "[Background Information]\nHe asked if she would come.\n\n" +
         "Please translate the following text into Simplified Chinese, taking the provided background information into consideration. " +
-        "Tokens like [[1]] are names: keep them exactly as written. " +
+        `${nameRule} ` +
         "Note that you must ONLY output the translated result without any additional explanation.\n\n" +
         "[Source Text]\nShe nodded.",
     );
@@ -400,157 +403,83 @@ describe("requests from other web sites", () => {
   });
 });
 
-describe("keeping names in English", () => {
+describe("putting names into Chinese by their sound", () => {
   const paragraph = "Mr. Bennet replied that he had not, and Mrs. Long left for Netherfield Park on Monday.";
   const before = "She told Mrs. Long that England was cold, and Mr. Bennet laughed.";
-  const allNames = ["Bennet", "Long", "Netherfield", "Park"];
+  const namesIn = (user: string) => /Names in the text: (.*?)\. Transliterate/.exec(user)?.[1]?.split(", ") ?? [];
 
-  it("never lets the model server see a name, and gives the names the same numbers in the context and the paragraph", async () => {
+  it("sends the text as it is and lists the names of the context and the paragraph, each once", async () => {
     const { model, server } = await setup();
 
     await translate(server, { text: paragraph, context: before });
 
     const user = model.chatRequests()[0]!.user;
-    for (const name of allNames) expect(user).not.toContain(name);
-    expect(model.chatRequests()[0]!.text).not.toContain("Bennet");
-    expect(user).toContain("[Background Information]\nShe told Mrs. [[1]] that England was cold, and Mr. [[2]] laughed.\n\n");
-    expect(user).toContain("[Source Text]\nMr. [[2]] replied that he had not, and Mrs. [[1]] left for [[3]] on Monday.");
+    expect(user).toContain(`[Background Information]\n${before}\n\n`);
+    expect(user).toContain(`[Source Text]\n${paragraph}`);
+    expect(namesIn(user)).toEqual(["Long", "Bennet", "Netherfield Park"]);
+    expect(user).toContain(`Names in the text: Long, Bennet, Netherfield Park. ${nameRule}`);
   });
 
-  it("leaves England, Monday and the other words that are not names to be translated", async () => {
+  it("does not list England, Monday and the other words that are not names", async () => {
     const { model, server } = await setup();
 
     await translate(server, { text: "On Monday in March the English left England for France.", context: "Sunday was quiet." });
 
-    expect(model.chatRequests()[0]!.user).toContain("On Monday in March the English left England for France.");
-    expect(model.chatRequests()[0]!.user).toContain("Sunday was quiet.");
+    const user = model.chatRequests()[0]!.user;
+    expect(user).not.toContain("Names in the text");
+    expect(user).toContain(nameRule);
   });
 
-  it("puts the names back in what the browser gets", async () => {
-    const { server } = await setup({ reply: { chunks: ["[[2]]先生回答说没有，[[1]]太太去了", "[[3]]。"] } });
+  it("gives the browser the model's Chinese as it is, names and all", async () => {
+    const { server } = await setup({ reply: { chunks: ["班纳特先生回答说没有，朗太太去了", "尼日斐花园。"] } });
 
     const response = await translate(server, { text: paragraph, context: before });
 
-    expect(response.text).toBe("Bennet先生回答说没有，Long太太去了Netherfield Park。");
+    expect(response.text).toBe("班纳特先生回答说没有，朗太太去了尼日斐花园。");
     expect(response.events.at(-1)).toEqual({ done: true });
   });
 
-  it("restores every name wherever the model's chunks are cut", async () => {
-    const answer = "[[2]]先生说，[[1]]太太在[[3]]，[[ 2 ]]笑了。";
-    const expected = "Bennet先生说，Long太太在Netherfield Park，Bennet笑了。";
-    const { model, server } = await setup();
-    const chars = [...answer];
-
-    for (let cut = 0; cut <= chars.length; cut++) {
-      model.setReply({ chunks: [chars.slice(0, cut).join(""), chars.slice(cut).join("")].filter(Boolean) });
-      const response = await translate(server, { text: paragraph, context: before });
-
-      expect(response.text, `cut at ${cut}`).toBe(expected);
-      for (const event of response.events) if ("delta" in event) expect(event.delta, `cut at ${cut}`).not.toMatch(/[[\]]|\d/);
-    }
-    // And one character at a time.
-    model.setReply({ chunks: chars });
-    expect((await translate(server, { text: paragraph, context: before })).text).toBe(expected);
-  });
-
-  it("holds back only what might become a token, so the translation still streams", async () => {
-    const { server } = await setup({ reply: { chunks: ["你好，", "[", "[2", "]]", "先生"], chunkDelayMs: 5 } });
-
-    const response = await translate(server, { text: paragraph });
-
-    expect(response.events).toEqual([{ delta: "你好，" }, { delta: "Long" }, { delta: "先生" }, { done: true }]);
-  });
-
-  it("tolerates a token the model dropped", async () => {
-    const { server } = await setup({ reply: { chunks: ["先生回答说没有，太太去了。"] } });
-
-    const response = await translate(server, { text: paragraph });
-
-    expect(response.text).toBe("先生回答说没有，太太去了。");
-    expect(response.events.at(-1)).toEqual({ done: true });
-  });
-
-  it("never shows a token it cannot restore: one made up, or one cut short at the end", async () => {
-    const { model, server } = await setup();
-    for (const chunks of [["好[[9]]", "的"], ["很好[[", "3"], ["很好[[3", "]"], ["很好["], ["很好[[ 2 "]]) {
-      model.setReply({ chunks });
-      const response = await translate(server, { text: paragraph });
-
-      expect(response.text).toMatch(/^(好的|很好)$/);
-      expect(response.events.at(-1)).toEqual({ done: true });
-    }
-  });
-
-  it("reports an answer that was only a token it could not restore as empty", async () => {
-    const { server } = await setup({ reply: { chunks: ["[[9]]"] } });
-
-    const response = await translate(server, { text: paragraph });
-
-    expect(response.events).toEqual([{ error: { code: "empty", message: expect.any(String) } }]);
-  });
-
-  it("restores a token the model wrote with spaces or full-width brackets", async () => {
-    const { server } = await setup({ reply: { chunks: ["[[ 1 ]]、［［２］］、【【３】】。"] } });
-
-    const response = await translate(server, { text: paragraph });
-
-    expect(response.text).toBe("Bennet、Long、Netherfield Park。");
-  });
-
-  it("masks a name that starts a sentence when the caller lists it", async () => {
-    const { model, server } = await setup({ reply: { chunks: ["[[1]]什么也没说。"] } });
-
-    const response = await translate(server, { text: "Elizabeth said nothing.", names: ["Elizabeth"] });
-
-    expect(model.chatRequests()[0]!.user).toContain("[[1]] said nothing.");
-    expect(model.chatRequests()[0]!.user).not.toContain("Elizabeth");
-    expect(response.text).toBe("Elizabeth什么也没说。");
-  });
-
-  it("does not mask that name when nothing says it is one", async () => {
+  it("lists a name that starts a sentence when the caller lists it", async () => {
     const { model, server } = await setup();
 
-    await translate(server, { text: "Elizabeth said nothing." });
-    await translate(server, { text: "Elizabeth said nothing.", names: [] });
+    await translate(server, { text: "River said nothing.", names: ["River"] });
 
-    for (const request of model.chatRequests()) expect(request.user).toContain("\n\nElizabeth said nothing.");
+    expect(namesIn(model.chatRequests()[0]!.user)).toEqual(["River"]);
+    expect(model.chatRequests()[0]!.user).toContain("\n\nRiver said nothing.");
   });
 
-  it("masks a name that starts a sentence when it is in the middle of a sentence in the context", async () => {
+  it("does not list that word when nothing says it is a name", async () => {
+    const { model, server } = await setup();
+
+    await translate(server, { text: "River said nothing." });
+    await translate(server, { text: "River said nothing.", names: [] });
+
+    for (const request of model.chatRequests()) expect(request.user).not.toContain("Names in the text");
+  });
+
+  it("lists a name that starts a sentence when it is in the middle of a sentence in the context", async () => {
     const { model, server } = await setup();
 
     await translate(server, { text: "Elizabeth said nothing.", context: "Nobody had seen Elizabeth leave." });
 
-    const user = model.chatRequests()[0]!.user;
-    expect(user).not.toContain("Elizabeth");
-    expect(user).toContain("[[1]] said nothing.");
+    expect(namesIn(model.chatRequests()[0]!.user)).toEqual(["Elizabeth"]);
   });
 
-  it("masks a listed name that has a title or a first name with it, and keeps the possessive outside", async () => {
-    const { model, server } = await setup({ reply: { chunks: ["[[1]]的马。"] } });
+  it("lists a known name without its title or possessive", async () => {
+    const { model, server } = await setup();
 
-    const response = await translate(server, { text: "Darcy’s horse was ready.", names: ["Mr. Darcy"] });
+    await translate(server, { text: "Darcy’s horse was ready.", names: ["Mr. Darcy"] });
 
-    expect(model.chatRequests()[0]!.user).toContain("[[1]]’s horse was ready.");
-    expect(response.text).toBe("Darcy的马。");
+    expect(namesIn(model.chatRequests()[0]!.user)).toEqual(["Darcy"]);
   });
 
-  it("is not confused by text in the Book that already looks like a token", async () => {
-    const { model, server } = await setup({ reply: { chunks: ["见注[[1]]，[[2]]先生。"] } });
-
-    const response = await translate(server, { text: "See note [[1]], Mr. Bennet." });
-
-    expect(model.chatRequests()[0]!.user).toContain("See note [[1]], Mr. [[2]].");
-    expect(response.text).toBe("见注[[1]]，Bennet先生。");
-  });
-
-  it("keeps the mapping to one request: the next one starts again at 1", async () => {
+  it("lists only each request's own names", async () => {
     const { model, server } = await setup();
 
     await translate(server, { text: "He met Darcy." });
     await translate(server, { text: "He met Bennet." });
 
-    expect(model.chatRequests().map((r) => r.user.split("\n\n").pop())).toEqual(["He met [[1]].", "He met [[1]]."]);
+    expect(model.chatRequests().map((request) => namesIn(request.user))).toEqual([["Darcy"], ["Bennet"]]);
   });
 });
 
@@ -1022,8 +951,8 @@ describe("privacy", () => {
         expect(file.includes(Buffer.from(secret, "utf16le")), `a file in the data folder holds ${secret} (UTF-16)`).toBe(false);
       }
     }
-    // The scan is not vacuous: the stand-in did see the text (with the names masked).
-    expect(model.chatRequests()[0]!.user).toContain("[[1]] walked to [[2]] at dawn.");
+    // The scan is not vacuous: the stand-in did see the text, names and all.
+    expect(model.chatRequests()[0]!.user).toContain(english);
   });
 });
 

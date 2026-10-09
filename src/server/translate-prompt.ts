@@ -25,27 +25,33 @@ export const generationSettings: GenerationSettings = {
 };
 
 /**
- * The instruction about names. The names themselves never reach the model: translate-names.ts has swapped each for a
- * token like [[1]] and translate-restore.ts puts them back, because the model transliterates names whatever it is asked.
+ * The instruction about names (ADR 0150): every name is put into Chinese by its sound, never by its meaning, so a
+ * character called River is 瑞弗, not 河. `names` are the ones translate-names.ts found in the texts; listing them is
+ * what tells the model that a word like River or Hope is a name here. A well-known name keeps its usual Chinese form.
  */
-const keepTokens = "Tokens like [[1]] are names: keep them exactly as written.";
+export function namesInstruction(names: readonly string[] = []): string {
+  const rule =
+    "Transliterate every name of a person or place into Chinese characters by its sound (音译), using its usual Chinese form if it is well known; never translate what a name means.";
+  return names.length ? `Names in the text: ${names.join(", ")}. ${rule}` : rule;
+}
 
 /**
  * The user message, in the Hy-MT2 model card's wording (there is no system prompt): a plain instruction before the
- * paragraph, or the card's Background Information form when the previous paragraph is given as context. Both texts
- * are expected to be masked already.
+ * paragraph, or the card's Background Information form when the previous paragraph is given as context, with the
+ * instruction about names in either.
  */
-export function userMessage(passage: string, context?: string): string {
+export function userMessage(passage: string, context?: string, names: readonly string[] = []): string {
+  const aboutNames = namesInstruction(names);
   if (context) {
     return (
       `[Background Information]\n${context}\n\n` +
-      `Please translate the following text into Simplified Chinese, taking the provided background information into consideration. ${keepTokens} ` +
+      `Please translate the following text into Simplified Chinese, taking the provided background information into consideration. ${aboutNames} ` +
       `Note that you must ONLY output the translated result without any additional explanation.\n\n` +
       `[Source Text]\n${passage}`
     );
   }
   return (
-    `Translate the following text into Simplified Chinese. ${keepTokens} ` +
+    `Translate the following text into Simplified Chinese. ${aboutNames} ` +
     `Note that you must ONLY output the translated result without any additional explanation:\n\n${passage}`
   );
 }
@@ -59,12 +65,12 @@ export function maxTokensFor(passage: string): number {
 }
 
 /** The JSON body of one chat-completions request. */
-export function chatRequest(input: { passage: string; context?: string; model?: string }) {
+export function chatRequest(input: { passage: string; context?: string; names?: readonly string[]; model?: string }) {
   return {
     ...(input.model ? { model: input.model } : {}),
     stream: true,
     messages: [
-      { role: "user", content: userMessage(input.passage, input.context) },
+      { role: "user", content: userMessage(input.passage, input.context, input.names) },
     ],
     max_tokens: maxTokensFor(input.passage),
     ...generationSettings,

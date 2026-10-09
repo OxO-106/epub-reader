@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findNames, maskNames } from "../../src/server/translate-names.ts";
+import { findNames } from "../../src/server/translate-names.ts";
 
 // The name detector through its own small interface: text in (and the names the caller already knows), the names it
 // would keep in English out, in order of first appearance.
@@ -144,43 +144,29 @@ describe("where a sentence starts", () => {
   });
 });
 
-describe("masking names", () => {
-  it("replaces each name by [[n]], numbered by first appearance, the same name by the same number", () => {
-    const { texts, originals } = maskNames(["Mr. Bennet replied that he had not. Then Mrs. Long left."]);
-    expect(texts).toEqual(["Mr. [[1]] replied that he had not. Then Mrs. [[2]] left."]);
-    expect([...originals]).toEqual([
-      [1, "Bennet"],
-      [2, "Long"],
+describe("names across the context and the paragraph", () => {
+  it("lists each name once, in order of first appearance", () => {
+    expect(findNames(["Mr. Bennet replied that he had not. Then Mrs. Long left, and Bennet laughed."])).toEqual(["Bennet", "Long"]);
+  });
+
+  it("looks at the context and the paragraph together", () => {
+    expect(findNames(["She met Bennet at Netherfield Park.", "Bennet said Netherfield Park was dull, and Long agreed."])).toEqual([
+      "Bennet",
+      "Netherfield Park",
+      "Long",
     ]);
   });
 
-  it("numbers the context and the paragraph together", () => {
-    const { texts } = maskNames(["She met Bennet at Netherfield Park.", "Bennet said Netherfield Park was dull, and Long agreed."]);
-    expect(texts).toEqual(["She met [[1]] at [[2]].", "[[1]] said [[2]] was dull, and [[3]] agreed."]);
+  it("finds a name at the start of a sentence when it is known, without the possessive", () => {
+    expect(findNames(["Elizabeth’s aunt came. Elizabeth said nothing."], ["Elizabeth"])).toEqual(["Elizabeth"]);
   });
 
-  it("masks a name at the start of a sentence when it is known, keeping the possessive outside", () => {
-    const { texts } = maskNames(["Elizabeth’s aunt came. Elizabeth said nothing."], ["Elizabeth"]);
-    expect(texts).toEqual(["[[1]]’s aunt came. [[1]] said nothing."]);
+  it("finds a name learned from the second text in the first", () => {
+    expect(findNames(["Bennet came.", "She saw Bennet."])).toEqual(["Bennet"]);
   });
 
-  it("masks a name learned from the second text in the first", () => {
-    const { texts } = maskNames(["Bennet came.", "She saw Bennet."]);
-    expect(texts).toEqual(["[[1]] came.", "She saw [[1]]."]);
-  });
-
-  it("changes nothing when there is no name", () => {
-    const { texts, originals } = maskNames(["It was a quiet day."]);
-    expect(texts).toEqual(["It was a quiet day."]);
-    expect(originals.size).toBe(0);
-  });
-
-  it("protects text in the Book that already looks like a placeholder", () => {
-    const { texts, originals } = maskNames(["See note [[1]] about Bennet and [[ 2 ]]."]);
-    expect(texts[0]).toBe("See note [[1]] about [[2]] and [[3]].");
-    expect(originals.get(1)).toBe("[[1]]");
-    expect(originals.get(2)).toBe("Bennet");
-    expect(originals.get(3)).toBe("[[ 2 ]]");
+  it("finds nothing when there is no name", () => {
+    expect(findNames(["It was a quiet day."])).toEqual([]);
   });
 });
 

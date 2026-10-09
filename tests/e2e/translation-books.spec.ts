@@ -61,7 +61,7 @@ test.describe("an EPUB with things to skip and names to keep", () => {
     }
   });
 
-  test("names learned from the section go with every request, so a name that starts a sentence is kept in English", async ({ page, model }) => {
+  test("names learned from the section go with every request, so a name that starts a sentence is transliterated too", async ({ page, model }) => {
     answerWithEcho(model);
     const bodies: Array<{ text: string; context?: string; names?: string[] }> = [];
     page.on("request", (request) => {
@@ -78,13 +78,11 @@ test.describe("an EPUB with things to skip and names to keep", () => {
       expect(body.names).not.toContain("Mr"); // titles and the like are left to the server's stop-list
       expect(body.names!.length).toBeLessThan(50);
     }
-    // "Elizabeth smiled ..." starts with the name, yet the model was never shown it: it got a token to keep.
+    // "Elizabeth smiled ..." starts with the name, yet the model is told it is one, to put into Chinese by its sound.
     const sentenceInitial = model.chatRequests().find((request) => request.user.includes("smiled at the company"))!;
-    expect(sentenceInitial.user).toMatch(/\[\[\d+\]\] smiled at the company, and \[\[\d+\]\] bowed/);
-    expect(sentenceInitial.user).not.toMatch(/Elizabeth|Darcy/);
-    // And the Chinese shows the names again.
-    const smiled = (await shownBlocks(page)).find((block) => block.english.startsWith("Elizabeth smiled"))!;
-    expect(smiled.zh).not.toMatch(/\[\[/);
+    expect(sentenceInitial.user).toMatch(/Names in the text: [^\n]*Elizabeth/);
+    expect(sentenceInitial.user).toMatch(/Names in the text: [^\n]*Darcy/);
+    expect(sentenceInitial.user).toContain("Elizabeth smiled at the company");
   });
 
   test("the next chapter is translated when the Reader loads it, with names of its own section", async ({ page, model }) => {

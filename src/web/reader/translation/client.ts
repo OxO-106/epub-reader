@@ -5,7 +5,7 @@ export interface TranslateRequest {
   text: string;
   /** The previous English block, as read-only context. */
   context?: string;
-  /** Proper names learned from the section, so that one that starts a sentence is kept in English too. */
+  /** Proper names learned from the section, so that one that starts a sentence is transliterated as a name too. */
   names?: string[];
 }
 

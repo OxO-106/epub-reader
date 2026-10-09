@@ -1,9 +1,7 @@
 import { readFileSync } from "node:fs";
 
-// Names stay English by masking, not by asking (spec decision, benchmark): before a paragraph goes to the model, each
-// proper name in it is swapped for an opaque token like [[1]]; the model is told to keep such tokens; the names are put
-// back into its answer (translate-restore.ts). This file finds the names and does the swap. Nothing here keeps state
-// between calls: the mapping from numbers to names is returned to the caller, who drops it when the request ends.
+// Finds the proper names in a paragraph, so the prompt can list them and the model puts each into Chinese by its sound
+// rather than by its meaning (ADR 0150; River is 瑞弗, not 河). Nothing here keeps state between calls.
 
 // ---- the stop-list ----------------------------------------------------------------------------------------------
 
@@ -50,9 +48,6 @@ const { stop: stopWords, titles, abbreviations } = parseStopList(
  * start in the middle of a word (iPhone).
  */
 const wordPattern = /(?<![\p{L}\p{M}\p{N}_])\p{Lu}[\p{L}\p{M}]*(?:[-'’]\p{Lu}[\p{L}\p{M}]*)*/gu;
-
-/** A placeholder-looking string that is already in the Book. It is masked like a name so that it can never be mistaken. */
-const literalTokenPattern = /\[\[\s*\d+\s*\]\]/g;
 
 const isSpace = (c: string | undefined) => c === " " || c === "\t" || c === " ";
 const isQuote = (c: string | undefined) => c !== undefined && "\"'“”‘’«»„‚‹›".includes(c);
@@ -212,7 +207,7 @@ function spansOfNames(texts: readonly string[], callerNames: readonly string[]):
 }
 
 /**
- * The names that would be kept in English, in order of first appearance. `text` is one text or several (the context
+ * The names in the texts, in order of first appearance. `text` is one text or several (the context
  * paragraph first). `callerNames` are names the caller already knows, so a name starting a sentence is caught.
  */
 export function findNames(text: string | readonly string[], callerNames: readonly string[] = []): string[] {
@@ -222,46 +217,4 @@ export function findNames(text: string | readonly string[], callerNames: readonl
     for (const span of spans) names.add(texts[index]!.slice(span.start, span.end));
   });
   return [...names];
-}
-
-// ---- masking ----------------------------------------------------------------------------------------------------
-
-export interface Masked {
-  /** The texts with each name replaced by `[[n]]`, in the order given. */
-  texts: string[];
-  /** The text each number stands for, for putting the names back. Lives only as long as the request does. */
-  originals: Map<number, string>;
-}
-
-/**
- * Replaces names by numbered tokens: [[1]], [[2]] and so on in order of first appearance, one number for each distinct
- * name, shared by all the texts (the context paragraph and the paragraph). Text that already looks like a token is
- * given a number as well, so that giving the names back can never confuse it with one of ours.
- */
-export function maskNames(texts: readonly string[], callerNames: readonly string[] = []): Masked {
-  const spans = spansOfNames(texts, callerNames);
-  const numbers = new Map<string, number>();
-  const originals = new Map<number, string>();
-
-  const masked = texts.map((text, index) => {
-    const places: Span[] = [...spans[index]!];
-    for (const match of text.matchAll(literalTokenPattern)) places.push({ start: match.index, end: match.index + match[0].length });
-    places.sort((a, b) => a.start - b.start);
-
-    let out = "";
-    let from = 0;
-    for (const place of places) {
-      const original = text.slice(place.start, place.end);
-      let number = numbers.get(original);
-      if (number === undefined) {
-        number = numbers.size + 1;
-        numbers.set(original, number);
-        originals.set(number, original);
-      }
-      out += `${text.slice(from, place.start)}[[${number}]]`;
-      from = place.end;
-    }
-    return out + text.slice(from);
-  });
-  return { texts: masked, originals };
 }

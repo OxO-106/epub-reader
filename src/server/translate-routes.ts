@@ -67,7 +67,7 @@ const isJson =(contentType: string | undefined) => contentType?.split(";")[0]!.t
 
 /**
  * POST /api/translate        body {"text": "...", "context": "..."?, "names": ["..."]?} (JSON). `names` are names the
- *   caller already knows, so one that starts a sentence is still kept in English (see translate-names.ts).
+ *   caller already knows, so one that starts a sentence is still treated as a name (see translate-names.ts).
  *   200 application/x-ndjson, one JSON event per line: {"delta":"..."} zero or more times, then exactly one of
  *   {"done":true} or {"error":{"code","message"}}. Trouble before any text is sent is a plain JSON error with a
  *   non-200 status: 503 "not-configured", 400 "bad-request", 413 "bad-request" (text too long, or a body over

@@ -1,7 +1,6 @@
 import type { TranslateConfig } from "./config.ts";
-import { maskNames } from "./translate-names.ts";
+import { findNames } from "./translate-names.ts";
 import { chatRequest, createOutputCleaner } from "./translate-prompt.ts";
-import { createRestorer } from "./translate-restore.ts";
 
 // Live translation: the app server sits between the browser and an OpenAI-style model server (ADR 0120).
 // Nothing here logs or stores the text it handles; errors carry a code and a fixed sentence, never Book text.
@@ -180,7 +179,7 @@ export function createTranslator(config: TranslateConfig): Translator {
   /** The text deltas, in order, of the model server's server-sent-events answer. Throws TranslateError. */
   async function* streamFromBackend(
     url: string,
-    input: { passage: string; context?: string },
+    input: { passage: string; context?: string; names?: readonly string[] },
     signal: AbortSignal,
     onActivity: () => void,
   ): AsyncGenerator<string> {
@@ -189,7 +188,7 @@ export function createTranslator(config: TranslateConfig): Translator {
       response = await fetch(`${url}/v1/chat/completions`, {
         method: "POST",
         headers: requestHeaders(config, true),
-        body: JSON.stringify(chatRequest({ passage: input.passage, context: input.context, model: config.model })),
+        body: JSON.stringify(chatRequest({ passage: input.passage, context: input.context, names: input.names, model: config.model })),
         signal,
       });
     } catch {
@@ -306,21 +305,18 @@ export function createTranslator(config: TranslateConfig): Translator {
       requestTimer = setTimeout(() => giveUp(new TranslateError("timeout", message.timeout)), config.requestTimeoutMs);
       alive();
 
-      // The model never sees a name: they are swapped for tokens here and put back into what it says. The mapping
-      // lives in this function only, so it ends with the request.
-      const masked = maskNames(input.context ? [input.context, input.text] : [input.text], input.names);
-      const request = { passage: masked.texts.at(-1)!, context: input.context ? masked.texts[0] : undefined };
-      const restorer = createRestorer(masked.originals);
+      // The names found here are listed in the prompt, so the model puts them into Chinese by sound (ADR 0150).
+      const names = findNames(input.context ? [input.context, input.text] : [input.text], input.names);
+      const request = { passage: input.text, context: input.context, names };
       const cleaner = createOutputCleaner();
       let sent = false;
       for await (const raw of streamFromBackend(base, request, upstream.signal, alive)) {
-        const delta = restorer.push(cleaner.push(raw));
+        const delta = cleaner.push(raw);
         if (delta) {
           sent = true;
           yield { delta };
         }
       }
-      restorer.end(); // a token cut short at the end of the answer is dropped, never sent
       if (!sent) throw new TranslateError("empty", message.empty);
       yield { done: true };
     } catch (error) {
