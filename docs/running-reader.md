@@ -62,6 +62,10 @@ If the original of a deleted Book is still in the library folder, what happens d
 - **While the server keeps running**, the Book stays deleted. The server remembers the files it has handled and the content of Books you deleted, so neither a rescan nor a slow copy brings the Book back. It is added again only if the file in the folder changes (a new version, or even just a new modification time), or if you add it yourself with Choose files.
 - **After a restart**, the server imports everything in the folder again, so a Book whose original is still there returns. To get rid of a Book for good, remove its original from the library folder (or move it out) as well as deleting the Book.
 
+### Settings and environment variables
+
+Most settings below can be changed in two places: on the **Settings** screen (the gear in the Library), which saves them in `settings.json` in the data folder, or with an environment variable. An environment variable always wins, and the Settings screen shows such a setting as fixed. Translation settings changed on the screen apply at once; the library folder, address and port when Reader restarts. The data folder itself is only set with `READER_DATA_DIR`, since the saved settings live in it.
+
 Other settings, all optional:
 
 | Variable          | Default       | What it is                                                               |

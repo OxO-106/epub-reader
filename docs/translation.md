@@ -7,7 +7,7 @@ npm run translate:server                       # window 1: starts the model serv
 $env:READER_TRANSLATE_URL = "http://127.0.0.1:8080"; npm start        # window 2 (PowerShell)
 ```
 
-The script `scripts/start-translation-server.ps1` takes `-RuntimeDir`, `-ModelPath`, `-ListenHost`, `-Port`, `-ContextSize` and `-ApiKey`, or the environment variables `READER_LLAMA_DIR`, `READER_MODEL_PATH` and `LLAMA_API_KEY` (prefer the variable for the key: a `-ApiKey` typed on the command line is visible in the process list). No model or program is kept in the repository. This section lists the app's settings.
+The script `scripts/start-translation-server.ps1` takes `-RuntimeDir`, `-ModelPath`, `-ListenHost`, `-Port`, `-ContextSize` and `-ApiKey`, or the environment variables `READER_LLAMA_DIR`, `READER_MODEL_PATH` and `LLAMA_API_KEY` (prefer the variable for the key: a `-ApiKey` typed on the command line is visible in the process list). No model or program is kept in the repository. This section lists the app's settings; each can also be set on the Settings screen (Translation), where a change applies at once, and an environment variable wins over it.
 
 | Variable                       | Default | What it is                                                                                         |
 | ------------------------------ | ------- | -------------------------------------------------------------------------------------------------- |
