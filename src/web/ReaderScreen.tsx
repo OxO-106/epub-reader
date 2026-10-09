@@ -218,7 +218,9 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       inBars.current.pointer = false;
       restSoon();
     },
-    onFocusIn: () => {
+    // Keyboard focus holds the bars up; the focus a mouse click leaves on a button does not (it would keep them up for ever).
+    onFocusIn: (event: FocusEvent) => {
+      if (!(event.target as Element).matches(":focus-visible")) return;
       inBars.current.focus = true;
       wake();
     },
