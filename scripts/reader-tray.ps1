@@ -21,8 +21,8 @@
   starts and Translation shows grey "not set up".
 
   Where things are looked for, first match wins:
-    runtime folder  -RuntimeDir, then $env:READER_LLAMA_DIR, then <home>\translation-models\llama-vulkan
-    model file      -ModelPath,  then $env:READER_MODEL_PATH, then <home>\translation-models\Hy-MT2-7B-Q4_K_M.gguf
+    runtime folder  -RuntimeDir, then $env:READER_LLAMA_DIR, then <repo>\translation-models\llama-vulkan when the model is there, else <home>\translation-models\llama-vulkan
+    model file      -ModelPath,  then $env:READER_MODEL_PATH, then <repo>\translation-models\Hy-MT2-7B-Q4_K_M.gguf, else <home>\translation-models\Hy-MT2-7B-Q4_K_M.gguf
     Reader port     -AppPort,    then $env:READER_PORT,       then 5174
 
   Logs: %LOCALAPPDATA%\Reader\logs (overwritten at every start). They hold server messages, not Book text.
@@ -74,7 +74,9 @@ public static extern bool DestroyIcon(System.IntPtr handle);
 # ---- settings -----------------------------------------------------------------------------------------------------
 if (-not $RepoDir) { $RepoDir = Split-Path -Parent $PSScriptRoot }
 if ($AppPort -le 0) { $AppPort = if ($env:READER_PORT) { [int]$env:READER_PORT } else { 5174 } }
-$defaultHome = Join-Path $HOME "translation-models"
+# The repository's own git-ignored translation-models folder when it holds the files, else the one in the home folder.
+$repoModels = Join-Path (Split-Path $PSScriptRoot -Parent) "translation-models"
+$defaultHome = if (Test-Path (Join-Path $repoModels "Hy-MT2-7B-Q4_K_M.gguf")) { $repoModels } else { Join-Path $HOME "translation-models" }
 if (-not $RuntimeDir) { $RuntimeDir = $env:READER_LLAMA_DIR }
 if (-not $RuntimeDir) { $RuntimeDir = Join-Path $defaultHome "llama-vulkan" }
 if (-not $ModelPath) { $ModelPath = $env:READER_MODEL_PATH }

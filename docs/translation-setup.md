@@ -31,7 +31,7 @@ $models = "$HOME\translation-models"        # for example C:\Users\Intel\transla
 New-Item -ItemType Directory -Force $models | Out-Null
 ```
 
-The start script looks in `$HOME\translation-models` by default: the runtime unpacked in `llama-vulkan` and the model file next to it. Put things elsewhere and tell the script with `-RuntimeDir` and `-ModelPath`, or with the environment variables `READER_LLAMA_DIR` and `READER_MODEL_PATH` (see "Start the model server").
+Or inside the repository, in `translation-models` (git ignores it): the start script and the tray use that folder when the model file is there, so no settings are needed. Otherwise the start script looks in `$HOME\translation-models` by default: the runtime unpacked in `llama-vulkan` and the model file next to it. Put things elsewhere and tell the script with `-RuntimeDir` and `-ModelPath`, or with the environment variables `READER_LLAMA_DIR` and `READER_MODEL_PATH` (see "Start the model server").
 
 ### Download
 
