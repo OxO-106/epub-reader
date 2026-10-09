@@ -10,3 +10,5 @@ playwright-report/
 .claude/worktrees/
 /fonts/
 /translation-models/
+playwright-report-desktop/
+/release/

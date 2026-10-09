@@ -14,6 +14,7 @@
   },
   "private": true,
   "type": "module",
+  "main": "desktop/main.ts",
   "engines": {
     "node": ">=24"
   },
@@ -30,7 +31,9 @@
     "translate:server": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-translation-server.ps1",
     "fonts:build": "python scripts/build-fonts.py",
     "release": "node scripts/release.ts",
-    "screenshots": "node scripts/screenshots.ts"
+    "screenshots": "node scripts/screenshots.ts",
+    "desktop": "npm run build && electron .",
+    "test:desktop": "npm run build && playwright test --config playwright.desktop.config.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",
@@ -51,6 +54,7 @@
     "@preact/preset-vite": "^2.10.6",
     "@types/node": "^24.19.1",
     "@types/yauzl": "^3.4.0",
+    "electron": "44.6.0",
     "fflate": "^0.8.3",
     "iconv-lite": "^0.7.3",
     "typescript": "^7.0.2",

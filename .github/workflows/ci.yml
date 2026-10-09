@@ -1,6 +1,7 @@
 # Checks every push and pull request on Windows and Linux: typecheck and the API and unit tests (Vitest), then, once
 # those pass, the browser tests (Playwright, with its own Chromium; the report and traces are uploaded when they fail).
-# Nothing here needs the translation model or the real Chinese font: the tests use their stand-ins.
+# Nothing here needs the translation model or the real Chinese font: the tests use their stand-ins. The desktop app's
+# smoke test runs on Windows only.
 name: CI
 
 on:
@@ -99,6 +100,38 @@ jobs:
           name: playwright-report-${{ matrix.os }}
           path: |
             playwright-report/
+            test-results/
+          retention-days: 14
+
+  desktop:
+    name: Desktop app (windows-latest)
+    needs: checks
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # The electron package fetches its binary only when asked.
+      - name: Download Electron
+        run: node node_modules/electron/install.js
+
+      - name: Build and run the desktop smoke test
+        run: npm run test:desktop
+
+      - name: Upload the report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-desktop
+          path: |
+            playwright-report-desktop/
             test-results/
           retention-days: 14
 
