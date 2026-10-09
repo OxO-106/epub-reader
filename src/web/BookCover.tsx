@@ -8,9 +8,9 @@ import { coverShade, documentLabel, titleSize } from "./library-model.ts";
  *  - otherwise a typographic cover: the title on a colour taken from the Book's id, with a thin bar on top.
  * The drawn covers repeat the title that the card shows next to them, so they are hidden from screen readers.
  */
-export function BookCover({ book }: { book: BookSummary }) {
+export function BookCover({ book, src }: { book: BookSummary; /** The cover picture from elsewhere (a Book kept on this device). */ src?: string }) {
   if (book.hasCover) {
-    return <img class="cover cover-image" src={coverUrl(book)} alt={`Cover of ${book.title}`} loading="lazy" />;
+    return <img class="cover cover-image" src={src ?? coverUrl(book)} alt={`Cover of ${book.title}`} loading="lazy" />;
   }
   const label = documentLabel(book.format);
   if (label) {

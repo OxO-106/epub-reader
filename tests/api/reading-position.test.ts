@@ -153,3 +153,27 @@ describe("the Library and Reading positions", () => {
     expect((await listed(server))[0]!.fraction).toBeNull();
   });
 });
+
+describe("a position sent late", () => {
+  it("does not replace a newer one: the change made last wins, whenever it arrives", async () => {
+    server = await startTestServer();
+    const id = (await (await uploadFixture(server, "sample.epub")).json()).book.id as string;
+    const put = (body: unknown) => fetch(`${server!.url}/api/books/${id}/position`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+    await put({ position: "epubcfi(/6/4!/4/2:10)", fraction: 0.5, changedAt: 2_000_000_000_000 });
+    const late = await put({ position: "epubcfi(/6/2!/4/2:0)", fraction: 0.1, changedAt: 1_900_000_000_000 });
+
+    expect(late.status).toBe(204);
+    expect((await (await fetch(`${server.url}/api/books/${id}/position`)).json()).position).toBe("epubcfi(/6/4!/4/2:10)");
+
+    await put({ position: "epubcfi(/6/6!/4/2:0)", fraction: 0.8, changedAt: 2_000_000_000_500 });
+    expect((await (await fetch(`${server.url}/api/books/${id}/position`)).json()).position).toBe("epubcfi(/6/6!/4/2:0)");
+  });
+
+  it("refuses a changedAt that is not a time", async () => {
+    server = await startTestServer();
+    const id = (await (await uploadFixture(server, "sample.epub")).json()).book.id as string;
+    const response = await fetch(`${server.url}/api/books/${id}/position`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ position: "x", fraction: 0, changedAt: "soon" }) });
+    expect(response.status).toBe(400);
+  });
+});

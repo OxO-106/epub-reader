@@ -1,13 +1,16 @@
 import { getBook, getBookFile } from "./api.ts";
+import { keptBook } from "./device-store.ts";
 import type { BookSource } from "./reader/reader.ts";
 
 /**
  * Fetches a Book from the server and prepares it for the Reader, whatever its format. Rejects when the
  * Book is not in the Library or the server cannot be reached; a Book that cannot be read is reported later,
  * when the Reader opens it. Markdown and plain text are rendered here; the Markdown libraries load only when a Markdown Book is opened.
+ * A Book kept on this device (device-store.ts) is taken from there, with no request to the server.
  */
 export async function loadBookSource(id: string): Promise<BookSource> {
-  const [book, file] = await Promise.all([getBook(id), getBookFile(id)]);
+  const kept = await keptBook(id);
+  const [book, file] = kept ? [kept.summary, kept.file] : await Promise.all([getBook(id), getBookFile(id)]);
   if (book.format === "markdown") {
     const { renderMarkdown } = await import("./reader/markdown.ts");
     return { kind: "custom", book: renderMarkdown(await file.text(), book.title) };

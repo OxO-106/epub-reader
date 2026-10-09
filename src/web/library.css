@@ -571,6 +571,46 @@
   text-overflow: ellipsis;
 }
 
+.library .book-actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.library .keep-book {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  box-sizing: border-box;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.library .keep-book[aria-pressed="true"] {
+  color: var(--accent);
+}
+
+.library .keep-book:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.library .keep-book:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.library .offline-note {
+  margin: 0;
+}
+
 .library .delete-book {
   display: inline-flex;
   align-items: center;

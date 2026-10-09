@@ -71,6 +71,20 @@ export const TrashIcon = () => (
   </Icon>
 );
 
+/** An arrow down into a tray: keep a Book on this device. */
+export const KeepIcon = () => (
+  <Icon size={18} width={1.8}>
+    <path d="M12 4v11M7 10l5 5 5-5M5 19h14" />
+  </Icon>
+);
+
+/** A tray with a tick: the Book is kept on this device. */
+export const KeptIcon = () => (
+  <Icon size={18} width={2}>
+    <path d="M7 11l3.5 3.5L17 8M5 19h14" />
+  </Icon>
+);
+
 /** Four books on a shelf, for the empty Library. Colours come from the cover palette in library.css. */
 export const ShelfIllustration = () => (
   <svg class="shelf" width="220" height="150" viewBox="0 0 220 150" fill="none" aria-hidden="true" focusable="false">

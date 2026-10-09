@@ -32,6 +32,15 @@ export async function apiFetch(input: string, init?: RequestInit): Promise<Respo
   }
 }
 
+/** Calls `listener` each time the server is reachable again after it was not. Returns a function that stops listening. */
+export function onReachable(listener: () => void): () => void {
+  const wrapped = (isReachable: boolean) => {
+    if (isReachable) listener();
+  };
+  listeners.add(wrapped);
+  return () => listeners.delete(wrapped);
+}
+
 /** Asks the server something cheap, to find out right now whether it is there. */
 export function checkConnection(): Promise<void> {
   return apiFetch("/api/library-folder").then(

@@ -3,6 +3,8 @@ import { BookCover } from "./BookCover.tsx";
 import { BookProgress } from "./BookProgress.tsx";
 import { ConnectionNotice } from "./ConnectionNotice.tsx";
 import { DeleteBook } from "./DeleteBook.tsx";
+import { KeepBook } from "./KeepBook.tsx";
+import { keptBooks, keptEvent } from "./device-store.ts";
 import { LibraryFolderProblems } from "./LibraryFolderProblems.tsx";
 import {
   ChevronDownIcon,
@@ -21,7 +23,8 @@ import "./library.css";
 type State =
   | { kind: "loading" }
   | { kind: "error"; serverAnswered: boolean }
-  | { kind: "ready"; books: BookSummary[] };
+  /** `offline`: the server could not be reached, and these are the Books kept on this device. */
+  | { kind: "ready"; books: BookSummary[]; offline?: boolean };
 
 export function Library() {
   const [state, setState] = useState<State>({ kind: "loading" });
@@ -34,6 +37,26 @@ export function Library() {
   const latestRequest = useRef(0);
   const currentQuery = useRef(query);
   currentQuery.current = query;
+  // The Books kept on this device: their ids (for the Keep buttons) and their covers (shown while offline).
+  const [keepProblem, setKeepProblem] = useState<string | null>(null);
+  const [kept, setKept] = useState<{ ids: Set<string>; covers: Map<string, string>; books: BookSummary[] }>({ ids: new Set(), covers: new Map(), books: [] });
+
+  useEffect(() => {
+    let urls: string[] = [];
+    const look = () =>
+      keptBooks().then((found) => {
+        for (const url of urls) URL.revokeObjectURL(url);
+        const covers = new Map(found.filter((k) => k.cover).map((k) => [k.id, URL.createObjectURL(k.cover!)]));
+        urls = [...covers.values()];
+        setKept({ ids: new Set(found.map((k) => k.id)), covers, books: found.map((k) => k.summary) });
+      });
+    void look();
+    addEventListener(keptEvent, look);
+    return () => {
+      removeEventListener(keptEvent, look);
+      for (const url of urls) URL.revokeObjectURL(url);
+    };
+  }, []);
 
   /** Loads the Books matching the search box. Only the newest request may update the page. */
   function refresh() {
@@ -44,7 +67,21 @@ export function Library() {
         if (request !== latestRequest.current) return;
         const serverAnswered = error instanceof HttpError;
         // A server that has gone away does not empty the Library on screen; the notice says why it is not updating.
-        setState((previous) => (previous.kind === "ready" && !serverAnswered ? previous : { kind: "error", serverAnswered }));
+        if (!serverAnswered) {
+          // Started without the server: the Books kept on this device, if there are any.
+          void keptBooks().then((found) => {
+            if (request !== latestRequest.current) return;
+            setState((previous) =>
+              previous.kind === "ready" && !previous.offline
+                ? previous
+                : found.length
+                  ? { kind: "ready", books: found.map((k) => k.summary), offline: true }
+                  : { kind: "error", serverAnswered },
+            );
+          });
+          return;
+        }
+        setState({ kind: "error", serverAnswered });
       },
     );
   }
@@ -88,7 +125,8 @@ export function Library() {
   }
 
   const searching = query.trim() !== "";
-  const books = state.kind === "ready" ? state.books : [];
+  const offline = state.kind === "ready" && state.offline === true;
+  const books = state.kind === "ready" ? (offline ? kept.books.filter((b) => !searching || `${b.title} ${b.author ?? ""}`.toLowerCase().includes(query.trim().toLowerCase())) : state.books) : [];
   const shown = useMemo(() => sortBooks(books, sort), [state, sort]);
   // While the Library is searched the list is only part of it, so it is not the place to look for the Book read last.
   const resume = searching ? null : pickContinueReading(books);
@@ -161,6 +199,11 @@ export function Library() {
         aria-label="Choose files to import"
       />
       <ConnectionNotice />
+      {offline && (
+        <p class="notice offline-note" role="status">
+          Showing the Books kept on this device. Adding Books and translation need your PC.
+        </p>
+      )}
 
       {empty ? (
         <section class="library-empty" aria-label="Add your first books">
@@ -188,7 +231,7 @@ export function Library() {
               {/* One link for the whole card, so a tap anywhere on it opens the Book. */}
               <a class="continue-link" href={`#/read/${resume.id}`} aria-label="Continue reading" aria-describedby="continue-title">
                 <div class="continue-cover">
-                  <BookCover book={resume} />
+                  <BookCover book={resume} src={kept.covers.get(resume.id)} />
                 </div>
                 <div class="continue-body">
                   <div class="eyebrow">Continue reading</div>
@@ -230,6 +273,12 @@ export function Library() {
         </ul>
       )}
 
+      {keepProblem && (
+        <p role="alert" class="notice">
+          {keepProblem}
+        </p>
+      )}
+
       <LibraryFolderProblems />
 
       {state.kind === "error" && state.serverAnswered && (
@@ -262,7 +311,7 @@ export function Library() {
               {shown.map((book) => (
                 <li key={book.id} class="book">
                   <a class="book-link" href={`#/read/${book.id}`}>
-                    <BookCover book={book} />
+                    <BookCover book={book} src={kept.covers.get(book.id)} />
                     <span class="title">{book.title}</span>
                     {book.highlights > 0 && (
                       <span class="book-highlights">
@@ -272,7 +321,10 @@ export function Library() {
                   </a>
                   <div class="book-meta">
                     <span class="author">{book.author ?? formatName(book.format)}</span>
-                    <DeleteBook book={book} onDeleted={refresh} />
+                    <span class="book-actions">
+                      <KeepBook book={book} kept={kept.ids.has(book.id)} disabled={offline && !kept.ids.has(book.id)} onProblem={setKeepProblem} />
+                      {!offline && <DeleteBook book={book} onDeleted={refresh} />}
+                    </span>
                   </div>
                   <BookProgress fraction={book.fraction} />
                 </li>

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { getReadingPosition, HttpError } from "./api.ts";
+import { getBook, getReadingPosition, HttpError, type SavedReadingPosition } from "./api.ts";
+import { DeviceFullError, forgetBook, keepBook, keptBook, keptEvent, loadAutoKeep } from "./device-store.ts";
+import { knownPosition, positionWaiting } from "./outbox.ts";
 import { loadBookSource } from "./bookSource.ts";
 import { chapterProgress } from "./chapter-progress.ts";
 import { checkConnection, heartbeatMs } from "./connection.ts";
@@ -33,6 +35,25 @@ const searchOverlays = () => !window.matchMedia("(min-width: 60rem)").matches;
 
 /** How long the bars stay after the Book opens, or after the pointer leaves them, before they fade to let the page be read. */
 const chromeRestMs = 2500;
+
+/**
+ * The Reading position to open a Book at: the server's, unless this device has a newer one still waiting to be sent;
+ * when the server cannot be reached, the one this device last knew (for a Book kept on the device). A server that says
+ * the Book is gone is passed on as an error.
+ */
+function readingPosition(bookId: string): Promise<SavedReadingPosition> {
+  const local = (): SavedReadingPosition | undefined => {
+    const known = knownPosition(bookId);
+    return known ? { position: known.position, fraction: known.fraction } : undefined;
+  };
+  return getReadingPosition(bookId).then(
+    (saved) => (positionWaiting(bookId) ? (local() ?? saved) : saved),
+    (error) => {
+      if (error instanceof HttpError) throw error;
+      return local() ?? { position: null, fraction: null };
+    },
+  );
+}
 
 /** How long Undo is offered after a highlight is deleted. */
 const undoMs = 6000;
@@ -95,6 +116,9 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const menuNow = useRef(menu);
   menuNow.current = menu;
   const [undo, setUndo] = useState<Highlight | null>(null);
+  // Whether this Book is kept on this device, and what keeping it last reported.
+  const [kept, setKept] = useState<"no" | "yes" | "keeping">("no");
+  const [keepProblem, setKeepProblem] = useState<string | null>(null);
   // The highlight whose note is being written in the Highlights panel.
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -167,8 +191,15 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       setResting(!restingNow.current);
     });
 
-    Promise.all([loadBookSource(bookId), getReadingPosition(bookId), fontFaceCss()]).then(
+    Promise.all([loadBookSource(bookId), readingPosition(bookId), fontFaceCss()]).then(
       ([source, saved, fontFaces]) => {
+        // With "keep the Book I am reading" on, it is kept on this device once its file is here (device-store.ts), even
+        // if the reader leaves at once.
+        if (loadAutoKeep()) {
+          void keptBook(bookId).then((kept) => {
+            if (!kept) getBook(bookId).then(keepBook).catch(() => {});
+          });
+        }
         if (cancelled) return;
         instance.setFontFaces(fontFaces); // before the Book opens, so its first page already has the fonts
         if (saved.fraction !== null) setFraction(saved.fraction);
@@ -218,6 +249,35 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       if ((window as { __reader?: Reader }).__reader === instance) delete (window as { __reader?: Reader }).__reader;
     };
   }, [bookId, attempt]);
+
+  // Whether the Book is kept on this device, kept up to date when that changes anywhere (Settings, the Library, auto-keep).
+  useEffect(() => {
+    let current = true;
+    const look = () => keptBook(bookId).then((found) => current && setKept((was) => (found ? "yes" : was === "keeping" ? "keeping" : "no")));
+    void look();
+    addEventListener(keptEvent, look);
+    return () => {
+      current = false;
+      removeEventListener(keptEvent, look);
+    };
+  }, [bookId]);
+
+  async function toggleKept() {
+    setKeepProblem(null);
+    if (kept === "yes") {
+      setKept("no");
+      await forgetBook(bookId);
+      return;
+    }
+    setKept("keeping");
+    try {
+      await keepBook(await getBook(bookId));
+      setKept("yes");
+    } catch (error) {
+      setKept("no");
+      setKeepProblem(error instanceof DeviceFullError ? error.message : "The Book could not be kept on this device. Check that Reader is running.");
+    }
+  }
 
   // The Reader draws whatever highlights the Book has now.
   useEffect(() => {
@@ -436,6 +496,10 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
               onPick={openChapter}
               onClose={() => closePanel()}
               shortcuts={[
+                {
+                  label: kept === "yes" ? "Kept on this device ✓" : kept === "keeping" ? "Keeping on this device…" : "Keep on this device",
+                  onOpen: () => void toggleKept(),
+                },
                 ...(ready && !fixed ? [{ label: "Highlights", count: highlights.list.length, onOpen: () => setPanel("highlights") }] : []),
                 ...(ready && english ? [{ label: "Glossary", onOpen: () => setPanel("glossary") }] : []),
               ]}
@@ -542,12 +606,18 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
             />
           ) : null;
         })()}
-      {(undo || highlights.problem) && (
-        <div class="reader-toast" role={highlights.problem ? "alert" : "status"}>
-          {highlights.problem ? (
+      {(undo || highlights.problem || keepProblem) && (
+        <div class="reader-toast" role={highlights.problem || keepProblem ? "alert" : "status"}>
+          {highlights.problem || keepProblem ? (
             <>
-              <span>{highlights.problem}</span>
-              <button type="button" onClick={highlights.clearProblem}>
+              <span>{highlights.problem ?? keepProblem}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  highlights.clearProblem();
+                  setKeepProblem(null);
+                }}
+              >
                 Dismiss
               </button>
             </>

@@ -1,10 +1,12 @@
 /**
  * The open Book's highlights: loaded from the server, changed at once on screen and then saved (the server keeps them
- * for every device; the newest change wins). A change the server refuses, or cannot be sent, is undone on screen and
- * reported in `problem`.
+ * for every device; the newest change wins). A change the server refuses is undone on screen and reported in `problem`;
+ * one the server cannot be reached for stays, and waits in the outbox (outbox.ts) until it can. This device remembers
+ * the list, so a Book opened without the server still shows its highlights.
  */
 import { useEffect, useRef, useState } from "preact/hooks";
-import { deleteHighlight, listHighlights, saveHighlight, type Highlight, type HighlightColor } from "./api.ts";
+import { deleteHighlight, HttpError, listHighlights, saveHighlight, type Highlight, type HighlightColor } from "./api.ts";
+import { knownHighlights, pendingChanges, queueChange, rememberHighlights } from "./outbox.ts";
 
 /** The longest excerpt the server keeps (ADR 0160); a longer passage is cut, with an ellipsis. */
 export const maxExcerptLength = 1000;
@@ -55,10 +57,19 @@ export function useHighlights(bookId: string, active: boolean): Highlights {
     let cancelled = false;
     listHighlights(bookId).then(
       (loaded) => {
-        if (!cancelled) setList(loaded);
+        if (cancelled) return;
+        // Changes still waiting to be sent are newer than what the server has.
+        const waiting = pendingChanges().filter((entry) => entry.bookId === bookId);
+        let list = loaded;
+        for (const entry of waiting) {
+          if (entry.kind === "highlight") list = upsert(list, entry.highlight);
+          else if (entry.kind === "highlight-delete") list = list.filter((h) => h.id !== entry.id);
+        }
+        setList(list);
       },
-      () => {
-        // The Book still opens; its highlights appear the next time it does.
+      (error) => {
+        // The server cannot be reached: what this device last knew. (A server that answered with an error: none.)
+        if (!cancelled && !(error instanceof HttpError)) setList(knownHighlights(bookId) ?? []);
       },
     );
     return () => {
@@ -66,12 +77,20 @@ export function useHighlights(bookId: string, active: boolean): Highlights {
     };
   }, [bookId, active]);
 
+  useEffect(() => {
+    if (active && list.length + (knownHighlights(bookId)?.length ?? 0) > 0) rememberHighlights(bookId, list);
+  }, [list]);
+
   async function save(next: Highlight, previous: Highlight | undefined) {
     setList((list) => upsert(list, next));
     try {
       const saved = await saveHighlight(bookId, next);
       setList((list) => upsert(list, saved));
-    } catch {
+    } catch (error) {
+      if (!(error instanceof HttpError)) {
+        queueChange({ kind: "highlight", bookId, highlight: next }); // sent when the server is back
+        return;
+      }
       setList((list) => (previous ? upsert(list, previous) : list.filter((h) => h.id !== next.id)));
       setProblem("The highlight could not be saved. Check that Reader is running, then try again.");
     }
@@ -98,7 +117,11 @@ export function useHighlights(bookId: string, active: boolean): Highlights {
       const old = current.current.find((h) => h.id === id);
       if (!old) return undefined;
       setList((list) => list.filter((h) => h.id !== id));
-      deleteHighlight(bookId, id).catch(() => {
+      deleteHighlight(bookId, id).catch((error) => {
+        if (!(error instanceof HttpError)) {
+          queueChange({ kind: "highlight-delete", bookId, id }); // sent when the server is back
+          return;
+        }
         setList((list) => upsert(list, old));
         setProblem("The highlight could not be deleted. Check that Reader is running, then try again.");
       });

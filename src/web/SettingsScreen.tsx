@@ -1,3 +1,5 @@
+import { forgetAllBooks, forgetBook, formatBytes, keptBooks, keptEvent, loadAutoKeep, saveAutoKeep, storageEstimate, type KeptBook } from "./device-store.ts";
+import { forgetKnown } from "./outbox.ts";
 import type { ComponentChildren } from "preact";
 import { useEffect, useId, useState } from "preact/hooks";
 import { getSettings, restartReader, saveSettings, SettingsRefusal, testTranslation, type SettingInfo, type SettingKey, type SettingsView } from "./api.ts";
@@ -64,6 +66,8 @@ export function SettingsScreen() {
           Loading…
         </p>
       )}
+      {/* Kept in this browser, so it is there even when the PC cannot be reached. */}
+      <DeviceSection />
     </main>
   );
 }
@@ -561,6 +565,73 @@ function AboutSection({ view }: { view: SettingsView }) {
         <a href="https://github.com/OxO-106/epub-reader/issues/new/choose">Report a problem</a>
         <a href="https://github.com/OxO-106/epub-reader/blob/main/CHANGELOG.md">What is new</a>
       </p>
+    </Section>
+  );
+}
+
+/** Books kept on this device for reading offline (device-store.ts): what they take, removing them, keeping the open one. */
+function DeviceSection() {
+  const [books, setBooks] = useState<KeptBook[] | null>(null);
+  const [estimate, setEstimate] = useState<{ usage: number; quota: number } | null>(null);
+  const [autoKeep, setAutoKeep] = useState(loadAutoKeep);
+
+  useEffect(() => {
+    const look = () => {
+      void keptBooks().then(setBooks);
+      void storageEstimate().then(setEstimate);
+    };
+    look();
+    addEventListener(keptEvent, look);
+    return () => removeEventListener(keptEvent, look);
+  }, []);
+
+  const total = (books ?? []).reduce((sum, book) => sum + book.size, 0);
+  return (
+    <Section
+      title="On this device"
+      description="Books kept on this device can be read when your PC cannot be reached. Reading positions and highlights made then are sent to the PC when it is back."
+    >
+      <div class="settings-form">
+        <label class="settings-choice settings-toggle">
+          <input
+            type="checkbox"
+            checked={autoKeep}
+            onChange={(event) => {
+              setAutoKeep(event.currentTarget.checked);
+              saveAutoKeep(event.currentTarget.checked);
+            }}
+          />
+          <span>
+            <span class="settings-choice-label">Keep the Book I am reading on this device</span>
+            <span class="settings-hint">Each Book you open is kept, so it is there if the connection goes. This choice is kept on this device only.</span>
+          </span>
+        </label>
+        {books && books.length === 0 && <p class="settings-hint">No Books are kept on this device. Use the Keep button on a Book in the Library.</p>}
+        {books && books.length > 0 && (
+          <>
+            <ul class="device-books" aria-label="Books on this device">
+              {books.map((book) => (
+                <li key={book.id}>
+                  <span class="device-book-title">{book.summary.title}</span>
+                  <span class="device-book-size">{formatBytes(book.size)}</span>
+                  <button type="button" class="settings-button quiet" aria-label={`Remove ${book.summary.title} from this device`} onClick={() => void forgetBook(book.id).then(() => forgetKnown(book.id))}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p class="settings-hint" role="status">
+              {books.length} {books.length === 1 ? "Book" : "Books"}, {formatBytes(total)}
+              {estimate ? ` · ${formatBytes(estimate.usage)} of the ${formatBytes(estimate.quota)} this browser allows Reader is in use.` : "."}
+            </p>
+            <div class="settings-actions">
+              <button type="button" class="settings-button quiet" onClick={() => void forgetAllBooks()}>
+                Remove all from this device
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </Section>
   );
 }

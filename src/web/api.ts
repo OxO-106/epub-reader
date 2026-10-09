@@ -45,7 +45,7 @@ export async function getReadingPosition(bookId: string): Promise<SavedReadingPo
  */
 export async function saveReadingPosition(
   bookId: string,
-  body: { position: string; fraction: number },
+  body: { position: string; fraction: number; changedAt?: number },
   options: { keepalive?: boolean } = {},
 ): Promise<boolean> {
   try {

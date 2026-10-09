@@ -18,6 +18,7 @@ Add a line under **Unreleased** with every change a user would notice; `npm run 
 - Notes on highlights, and a Highlights panel listing a Book's highlights in reading order by chapter (choose one to go to it; recolour, write a note or delete from the list), with export to Markdown. The Library shows how many highlights a Book has.
 - Translation keeps each name the same: the first time a name is met, its Chinese form is decided and saved in the Book's Glossary, and every later paragraph uses it, on every device. A Glossary panel (for English Books) lists the names, most frequent first: change a form and the text on screen is translated again; add or remove names; export a Glossary and import it into the next volume of a series.
 - Reader can be installed as an app (Add to Home Screen on iPhone, Install on Android and desktop browsers): its own icon, full screen in the theme's colours, clear of the notch and home indicator; it starts even when the PC cannot be reached, and updates itself the next time it starts online.
+- Keep Books on a device for reading without a connection: a Keep button on each Book (or keep the Book being read automatically), the kept Books listed and opened when the PC cannot be reached, and an "On this device" section in Settings showing what they take. Reading positions and highlights made offline are sent when the PC is back; the newer change wins.
 - Browser tests for the resting bars and the progress scrubber.
 
 ### Fixed

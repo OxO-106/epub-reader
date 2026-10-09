@@ -344,3 +344,33 @@
 .settings .settings-toggle input {
   margin-top: 0.2rem;
 }
+
+/* ---- On this device: the Books kept for offline reading ---- */
+
+.settings .device-books {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.settings .device-books li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--tap);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings .device-book-title {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings .device-book-size {
+  flex: none;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}

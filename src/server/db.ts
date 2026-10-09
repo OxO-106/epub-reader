@@ -48,6 +48,9 @@ const migrations: string[] = [
     updated_at INTEGER NOT NULL,
     PRIMARY KEY (book_hash, key)
   )`,
+  // When a Reading position was changed, on the device that changed it (ms), so a position saved late (a phone that was
+  // offline) never replaces a newer one. Null for positions saved before this column existed.
+  `ALTER TABLE reading_positions ADD COLUMN changed_at INTEGER`,
 ];
 
 export interface BookRow {
@@ -68,6 +71,8 @@ export interface ListedBookRow extends BookRow {
 export interface ReadingPositionRow {
   position: string;
   fraction: number;
+  /** When the position was changed on the device that sent it (ms); the newer change wins. */
+  changedAt?: number;
 }
 
 export interface HighlightRow {
@@ -104,7 +109,8 @@ export interface Db {
   deleteBook(hash: string): boolean;
   getReadingPosition(hash: string): ReadingPositionRow | undefined;
   /**
-   * Replaces the Book's Reading position (the latest write wins) and marks the Book as read now.
+   * Replaces the Book's Reading position and marks the Book as read now. A position changed earlier (by `changedAt`)
+   * than the saved one is ignored; without `changedAt` the change counts as made now.
    * Returns false, saving nothing, when there is no such Book.
    */
   saveReadingPosition(hash: string, position: ReadingPositionRow): boolean;
@@ -192,18 +198,25 @@ export function openDb(path: string): Db {
         | ReadingPositionRow
         | undefined;
     },
-    saveReadingPosition(hash, { position, fraction }) {
+    saveReadingPosition(hash, { position, fraction, changedAt }) {
       db.exec("BEGIN");
       try {
         // Strictly after every earlier read, so the order of reads never ties, even within one millisecond.
         const { latest } = db.prepare("SELECT MAX(last_read_at) AS latest FROM books").get() as { latest: number | null };
         const now = Math.max(Date.now(), (latest ?? 0) + 1);
+        const changed = changedAt ?? Date.now();
+        const saved = db.prepare("SELECT changed_at FROM reading_positions WHERE book_hash = ?").get(hash) as { changed_at: number | null } | undefined;
+        if (saved?.changed_at != null && saved.changed_at > changed) {
+          // A newer position is already saved: this one arrived late (a device that was offline).
+          db.exec("COMMIT");
+          return true; // a saved position means the Book exists
+        }
         const touched = db.prepare("UPDATE books SET last_read_at = ? WHERE hash = ?").run(now, hash);
         if (touched.changes > 0) {
           db.prepare(
-            `INSERT INTO reading_positions (book_hash, position, fraction) VALUES (?, ?, ?)
-             ON CONFLICT(book_hash) DO UPDATE SET position = excluded.position, fraction = excluded.fraction`,
-          ).run(hash, position, fraction);
+            `INSERT INTO reading_positions (book_hash, position, fraction, changed_at) VALUES (?, ?, ?, ?)
+             ON CONFLICT(book_hash) DO UPDATE SET position = excluded.position, fraction = excluded.fraction, changed_at = excluded.changed_at`,
+          ).run(hash, position, fraction, changed);
         }
         db.exec("COMMIT");
         return touched.changes > 0;
