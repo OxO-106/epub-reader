@@ -210,7 +210,7 @@ test.describe("remembering the settings on this device", () => {
   });
 });
 
-test("journey: change the font size, close the Book, reopen it: same Reading position and same size; another device keeps its own display", async ({
+test("journey: change the font size, close the Book, reopen it: same Reading position and same size; another device follows, or keeps its own", async ({
   page,
   browser,
   server,
@@ -231,15 +231,27 @@ test("journey: change the font size, close the Book, reopen it: same Reading pos
   await expect.poll(() => visibleParagraphs(page)).toEqual(onScreen);
   expect(await textSize(page)).toBe(26);
 
-  // The Reading position belongs to the Book on the server; the display belongs to this device.
-  const profile = await browser.newContext({ baseURL: server.url, colorScheme: "light" });
-  const other = await profile.newPage();
+  // The Reading position belongs to the Book on the server. The display is shared by the devices that follow the shared
+  // reading preferences (the default), and kept apart by one that does not.
+  await page.waitForTimeout(800); // a change is sent shortly after it is made
+  const follower = await browser.newContext({ baseURL: server.url, colorScheme: "light" });
+  const other = await follower.newPage();
   await other.goto("/");
   await other.getByRole("link", { name: /Long Styled Book/ }).click();
   await expect.poll(() => visibleParagraphs(other)).toContain(onScreen[0]);
-  expect(await textSize(other)).toBe(18);
-  expect(await other.locator("html").getAttribute("data-theme")).toBe("light");
-  await profile.close();
+  await expect.poll(() => textSize(other)).toBe(26);
+  expect(await other.locator("html").getAttribute("data-theme")).toBe("dark");
+  await follower.close();
+
+  const ownProfile = await browser.newContext({ baseURL: server.url, colorScheme: "light" });
+  await ownProfile.addInitScript(() => localStorage.setItem("reader.sharedReading", "off"));
+  const own = await ownProfile.newPage();
+  await own.goto("/");
+  await own.getByRole("link", { name: /Long Styled Book/ }).click();
+  await expect.poll(() => visibleParagraphs(own)).toContain(onScreen[0]);
+  expect(await textSize(own)).toBe(18);
+  expect(await own.locator("html").getAttribute("data-theme")).toBe("light");
+  await ownProfile.close();
 });
 
 test("the display controls fit and work in a narrow window, without hover", async ({ page }) => {
