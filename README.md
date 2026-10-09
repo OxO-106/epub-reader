@@ -23,6 +23,25 @@ This builds the front end and starts the server. Open <http://127.0.0.1:5174>. S
 
 For development, `npm run dev` starts the server (restarting on change) and the Vite dev server with hot reload; open <http://localhost:5173>. It always uses port 5174 for the API, so `READER_PORT` does not apply to it.
 
+### One-click start (Windows)
+
+Double-click **`Start Reader.cmd`**. It starts the Reader server and the translation model server (both hidden) and puts an icon in the system tray: two dots, the left one for the Reader and the right one for Translation.
+
+| Dot | Meaning |
+|---|---|
+| green | running and answering |
+| amber | starting (the model needs about 10 s to load; the Reader a few seconds) |
+| red | stopped or not answering |
+| grey | not set up (model or llama.cpp missing, see [docs/translation-setup.md](docs/translation-setup.md)) or switched off |
+
+Hover over the icon for the words ("Reader: running | Translation: running"). Double-click it to open the Reader in the browser. Right-click for Open Reader, Restart Reader, Restart Translation, Open logs folder and **Quit (stop both)**. A balloon tells you when both are up and when one stops unexpectedly. Windows may tuck a new tray icon into the "^" overflow: drag it onto the taskbar once to keep it visible.
+
+- **Stop everything:** use Quit in the icon's menu, or double-click **`Stop Reader.cmd`**.
+- **Already running?** Double-clicking `Start Reader.cmd` again just opens the Reader. A server that was already running on its port is used as it is and is left running when you quit; the tray only stops what it started.
+- **Reader only:** `Start Reader.cmd -NoTranslation`. Another model location: `-ModelPath` and `-RuntimeDir`, or the `READER_MODEL_PATH` and `READER_LLAMA_DIR` variables (default `%USERPROFILE%\translation-models`).
+- **Logs and status:** `%LOCALAPPDATA%\Reader\logs` (overwritten at each start; server messages, never Book text) and `%LOCALAPPDATA%\Reader\status.json`.
+- The tray is `scripts/reader-tray.ps1` (Windows PowerShell 5.1, nothing to install). It needs `npm` on the PATH, as `npm start` does.
+
 ## Your files
 
 Both folders are created on first start, relative to the folder you start the server from (so start it from the same place each time), unless you set them:
