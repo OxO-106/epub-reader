@@ -171,7 +171,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         instance.setFontFaces(fontFaces); // before the Book opens, so its first page already has the fonts
         if (saved.fraction !== null) setFraction(saved.fraction);
         stopTracking = trackReadingPosition(bookId, instance, saved.position);
-        return instance.open(source, { position: saved.position ?? undefined }).then(
+        return instance.open(source, { position: saved.position ?? undefined, bookId }).then(
           ({ title, toc }) => {
             if (cancelled) return;
             setEnglish(instance.isEnglish());

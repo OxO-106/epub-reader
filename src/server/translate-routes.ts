@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { fromOwnOrigin, isJson, readLimited } from "./request-guards.ts";
+import type { BookGlossary } from "./glossary.ts";
 import type { TranslateEvent, Translator } from "./translate.ts";
 
 /** Longest paragraph (or context) accepted, in characters. Real paragraphs are far shorter. */
@@ -19,8 +20,10 @@ const errorResponse = (status: 400 | 403 | 413 | 415 | 503, code: string, messag
   Response.json({ error: { code, message } }, { status });
 
 /**
- * POST /api/translate        body {"text": "...", "context": "..."?, "names": ["..."]?} (JSON). `names` are names the
- *   caller already knows, so one that starts a sentence is still treated as a name (see translate-names.ts).
+ * POST /api/translate        body {"text": "...", "context": "..."?, "names": ["..."]?, "bookId": "..."?} (JSON). `names`
+ *   are names the caller already knows, so one that starts a sentence is still treated as a name (see translate-names.ts).
+ *   `bookId` is the Book the text is from: its Glossary fixes the Chinese form of each name (ADR 0170). An unknown id is
+ *   ignored (the text is translated without a Glossary).
  *   200 application/x-ndjson, one JSON event per line: {"delta":"..."} zero or more times, then exactly one of
  *   {"done":true} or {"error":{"code","message"}}. Trouble before any text is sent is a plain JSON error with a
  *   non-200 status: 503 "not-configured", 400 "bad-request", 413 "bad-request" (text too long, or a body over
@@ -31,7 +34,7 @@ const errorResponse = (status: 400 | 403 | 413 | 415 | 503, code: string, messag
  * The browser going away (aborting its fetch) cancels the response stream, which drops the request from the queue or
  * aborts the upstream request. Nothing about the text is logged or stored.
  */
-export function translateRoutes(currentTranslator: () => Translator): Hono {
+export function translateRoutes(currentTranslator: () => Translator, glossaryOf: (bookId: string) => BookGlossary | undefined = () => undefined): Hono {
   const routes = new Hono();
 
   // The translator is looked up per request: Settings can replace it while the server runs.
@@ -56,7 +59,7 @@ export function translateRoutes(currentTranslator: () => Translator): Hono {
     } catch {
       return errorResponse(400, "bad-request", "The request body must be JSON.");
     }
-    const { text, context, names } = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
+    const { text, context, names, bookId } = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
     if (typeof text !== "string" || text.trim() === "") {
       return errorResponse(400, "bad-request", '"text" must be a non-empty string.');
     }
@@ -74,6 +77,9 @@ export function translateRoutes(currentTranslator: () => Translator): Hono {
         return errorResponse(400, "bad-request", `Each of "names" may be at most ${maxNameLength} characters long.`);
       }
     }
+    if (bookId !== undefined && bookId !== null && typeof bookId !== "string") {
+      return errorResponse(400, "bad-request", '"bookId" must be a string.');
+    }
     if (text.length > maxTextLength || (typeof context === "string" && context.length > maxTextLength)) {
       return errorResponse(413, "bad-request", "The text is too long to translate.");
     }
@@ -89,7 +95,12 @@ export function translateRoutes(currentTranslator: () => Translator): Hono {
 
     const abort = new AbortController();
     const events = translator.translate(
-      { text, context: context || undefined, names: (names as string[] | null | undefined) ?? undefined },
+      {
+        text,
+        context: context || undefined,
+        names: (names as string[] | null | undefined) ?? undefined,
+        glossary: typeof bookId === "string" ? glossaryOf(bookId) : undefined,
+      },
       abort.signal,
     );
     // Hono's node adapter cancels the response stream when the browser disconnects; `cancel` below handles that. The

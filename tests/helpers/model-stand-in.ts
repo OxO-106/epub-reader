@@ -64,11 +64,19 @@ export interface RecordedRequest {
   aborted: boolean;
   /** True once the stand-in had sent the whole answer. */
   finished: boolean;
+  /** A Glossary name request (it asks for the Chinese forms of names, one per line) rather than a paragraph. */
+  names: boolean;
 }
 
 export interface StandInOptions {
   /** Used for every chat request unless a queued reply or a function says otherwise. */
   reply?: StandInReply | ((request: RecordedRequest) => StandInReply);
+  /**
+   * The answer to Glossary name requests, which are kept apart from the paragraph requests: they never take a queued
+   * reply or the default one, and `chatRequests()` leaves them out (`nameRequests()` has them). Default: every name
+   * asked about is answered "名字". `asked` lists the names in the request.
+   */
+  names?: (asked: string[], request: RecordedRequest) => StandInReply;
   /** Model ids that GET /v1/models lists. Default one id, "stand-in-model". `null`: the route answers 404. */
   models?: string[] | null;
   /** Answer GET /v1/models after this delay (to test the status timeout). */
@@ -82,8 +90,12 @@ export interface ModelStandIn {
   url: string;
   /** Every request received, in arrival order, chat and models alike. */
   requests: RecordedRequest[];
-  /** Only the chat-completions requests. */
+  /** The chat-completions requests that translate a paragraph (not the Glossary name requests). */
   chatRequests(): RecordedRequest[];
+  /** The Glossary name requests. */
+  nameRequests(): RecordedRequest[];
+  /** Replace the answer to name requests. */
+  setNameReply(reply: StandInOptions["names"]): void;
   /** Replace the default reply. */
   setReply(reply: StandInOptions["reply"]): void;
   /** Use this reply for the next chat request only (queued replies are used in order, before the default reply). */
@@ -132,6 +144,8 @@ function parseChat(text: string): ChatBody | null {
 /** Starts a stand-in on a free local port. */
 export async function startModelStandIn(options: StandInOptions = {}): Promise<ModelStandIn> {
   let defaultReply = options.reply ?? {};
+  const defaultNames = (asked: string[]): StandInReply => ({ chunks: [asked.map((name) => `${name} = 名字`).join("\n")] });
+  let nameReply = options.names ?? defaultNames;
   let models = options.models === undefined ? ["stand-in-model"] : options.models;
   const queued: StandInReply[] = [];
   const requests: RecordedRequest[] = [];
@@ -219,7 +233,9 @@ export async function startModelStandIn(options: StandInOptions = {}): Promise<M
       receivedAt: Date.now(),
       aborted: false,
       finished: false,
+      names: false,
     };
+    record.names = record.user.includes("one line per name");
     requests.push(record);
     res.on("close", () => {
       if (res.writableFinished) record.finished = true;
@@ -231,6 +247,11 @@ export async function startModelStandIn(options: StandInOptions = {}): Promise<M
       return;
     }
     if (record.method === "GET" && record.path === "/v1/models") return answerModels(res);
+    if (record.method === "POST" && record.path === "/v1/chat/completions" && record.names) {
+      const asked = record.user.split("\n\n").pop()!.split("\n").filter(Boolean);
+      await answerChat(record, nameReply(asked, record), res);
+      return;
+    }
     if (record.method === "POST" && record.path === "/v1/chat/completions") {
       const reply = queued.shift() ?? (typeof defaultReply === "function" ? defaultReply(record) : defaultReply);
       inFlight++;
@@ -254,7 +275,11 @@ export async function startModelStandIn(options: StandInOptions = {}): Promise<M
   return {
     url: `http://127.0.0.1:${port}`,
     requests,
-    chatRequests: () => requests.filter((r) => r.path === "/v1/chat/completions"),
+    chatRequests: () => requests.filter((r) => r.path === "/v1/chat/completions" && !r.names),
+    nameRequests: () => requests.filter((r) => r.names),
+    setNameReply(reply) {
+      nameReply = reply ?? defaultNames;
+    },
     setReply(reply) {
       defaultReply = reply ?? {};
     },

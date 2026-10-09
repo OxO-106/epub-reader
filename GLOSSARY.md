@@ -31,3 +31,7 @@ _Avoid_: Preferences, options, config (for the screen); Display settings is the 
 **Highlight**:
 A passage of a Book the reader has marked in one of four colours, optionally with a note; kept by the server with a short copy of its text and shown on every device.
 _Avoid_: Annotation, bookmark, mark (a search match is outlined, not highlighted)
+
+**Glossary** (of a Book):
+The names translation has met in one Book, each with the single Chinese form it is always translated to; decided the first time a name is met, changeable by the reader, kept by the server. Not this file.
+_Avoid_: Dictionary, name list, term base

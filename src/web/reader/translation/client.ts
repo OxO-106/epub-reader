@@ -7,6 +7,8 @@ export interface TranslateRequest {
   context?: string;
   /** Proper names learned from the section, so that one that starts a sentence is transliterated as a name too. */
   names?: string[];
+  /** The Book the text is from: its Glossary gives each name one Chinese form. */
+  bookId?: string;
 }
 
 export type TranslateOutcome =

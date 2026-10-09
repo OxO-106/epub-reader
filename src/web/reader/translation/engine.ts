@@ -51,6 +51,10 @@ export interface TranslationEngine {
   refresh(): void;
   /** Tries a failed block again, or every failed block, and ends a pause after backend trouble. */
   retry(blockId?: number): void;
+  /** The Book being translated, sent with every request so its Glossary fixes the names (null: none). */
+  setBook(bookId: string | null): void;
+  /** Drops every Translation and translates again from what is on screen, as after the Glossary changed. */
+  retranslate(): void;
   status(): TranslationStatus;
   onStatus(listener: (status: TranslationStatus) => void): () => void;
   dispose(): void;
@@ -86,6 +90,7 @@ export function createTranslationEngine(options: EngineOptions = {}): Translatio
   const { settleMs = 80, recheckMs = 8000, failureLimit = 3 } = options;
 
   let enabled = false;
+  let bookId: string | null = null;
   let current: {
     surface: Surface;
     entries: Entry[];
@@ -324,7 +329,7 @@ export function createTranslationEngine(options: EngineOptions = {}): Translatio
       }
     };
 
-    translateBlock({ text: entry.block.text, context, names: current.names }, abort.signal, (delta) => {
+    translateBlock({ text: entry.block.text, context, names: current.names, ...(bookId ? { bookId } : {}) }, abort.signal, (delta) => {
       if (job !== mine || broke) return;
       try {
         text += delta;
@@ -466,6 +471,15 @@ export function createTranslationEngine(options: EngineOptions = {}): Translatio
     },
     refresh() {
       if (enabled && current) schedulePump();
+    },
+    setBook(next) {
+      bookId = next;
+    },
+    retranslate() {
+      if (!enabled) return;
+      clearAll();
+      emit();
+      schedulePump(0);
     },
     retry(blockId) {
       if (!current || !enabled) return;

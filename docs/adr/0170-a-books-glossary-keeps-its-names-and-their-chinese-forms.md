@@ -1,0 +1,9 @@
+# A Book's Glossary keeps its names and their Chinese forms
+
+Narrows ADR 0120 and ADR 0150, which kept nothing of what is translated. Names are put into Chinese by their sound (ADR 0150), but the model chooses the characters afresh for every paragraph, so the same character could be 里弗 in one paragraph and 瑞弗 in the next. A long novel became hard to follow.
+
+So each Book now has a **Glossary**: the names translation has met in it, each with one Chinese form. The first time a paragraph brings names the Glossary does not have, the server asks the model for their forms in one short request (one line per name, under the same transliteration rule), checks each answer (Chinese characters, optionally parted by the dot ·, at most 12 characters; anything else is dropped), and saves them. The paragraph, and every later one, is then translated with "Use exactly these Chinese forms for names: …". The forms of one name share an entry (Darcy, Darcy's, Mr. Darcy). Two paragraphs that meet a new name at once make one entry: the first form saved wins. A name request that fails or answers nonsense never fails the paragraph, which is translated with the plain rule; its names are asked about again next time. The reader can change, add and remove entries, and an entry the reader set is never replaced by the model.
+
+What is stored, then, is a list of names from the Book, their Chinese forms and how often each was met, in the SQLite file in the data folder, per Book, deleted with the Book. The paragraphs and their translations are still never stored or logged, and neither are the names in the server's logs. The cost is a little of the Book's text in the database (names only), and one extra short request the first time a paragraph brings new names.
+
+Not to be confused with `GLOSSARY.md`, the project's own vocabulary.

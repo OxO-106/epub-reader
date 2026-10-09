@@ -6,6 +6,8 @@ import type { BookRow, Db } from "./db.ts";
 import { deleteBook } from "./delete.ts";
 import { fontsInfo, serveFonts } from "./fonts.ts";
 import { formatById } from "./formats/index.ts";
+import { bookGlossary } from "./glossary.ts";
+import { glossaryRoutes } from "./glossary-routes.ts";
 import { highlightRoutes } from "./highlights.ts";
 import { importBook, type RejectionCode } from "./import.ts";
 import { parseReadingPosition } from "./reading-position.ts";
@@ -167,11 +169,13 @@ export function createApp({ db, storage, libraryFolder, webDir, translator, sett
 
   // A Book's highlights, shared by every device (highlights.ts).
   app.route("/api/books/:id/highlights", highlightRoutes(db, findBook));
+  // A Book's Glossary: the Chinese form of each name, used by translation (glossary.ts, ADR 0170).
+  app.route("/api/books/:id/glossary", glossaryRoutes(db, findBook));
 
   // Files in the watched library folder that could not be imported, so the front end can show them.
   app.get("/api/library-folder", (c) => c.json({ failures: libraryFolder.failures() }));
 
-  app.route("/api/translate", translateRoutes(translator));
+  app.route("/api/translate", translateRoutes(translator, (id) => (findBook(id) ? bookGlossary(db, id) : undefined)));
   app.route("/api/settings", settingsRoutes(settings));
   // Whether the Chinese font is in the fonts folder, and where its style sheet is; the front end declares it only if so.
   app.get("/api/fonts", (c) => c.json(fontsInfo(fontsDir)));

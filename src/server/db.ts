@@ -34,6 +34,20 @@ const migrations: string[] = [
     updated_at INTEGER NOT NULL
   );
   CREATE INDEX highlights_by_book ON highlights (book_hash)`,
+  // A Book's Glossary: the names translation met in it and the Chinese form each is translated to (ADR 0170). `key` is
+  // the name normalised (glossary.ts), so the forms of one name share an entry; `by_reader` marks a form the reader set,
+  // which the model never replaces; `seen` counts the paragraphs it was met in.
+  `CREATE TABLE glossary (
+    book_hash TEXT NOT NULL,
+    key TEXT NOT NULL,
+    name TEXT NOT NULL,
+    form TEXT NOT NULL,
+    by_reader INTEGER NOT NULL DEFAULT 0,
+    seen INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (book_hash, key)
+  )`,
 ];
 
 export interface BookRow {
@@ -67,6 +81,16 @@ export interface HighlightRow {
   updated_at: number;
 }
 
+export interface GlossaryRow {
+  key: string;
+  name: string;
+  form: string;
+  by_reader: number;
+  seen: number;
+  created_at: number;
+  updated_at: number;
+}
+
 export interface Db {
   /** Most recently read first; Books never opened follow, newest import first. */
   listBooks(): ListedBookRow[];
@@ -95,6 +119,24 @@ export interface Db {
   saveHighlight(highlight: HighlightRow): HighlightRow | undefined;
   /** Returns false when the Book has no highlight with this id. */
   deleteHighlight(hash: string, id: string): boolean;
+  /** A Book's Glossary, most often seen first. */
+  listGlossary(hash: string): GlossaryRow[];
+  /** The entries of these keys. */
+  glossaryEntries(hash: string, keys: readonly string[]): GlossaryRow[];
+  /**
+   * Adds entries the model decided; a key already in the Glossary keeps its form (the first saved wins). Returns the
+   * entries of these keys as saved.
+   */
+  addGlossaryEntries(hash: string, entries: ReadonlyArray<{ key: string; name: string; form: string }>): GlossaryRow[];
+  /**
+   * Sets an entry as the reader wants it (adding it if new); `by_reader` is set, so the model never replaces it.
+   * Returns the entry as saved.
+   */
+  setGlossaryEntry(hash: string, entry: { key: string; name: string; form: string }): GlossaryRow;
+  /** Returns false when there was no such entry. */
+  deleteGlossaryEntry(hash: string, key: string): boolean;
+  /** Counts one more paragraph for each of these keys. */
+  noteGlossarySeen(hash: string, keys: readonly string[]): void;
   close(): void;
 }
 
@@ -136,6 +178,7 @@ export function openDb(path: string): Db {
       try {
         db.prepare("DELETE FROM reading_positions WHERE book_hash = ?").run(hash);
         db.prepare("DELETE FROM highlights WHERE book_hash = ?").run(hash);
+        db.prepare("DELETE FROM glossary WHERE book_hash = ?").run(hash);
         const result = db.prepare("DELETE FROM books WHERE hash = ?").run(hash);
         db.exec("COMMIT");
         return result.changes > 0;
@@ -202,6 +245,46 @@ export function openDb(path: string): Db {
     },
     deleteHighlight(hash, id) {
       return db.prepare("DELETE FROM highlights WHERE book_hash = ? AND id = ?").run(hash, id).changes > 0;
+    },
+    listGlossary(hash) {
+      return db
+        .prepare("SELECT key, name, form, by_reader, seen, created_at, updated_at FROM glossary WHERE book_hash = ? ORDER BY seen DESC, created_at, key")
+        .all(hash) as unknown as GlossaryRow[];
+    },
+    glossaryEntries(hash, keys) {
+      if (!keys.length) return [];
+      const select = db.prepare("SELECT key, name, form, by_reader, seen, created_at, updated_at FROM glossary WHERE book_hash = ? AND key = ?");
+      return keys.map((key) => select.get(hash, key) as unknown as GlossaryRow | undefined).filter((row): row is GlossaryRow => !!row);
+    },
+    addGlossaryEntries(hash, entries) {
+      const now = Date.now();
+      const insert = db.prepare(
+        "INSERT INTO glossary (book_hash, key, name, form, by_reader, seen, created_at, updated_at) VALUES (?, ?, ?, ?, 0, 0, ?, ?) ON CONFLICT(book_hash, key) DO NOTHING",
+      );
+      db.exec("BEGIN");
+      try {
+        for (const entry of entries) insert.run(hash, entry.key, entry.name, entry.form, now, now);
+        db.exec("COMMIT");
+      } catch (error) {
+        db.exec("ROLLBACK");
+        throw error;
+      }
+      return this.glossaryEntries(hash, entries.map((entry) => entry.key));
+    },
+    setGlossaryEntry(hash, entry) {
+      const now = Date.now();
+      db.prepare(
+        `INSERT INTO glossary (book_hash, key, name, form, by_reader, seen, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 0, ?, ?)
+         ON CONFLICT(book_hash, key) DO UPDATE SET form = excluded.form, by_reader = 1, updated_at = excluded.updated_at`,
+      ).run(hash, entry.key, entry.name, entry.form, now, now);
+      return this.glossaryEntries(hash, [entry.key])[0]!;
+    },
+    deleteGlossaryEntry(hash, key) {
+      return db.prepare("DELETE FROM glossary WHERE book_hash = ? AND key = ?").run(hash, key).changes > 0;
+    },
+    noteGlossarySeen(hash, keys) {
+      const bump = db.prepare("UPDATE glossary SET seen = seen + 1 WHERE book_hash = ? AND key = ?");
+      for (const key of new Set(keys)) bump.run(hash, key);
     },
     close() {
       db.close();

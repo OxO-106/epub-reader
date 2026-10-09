@@ -73,7 +73,7 @@ export type StreamedEvent = { delta: string } | { done: true } | { error: { code
 /** POSTs a paragraph to the translate endpoint and reads the whole newline-delimited JSON answer. */
 export async function translate(
   server: RunningServer,
-  body: { text: string; context?: string; names?: string[] },
+  body: { text: string; context?: string; names?: string[]; bookId?: string },
   init: { signal?: AbortSignal } = {},
 ): Promise<{ status: number; events: StreamedEvent[]; text: string }> {
   const response = await fetch(`${server.url}/api/translate`, {

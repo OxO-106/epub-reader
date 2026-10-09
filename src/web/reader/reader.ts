@@ -134,8 +134,11 @@ export interface HighlightPlace {
 export type Zoom = "fit-width" | "fit-page" | number;
 
 export interface Reader {
-  /** Shows a Book, replacing any open one. Starts at `options.position` (a CFI), or at the beginning. */
-  open(source: BookSource, options?: { position?: string }): Promise<OpenedBook>;
+  /**
+   * Shows a Book, replacing any open one. Starts at `options.position` (a CFI), or at the beginning. `options.bookId` is
+   * its id in the Library, sent with translation requests so the Book's Glossary keeps each name's Chinese form.
+   */
+  open(source: BookSource, options?: { position?: string; bookId?: string }): Promise<OpenedBook>;
   /** Moves to a `TocEntry.target` or a position (CFI). */
   goTo(target: string): Promise<void>;
   /**
@@ -185,6 +188,8 @@ export interface Reader {
   onTranslationStatus(listener: (status: TranslationStatus) => void): () => void;
   /** Tries a block whose translation failed again (`TranslationStatus.failed` lists their ids), or all of them when no id is given. */
   retryTranslation(blockId?: number): void;
+  /** Translates what is on screen again, from scratch: the Book's Glossary has changed. */
+  retranslate(): void;
   /** Moves to a place given as a fraction of the whole Book (0 to 1), as a progress scrubber asks. */
   goToFraction(fraction: number): Promise<void>;
   /**
@@ -539,6 +544,7 @@ export function createReader(container: HTMLElement): Reader {
   return {
     async open(source, options = {}) {
       closeBook();
+      translation.setBook(options.bookId ?? null);
       const book = await makeBook(source);
       fixed = (book as { rendition?: { layout?: string } }).rendition?.layout === "pre-paginated";
       pdfFile = source.kind === "pdf" ? source.file : null;
@@ -727,6 +733,7 @@ export function createReader(container: HTMLElement): Reader {
     translationStatus: () => translation.status(),
     onTranslationStatus: (listener) => translation.onStatus(listener),
     retryTranslation: (blockId) => translation.retry(blockId),
+    retranslate: () => translation.retranslate(),
     setFontFaces(css) {
       fontFaces = css;
       applyDisplay();

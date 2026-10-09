@@ -78,10 +78,11 @@ test.describe("an EPUB with things to skip and names to keep", () => {
       expect(body.names).not.toContain("Mr"); // titles and the like are left to the server's stop-list
       expect(body.names!.length).toBeLessThan(50);
     }
-    // "Elizabeth smiled ..." starts with the name, yet the model is told it is one, to put into Chinese by its sound.
+    // "Elizabeth smiled ..." starts with the name, yet the model is told it is one: here with the Chinese form the Book's
+    // Glossary fixed for it (ADR 0170), which the stand-in answers as 名字.
     const sentenceInitial = model.chatRequests().find((request) => request.user.includes("smiled at the company"))!;
-    expect(sentenceInitial.user).toMatch(/Names in the text: [^\n]*Elizabeth/);
-    expect(sentenceInitial.user).toMatch(/Names in the text: [^\n]*Darcy/);
+    expect(sentenceInitial.user).toMatch(/Use exactly these Chinese forms for names: [^\n]*Elizabeth = 名字/);
+    expect(sentenceInitial.user).toMatch(/Use exactly these Chinese forms for names: [^\n]*Darcy = 名字/);
     expect(sentenceInitial.user).toContain("Elizabeth smiled at the company");
   });
 

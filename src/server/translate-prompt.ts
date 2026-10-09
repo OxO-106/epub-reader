@@ -2,6 +2,8 @@
 // plumbing. They follow the benchmark (.scratch/ai-translation/benchmark.md): the Hy-MT2 model card's user-message
 // templates with no system prompt, and the card's sampling.
 
+import { glossaryKey, type FixedName } from "./glossary.ts";
+
 /** Sampling and request settings sent with every translation request. */
 export interface GenerationSettings {
   temperature: number;
@@ -29,10 +31,37 @@ export const generationSettings: GenerationSettings = {
  * character called River is 瑞弗, not 河. `names` are the ones translate-names.ts found in the texts; listing them is
  * what tells the model that a word like River or Hope is a name here. A well-known name keeps its usual Chinese form.
  */
-export function namesInstruction(names: readonly string[] = []): string {
+export function namesInstruction(names: readonly string[] = [], fixed: readonly FixedName[] = []): string {
   const rule =
     "Transliterate every name of a person or place into Chinese characters by its sound (音译), using its usual Chinese form if it is well known; never translate what a name means.";
-  return names.length ? `Names in the text: ${names.join(", ")}. ${rule}` : rule;
+  // Names with a form in the Book's Glossary (ADR 0170) are given as they must be written; the rest follow the rule.
+  const fixedKeys = new Set(fixed.map((entry) => glossaryKey(entry.name)));
+  const open = names.filter((name) => !fixedKeys.has(glossaryKey(name)));
+  const parts: string[] = [];
+  if (fixed.length) parts.push(`Use exactly these Chinese forms for names: ${fixed.map((entry) => `${entry.name} = ${entry.form}`).join(", ")}.`);
+  if (open.length) parts.push(`Names in the text: ${open.join(", ")}.`);
+  if (open.length || !fixed.length) parts.push(rule);
+  return parts.join(" ");
+}
+
+/**
+ * The request for the Chinese forms of names met for the first time (ADR 0170): one line per name, `Name = 中文`, under
+ * the same transliteration rule. Not streamed to anyone; the answer is checked by glossary.ts before it is kept.
+ */
+export function namesRequest(input: { names: readonly string[]; model?: string }) {
+  const content =
+    "Give the Simplified Chinese form of each of these names of people or places from an English book: transliterate it by its sound (音译), " +
+    "using its usual Chinese form if it is well known; never translate what a name means. " +
+    "Answer with one line per name, in the form Name = 中文, in the same order, and nothing else.\n\n" +
+    input.names.join("\n");
+  return {
+    ...(input.model ? { model: input.model } : {}),
+    stream: true,
+    messages: [{ role: "user", content }],
+    max_tokens: Math.min(1024, 32 + input.names.length * 24),
+    ...generationSettings,
+    temperature: 0.2,
+  };
 }
 
 /**
@@ -40,8 +69,8 @@ export function namesInstruction(names: readonly string[] = []): string {
  * paragraph, or the card's Background Information form when the previous paragraph is given as context, with the
  * instruction about names in either.
  */
-export function userMessage(passage: string, context?: string, names: readonly string[] = []): string {
-  const aboutNames = namesInstruction(names);
+export function userMessage(passage: string, context?: string, names: readonly string[] = [], fixed: readonly FixedName[] = []): string {
+  const aboutNames = namesInstruction(names, fixed);
   if (context) {
     return (
       `[Background Information]\n${context}\n\n` +
@@ -65,12 +94,12 @@ export function maxTokensFor(passage: string): number {
 }
 
 /** The JSON body of one chat-completions request. */
-export function chatRequest(input: { passage: string; context?: string; names?: readonly string[]; model?: string }) {
+export function chatRequest(input: { passage: string; context?: string; names?: readonly string[]; fixed?: readonly FixedName[]; model?: string }) {
   return {
     ...(input.model ? { model: input.model } : {}),
     stream: true,
     messages: [
-      { role: "user", content: userMessage(input.passage, input.context, input.names) },
+      { role: "user", content: userMessage(input.passage, input.context, input.names, input.fixed) },
     ],
     max_tokens: maxTokensFor(input.passage),
     ...generationSettings,

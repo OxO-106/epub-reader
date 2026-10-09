@@ -1,6 +1,7 @@
 import type { TranslateConfig } from "./config.ts";
+import { parseNameForms, type BookGlossary, type FixedName } from "./glossary.ts";
 import { findNames } from "./translate-names.ts";
-import { chatRequest, createOutputCleaner } from "./translate-prompt.ts";
+import { chatRequest, createOutputCleaner, namesRequest } from "./translate-prompt.ts";
 
 // Live translation: the app server sits between the browser and an OpenAI-style model server (ADR 0120).
 // Nothing here logs or stores the text it handles; errors carry a code and a fixed sentence, never Book text.
@@ -40,7 +41,12 @@ export interface TranslateInput {
   context?: string;
   /** Names the caller already knows (from elsewhere in the Book), so a name that starts a sentence is still caught. */
   names?: readonly string[];
+  /** The Book's Glossary: names met before keep their Chinese form, and new ones are given one (ADR 0170). */
+  glossary?: BookGlossary;
 }
+
+/** At most this many new names are asked about in one name request; the rest wait for a later paragraph. */
+export const maxNewNamesPerRequest = 40;
 
 /** An error with a code the browser can act on. The message is a fixed sentence about the cause, never Book text. */
 class TranslateError extends Error {
@@ -177,18 +183,13 @@ export function createTranslator(config: TranslateConfig): Translator {
   // ---- translate ----------------------------------------------------------------------------------------------
 
   /** The text deltas, in order, of the model server's server-sent-events answer. Throws TranslateError. */
-  async function* streamFromBackend(
-    url: string,
-    input: { passage: string; context?: string; names?: readonly string[] },
-    signal: AbortSignal,
-    onActivity: () => void,
-  ): AsyncGenerator<string> {
+  async function* streamFromBackend(url: string, body: object, signal: AbortSignal, onActivity: () => void): AsyncGenerator<string> {
     let response: Response;
     try {
       response = await fetch(`${url}/v1/chat/completions`, {
         method: "POST",
         headers: requestHeaders(config, true),
-        body: JSON.stringify(chatRequest({ passage: input.passage, context: input.context, names: input.names, model: config.model })),
+        body: JSON.stringify(body),
         signal,
       });
     } catch {
@@ -279,6 +280,30 @@ export function createTranslator(config: TranslateConfig): Translator {
     }
   }
 
+  /**
+   * The Glossary forms of a paragraph's names: those saved already, and those of new names, asked of the model in one
+   * short request and saved. A name request that fails or answers nonsense leaves its names without a form (the
+   * paragraph is translated with the plain rule, and they are asked about again next time); only giving up on the
+   * whole request (the browser leaving, a time limit) ends it.
+   */
+  async function fixedForms(url: string, glossary: BookGlossary, names: readonly string[], signal: AbortSignal, alive: () => void): Promise<FixedName[]> {
+    const { known, unknown } = glossary.lookup(names);
+    let found: FixedName[] = [];
+    const asked = unknown.slice(0, maxNewNamesPerRequest);
+    if (asked.length) {
+      try {
+        let answer = "";
+        for await (const text of streamFromBackend(url, namesRequest({ names: asked, model: config.model }), signal, alive)) answer += text;
+        found = glossary.remember(parseNameForms(answer, asked), asked);
+      } catch (error) {
+        if (signal.aborted) throw error;
+        console.warn("translate: names-failed");
+      }
+    }
+    glossary.seen(names);
+    return [...known, ...found];
+  }
+
   async function* translate(input: TranslateInput, clientSignal: AbortSignal): AsyncGenerator<TranslateEvent> {
     if (!base) {
       yield { error: { code: "not-configured", message: "Translation is not set up on this server." } };
@@ -307,7 +332,9 @@ export function createTranslator(config: TranslateConfig): Translator {
 
       // The names found here are listed in the prompt, so the model puts them into Chinese by sound (ADR 0150).
       const names = findNames(input.context ? [input.context, input.text] : [input.text], input.names);
-      const request = { passage: input.text, context: input.context, names };
+      // With the Book's Glossary, names met before are given their saved forms, and new ones are decided first (ADR 0170).
+      const fixed = input.glossary && names.length ? await fixedForms(base, input.glossary, names, upstream.signal, alive) : [];
+      const request = chatRequest({ passage: input.text, context: input.context, names, fixed, model: config.model });
       const cleaner = createOutputCleaner();
       let sent = false;
       for await (const raw of streamFromBackend(base, request, upstream.signal, alive)) {

@@ -16,6 +16,7 @@ Add a line under **Unreleased** with every change a user would notice; `npm run 
 - PDFs: imported with their title and author and with their first page as the cover, shown page by page (two at a time on a wide window) with zoom, the outline as the Contents, and Search through their text; the Reading position restores the page on every device. A PDF that needs a password is refused with a message saying so.
 - Highlights: select text in a Book and choose one of four colours; the passage stays highlighted on every device. Tap a highlight to recolour or delete it (with Undo). Works with the mouse, touch and the keyboard; not in PDFs.
 - Notes on highlights, and a Highlights panel listing a Book's highlights in reading order by chapter (choose one to go to it; recolour, write a note or delete from the list), with export to Markdown. The Library shows how many highlights a Book has.
+- Translation keeps each name the same: the first time a name is met, its Chinese form is decided and saved in the Book's Glossary, and every later paragraph uses it, on every device.
 - Browser tests for the resting bars and the progress scrubber.
 
 ### Fixed
