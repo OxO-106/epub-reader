@@ -1,19 +1,20 @@
 import type { ComponentChildren, Ref } from "preact";
 import { useState } from "preact/hooks";
 import type { ChapterProgress } from "./chapter-progress.ts";
-import { ChevronLeft, ChevronRight, ListIcon, SearchIcon, TranslateIcon, TypeIcon } from "./ReaderIcons.tsx";
+import { ChevronLeft, ChevronRight, HighlighterIcon, ListIcon, SearchIcon, TranslateIcon, TypeIcon } from "./ReaderIcons.tsx";
 import { ReadingFraction } from "./ReadingFraction.tsx";
 import { formatFraction } from "./reading-position.ts";
 import { TranslationPill, type StatusView } from "./TranslationStatus.tsx";
 
 /** The panels the top bar opens. At most one is open at a time. "translation" is opened by the status pill, not by a button of its own. */
-export type Panel = "contents" | "search" | "display" | "translation";
+export type Panel = "contents" | "search" | "highlights" | "display" | "translation";
 
 /**
  * One button of the top bar: an icon, with its word kept for assistive technology and shown as a tooltip. Icons only,
  * at every width, so the bar stays quiet and the title has the room.
  */
 export function ToolButton({
+  className,
   label,
   icon,
   panel,
@@ -22,6 +23,7 @@ export function ToolButton({
   disabled,
   onToggle,
 }: {
+  className?: string;
   label: string;
   icon: ComponentChildren;
   panel: Exclude<Panel, "translation">;
@@ -34,10 +36,10 @@ export function ToolButton({
     <button
       type="button"
       ref={buttonRef}
-      class="bar-button"
+      class={className ? `bar-button ${className}` : "bar-button"}
       title={label}
       aria-expanded={open}
-      aria-controls={panel === "contents" ? "toc" : panel === "search" ? "book-search" : "display-settings"}
+      aria-controls={{ contents: "toc", search: "book-search", highlights: "book-highlights", display: "display-settings" }[panel]}
       disabled={disabled}
       onClick={onToggle}
     >
@@ -63,6 +65,8 @@ interface TopBarProps {
   open: Panel | null;
   /** Search needs an open Book. */
   searchReady: boolean;
+  /** Whether the Book can have highlights (not a PDF): the Highlights button is shown then. */
+  highlightsReady: boolean;
   buttons: Record<Panel, Ref<HTMLButtonElement>>;
   onToggle(panel: Panel): void;
   /** Null for a Book that is not in English: there is nothing to translate and no button. */
@@ -78,7 +82,7 @@ interface TopBarProps {
  * or Retry). On a phone the pill shrinks to its dot (the words stay for screen readers), so the bar never wraps;
  * tests/e2e/phone-layouts.spec.ts and layout.spec.ts check it.
  */
-export function ReaderTopBar({ title, chapter, open, searchReady, buttons, onToggle, translate }: TopBarProps) {
+export function ReaderTopBar({ title, chapter, open, searchReady, highlightsReady, buttons, onToggle, translate }: TopBarProps) {
   return (
     <header class="reader-bar reader-top">
       <a class="bar-button bar-link" href="#/" title="Library">
@@ -100,6 +104,17 @@ export function ReaderTopBar({ title, chapter, open, searchReady, buttons, onTog
           disabled={!searchReady}
           onToggle={() => onToggle("search")}
         />
+        {highlightsReady && (
+          <ToolButton
+            className="highlights-tool"
+            label="Highlights"
+            icon={<HighlighterIcon />}
+            panel="highlights"
+            buttonRef={buttons.highlights}
+            open={open === "highlights"}
+            onToggle={() => onToggle("highlights")}
+          />
+        )}
         {translate && (
           <button
             type="button"

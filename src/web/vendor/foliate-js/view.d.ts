@@ -31,6 +31,22 @@ export interface Renderer extends HTMLElement {
   render?(): void;
   /** Set on a paginated or scrolled Book's page view; a fixed-layout Book's has no `scrolled`. */
   scrolled?: boolean;
+  /** The Book documents on screen, each with its section index and the layer annotations are drawn on. */
+  getContents(): Array<{ doc: Document; index: number; overlayer?: Overlayer }>;
+}
+
+/** The SVG layer over a Book document that annotations and search outlines are drawn on (overlayer.js). */
+export interface Overlayer {
+  /** The key (an annotation's value) and range drawn under a point in the document's coordinates, or an empty array. */
+  hitTest(point: { x: number; y: number }): [string, Range] | [];
+}
+
+/** Passed with the View's `draw-annotation` event: call `draw` with one of Overlayer's drawing functions. */
+export interface DrawAnnotationDetail {
+  draw(func: (rects: DOMRectList, options: Record<string, unknown>) => SVGElement, options?: Record<string, unknown>): void;
+  annotation: { value: string };
+  doc: Document;
+  range: Range;
 }
 
 /** What `View.search` yields: progress ticks, then per-section results, then "done". */
@@ -57,4 +73,12 @@ export class View extends HTMLElement {
   next(): Promise<void>;
   prev(): Promise<void>;
   close(): void;
+  /** The CFI of a range in the section with this index. */
+  getCFI(index: number, range?: Range): string;
+  /**
+   * Draws an annotation (its `value` is a CFI range) when its section is on screen, through a `draw-annotation` event;
+   * sections loaded later announce themselves with `create-overlay` ({index}) so their annotations can be added then.
+   */
+  addAnnotation(annotation: { value: string }): Promise<unknown>;
+  deleteAnnotation(annotation: { value: string }): Promise<unknown>;
 }

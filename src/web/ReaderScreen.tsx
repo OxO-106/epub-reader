@@ -8,7 +8,11 @@ import { ContentsDrawer } from "./ContentsDrawer.tsx";
 import { applyTheme, loadDisplay, saveDisplay, type DisplaySettings } from "./display-settings.ts";
 import { DisplaySettingsPanel } from "./DisplaySettingsPanel.tsx";
 import { fontFaceCss } from "./fonts.ts";
-import { createReader, type Reader, type TocEntry, type TranslationStatus, type Zoom } from "./reader/reader.ts";
+import type { Highlight, HighlightColor } from "./api.ts";
+import { HighlightMenu } from "./HighlightMenu.tsx";
+import { HighlightsPanel } from "./HighlightsPanel.tsx";
+import { useHighlights } from "./highlights.ts";
+import { createReader, type Reader, type ScreenRect, type TextSelection, type TocEntry, type TranslationStatus, type Zoom } from "./reader/reader.ts";
 import { loadZoom, saveZoom } from "./pdf-zoom.ts";
 import { ReaderBottomBar, ReaderTopBar, type Panel } from "./ReaderBars.tsx";
 import { trackReadingPosition } from "./reading-position.ts";
@@ -29,6 +33,12 @@ const searchOverlays = () => !window.matchMedia("(min-width: 60rem)").matches;
 /** How long the bars stay after the Book opens, or after the pointer leaves them, before they fade to let the page be read. */
 const chromeRestMs = 2500;
 
+/** How long Undo is offered after a highlight is deleted. */
+const undoMs = 6000;
+
+/** The highlight menu: by the selected text, or by a highlight that was tapped. */
+type MenuState = { kind: "selection"; selection: TextSelection } | { kind: "highlight"; id: string; rect: ScreenRect };
+
 /**
  * The Reader screen: one Book, a top bar (Library, title and chapter, the Contents, Search and Display buttons and, for an
  * English Book, Translate with its status), the text, and a bottom bar (Previous, the progress scrubber, Next). At most
@@ -40,6 +50,9 @@ const chromeRestMs = 2500;
  * while a panel is open, while the Book is opening, and while translation reports trouble.
  *
  * Translate is a setting of this device (translate-setting.ts) applied to every English Book; the Reader module does the work.
+ *
+ * Highlights (highlights.ts): selecting text shows a menu of colours by it; tapping a highlight shows the colours and
+ * Delete, with Undo for a few seconds after. Not in a PDF, whose pages are drawings.
  */
 export function ReaderScreen({ bookId }: { bookId: string }) {
   const [state, setState] = useState<State>({ kind: "loading" });
@@ -70,10 +83,19 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const buttons = {
     contents: useRef<HTMLButtonElement>(null),
     search: useRef<HTMLButtonElement>(null),
+    highlights: useRef<HTMLButtonElement>(null),
     display: useRef<HTMLButtonElement>(null),
     translation: useRef<HTMLButtonElement>(null), // the status pill, when it is a button
   };
   const translateButton = useRef<HTMLButtonElement>(null);
+  const highlights = useHighlights(bookId, state.kind === "ready" && !fixed);
+  const [menu, setMenu] = useState<MenuState | null>(null);
+  const menuNow = useRef(menu);
+  menuNow.current = menu;
+  const [undo, setUndo] = useState<Highlight | null>(null);
+  // The highlight whose note is being written in the Highlights panel.
+  const [editingNote, setEditingNote] = useState<string | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const barsInUse = () => inBars.current.pointer || inBars.current.focus;
 
@@ -124,9 +146,21 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       setEnglish(instance.isEnglish());
       // A page turned from the keyboard or on the page itself: put the bars away, unless they are being used.
       if (opened && !barsInUse()) rest();
+      // A tapped highlight's menu belongs to the page it was on.
+      if (menuNow.current?.kind === "highlight") setMenu(null);
     });
+    const stopSelection = instance.onSelection((selection) => {
+      if (selection) setMenu({ kind: "selection", selection });
+      else if (menuNow.current?.kind === "selection") setMenu(null);
+    });
+    const stopHighlightTaps = instance.onHighlightTap(({ id, rect }) => setMenu({ kind: "highlight", id, rect }));
     const stopStatus = instance.onTranslationStatus(setTranslation);
     const stopTaps = instance.onTap(() => {
+      // A tap elsewhere on the page puts an open highlight menu away, and does nothing else.
+      if (menuNow.current) {
+        setMenu(null);
+        return;
+      }
       clearTimeout(restTimer.current);
       setResting(!restingNow.current);
     });
@@ -174,11 +208,21 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       stopListening();
       stopStatus();
       stopTaps();
+      stopSelection();
+      stopHighlightTaps();
+      setMenu(null);
       instance.close();
       reader.current = null;
       if ((window as { __reader?: Reader }).__reader === instance) delete (window as { __reader?: Reader }).__reader;
     };
   }, [bookId, attempt]);
+
+  // The Reader draws whatever highlights the Book has now.
+  useEffect(() => {
+    reader.current?.setHighlights(highlights.list.map(({ id, cfi, color, note }) => ({ id, cfi, color, hasNote: note !== "" })));
+  }, [highlights.list]);
+
+  useEffect(() => () => clearTimeout(undoTimer.current), []);
 
   // Newer reading preferences from another device (shared-reading.ts) apply to the open Book at once.
   useEffect(() => {
@@ -300,6 +344,62 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     translateButton.current?.focus();
   }
 
+  function chooseColor(color: HighlightColor) {
+    if (!menu) return;
+    if (menu.kind === "selection") {
+      highlights.add(menu.selection, color);
+      reader.current?.clearSelection();
+      if (menu.selection.byKeyboard) reader.current?.focus();
+    } else {
+      highlights.update(menu.id, { color });
+    }
+    setMenu(null);
+  }
+
+  function copySelection() {
+    if (menu?.kind !== "selection") return;
+    navigator.clipboard?.writeText(menu.selection.text).catch(() => {});
+    reader.current?.clearSelection();
+    setMenu(null);
+  }
+
+  function deleteHighlightFromMenu() {
+    if (menu?.kind !== "highlight") return;
+    removeHighlight(menu.id);
+    setMenu(null);
+  }
+
+  /** Deletes a highlight and offers Undo for a few seconds. */
+  function removeHighlight(id: string) {
+    const removed = highlights.remove(id);
+    if (!removed) return;
+    setUndo(removed);
+    clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setUndo(null), undoMs);
+  }
+
+  /** Note, from a tapped highlight's menu: the Highlights panel opens with that note being written. */
+  function writeNote() {
+    if (menu?.kind !== "highlight") return;
+    setEditingNote(menu.id);
+    setMenu(null);
+    setPanel("highlights");
+  }
+
+  function undoDelete() {
+    if (undo) highlights.restore(undo);
+    clearTimeout(undoTimer.current);
+    setUndo(null);
+    reader.current?.focus();
+  }
+
+  function closeMenu() {
+    const was = menu;
+    setMenu(null);
+    if (was?.kind === "selection") reader.current?.clearSelection();
+    reader.current?.focus();
+  }
+
   function openChapter(entry: TocEntry) {
     reader.current?.goTo(entry.target);
     closePanel("book"); // the page-turn keys work straight after choosing
@@ -314,6 +414,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
             chapter={chapter?.label || null}
             open={panel}
             searchReady={ready}
+            highlightsReady={ready && !fixed}
             buttons={buttons}
             onToggle={(next) => setPanel(panel === next ? null : next)}
             translate={
@@ -326,7 +427,15 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
 
         <div class="reader-body">
           <div class="reader-view" ref={viewport} />
-          {panel === "contents" && <ContentsDrawer toc={toc} chapterId={chapterId} onPick={openChapter} onClose={() => closePanel()} />}
+          {panel === "contents" && (
+            <ContentsDrawer
+              toc={toc}
+              chapterId={chapterId}
+              onPick={openChapter}
+              onClose={() => closePanel()}
+              highlights={ready && !fixed ? { count: highlights.list.length, onOpen: () => setPanel("highlights") } : undefined}
+            />
+          )}
           {panel === "display" && (
             <DisplaySettingsPanel
               settings={display}
@@ -373,6 +482,75 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
             if (searchOverlays()) closePanel("book");
           }}
         />
+      )}
+
+      {panel === "highlights" && ready && !fixed && reader.current && (
+        <HighlightsPanel
+          reader={reader.current}
+          highlights={highlights}
+          bookId={bookId}
+          title={state.title}
+          theme={display.theme}
+          editing={editingNote}
+          onEdit={setEditingNote}
+          onDelete={removeHighlight}
+          onClose={() => {
+            setEditingNote(null);
+            closePanel();
+          }}
+          onPicked={() => {
+            if (searchOverlays()) closePanel("book");
+          }}
+        />
+      )}
+
+      {menu?.kind === "selection" && (
+        <HighlightMenu
+          kind="selection"
+          rect={menu.selection.rect}
+          theme={display.theme}
+          autoFocus={menu.selection.byKeyboard}
+          onColor={chooseColor}
+          onCopy={copySelection}
+          onClose={closeMenu}
+        />
+      )}
+      {menu?.kind === "highlight" &&
+        (() => {
+          const highlight = highlights.list.find((h) => h.id === menu.id);
+          return highlight ? (
+            <HighlightMenu
+              kind="highlight"
+              rect={menu.rect}
+              theme={display.theme}
+              autoFocus={false}
+              color={highlight.color}
+              hasNote={highlight.note !== ""}
+              onNote={writeNote}
+              onColor={chooseColor}
+              onDelete={deleteHighlightFromMenu}
+              onClose={closeMenu}
+            />
+          ) : null;
+        })()}
+      {(undo || highlights.problem) && (
+        <div class="reader-toast" role={highlights.problem ? "alert" : "status"}>
+          {highlights.problem ? (
+            <>
+              <span>{highlights.problem}</span>
+              <button type="button" onClick={highlights.clearProblem}>
+                Dismiss
+              </button>
+            </>
+          ) : (
+            <>
+              <span>Highlight deleted.</span>
+              <button type="button" onClick={undoDelete}>
+                Undo
+              </button>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

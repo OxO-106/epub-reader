@@ -264,6 +264,11 @@ export function Library() {
                   <a class="book-link" href={`#/read/${book.id}`}>
                     <BookCover book={book} />
                     <span class="title">{book.title}</span>
+                    {book.highlights > 0 && (
+                      <span class="book-highlights">
+                        {book.highlights} {book.highlights === 1 ? "highlight" : "highlights"}
+                      </span>
+                    )}
                   </a>
                   <div class="book-meta">
                     <span class="author">{book.author ?? formatName(book.format)}</span>

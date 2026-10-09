@@ -1,3 +1,4 @@
+import type { HighlightColor } from "../shared/highlight-colors.ts";
 /**
  * Display settings: how a Book looks, remembered per device in browser storage and applied to every Book.
  * They are not part of the Reading position. Pure data and storage here; the Reader module turns them into
@@ -125,6 +126,12 @@ export interface Palette {
   /** A Translation that failed: the warning ink and its tint (--danger and --alert-soft in theme.css). */
   alertInk: string;
   alertBackground: string;
+  /**
+   * Highlights: the colour of each, laid over the text at `highlightOpacity` (the text stays legible through it at 4.5:1
+   * or more; tests/unit/highlight-colors.test.ts checks).
+   */
+  highlights: Record<HighlightColor, string>;
+  highlightOpacity: number;
 }
 
 /** What a Book's page is painted with: the theme's ground, the text colour used for reading (a little softer than the interface's ink) and the accent for links. Keep in step with theme.css. */
@@ -139,6 +146,8 @@ export const themes: Record<Theme, Palette> = {
     glossBar: "#e2dccf",
     alertInk: "#b3261e",
     alertBackground: "#f5dfd9",
+    highlights: { yellow: "#f7cf3c", green: "#8fd18a", blue: "#8dbcf2", pink: "#f2a3c4" },
+    highlightOpacity: 0.36,
   },
   sepia: {
     label: "Sepia",
@@ -150,6 +159,8 @@ export const themes: Record<Theme, Palette> = {
     glossBar: "#ddd0ab",
     alertInk: "#9c2a1b",
     alertBackground: "#ebd2bd",
+    highlights: { yellow: "#f0bf1a", green: "#6fbf68", blue: "#6aa6ea", pink: "#ee86b2" },
+    highlightOpacity: 0.3,
   },
   dark: {
     label: "Dark",
@@ -161,6 +172,8 @@ export const themes: Record<Theme, Palette> = {
     glossBar: "#36332e",
     alertInk: "#ff8f85",
     alertBackground: "#3a2928",
+    highlights: { yellow: "#d4aa22", green: "#4f9a5a", blue: "#4a7fc4", pink: "#b85d86" },
+    highlightOpacity: 0.38,
   },
   black: {
     label: "Black",
@@ -172,6 +185,8 @@ export const themes: Record<Theme, Palette> = {
     glossBar: "#292725",
     alertInk: "#ff8f85",
     alertBackground: "#301f1e",
+    highlights: { yellow: "#d4aa22", green: "#4f9a5a", blue: "#4a7fc4", pink: "#b85d86" },
+    highlightOpacity: 0.38,
   },
 };
 

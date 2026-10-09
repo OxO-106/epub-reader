@@ -527,14 +527,14 @@
 
 /* ---- Search: docked beside the text on a wide window, over it on a narrow one ---- */
 
-.reader-screen .reader-search {
+.reader-screen :is(.reader-search, .reader-highlights) {
   flex: 0 0 380px;
   width: 380px;
   border-inline-start: 1px solid var(--border);
 }
 
 @media (max-width: 59.99rem) {
-  .reader-screen .reader-search {
+  .reader-screen :is(.reader-search, .reader-highlights) {
     position: fixed;
     z-index: 5;
     top: var(--bar-top);
@@ -1217,7 +1217,7 @@
   }
 
   /* Search: the same, between the bars (it already covers the text below 60rem). */
-  .reader-screen .reader-search {
+  .reader-screen :is(.reader-search, .reader-highlights) {
     inset-inline: 0;
     width: auto;
     border-inline-start: 0;
@@ -1257,4 +1257,332 @@
   .reader-screen .swatch {
     height: 58px;
   }
+}
+
+/* ---- Highlights: the menu by a selection or a tapped highlight, and the Undo notice ---- */
+
+.reader-screen .highlight-menu {
+  position: fixed;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-panel);
+  animation: fade-in 120ms ease;
+}
+
+.reader-screen .highlight-swatch {
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.reader-screen .highlight-swatch::before {
+  content: "";
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+
+.reader-screen .highlight-swatch[aria-pressed="true"]::before {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--fg);
+}
+
+.reader-screen .highlight-swatch:focus-visible,
+.reader-screen .highlight-menu-action:focus-visible,
+.reader-screen .reader-toast button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.reader-screen .highlight-menu-rule {
+  width: 1px;
+  align-self: stretch;
+  margin: 8px 2px;
+  background: var(--border);
+}
+
+.reader-screen .highlight-menu-action {
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.reader-screen .highlight-menu-action:active {
+  background: var(--raised);
+}
+
+.reader-screen .reader-toast {
+  position: fixed;
+  z-index: 10;
+  left: 50%;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 32px);
+  padding: 6px 6px 6px 16px;
+  background: var(--fg);
+  color: var(--bg);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-panel);
+  font-size: 0.875rem;
+  animation: fade-in 160ms ease;
+}
+
+.reader-screen .reader-toast button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-screen .highlight-menu,
+  .reader-screen .reader-toast {
+    animation: none;
+  }
+}
+
+/* ---- Highlights panel: docked like Search ---- */
+
+.reader-screen .highlights-top {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 20px 10px;
+}
+
+.reader-screen .highlights-top p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.reader-screen .highlights-export,
+.reader-screen .highlight-action {
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.reader-screen .highlight-action.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.reader-screen .highlights-export:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.reader-screen .highlights-list {
+  padding: 0 8px 16px;
+}
+
+.reader-screen .highlights-empty,
+.reader-screen .highlights-detached-note {
+  margin: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.reader-screen .highlights-group h3 {
+  margin: 0;
+  padding: 18px 12px 4px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.reader-screen .highlights-group ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reader-screen .highlight-item {
+  margin: 4px 0;
+  padding: 2px 0 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.reader-screen .highlight-jump {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 12px 8px 16px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: linear-gradient(var(--swatch), var(--swatch)) 4px 10px / 4px calc(100% - 20px) no-repeat;
+  color: var(--fg);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.reader-screen .highlight-jump:disabled {
+  cursor: default;
+}
+
+.reader-screen .highlight-jump[aria-current="location"] {
+  background-color: var(--accent-soft);
+}
+
+.reader-screen .highlight-jump:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.reader-screen .highlight-text {
+  font-family: var(--font-serif);
+  font-size: 15.5px;
+  line-height: 1.55;
+}
+
+.reader-screen .highlight-note {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.reader-screen .highlight-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  padding: 0 8px 0 10px;
+}
+
+.reader-screen .highlight-swatch.small {
+  width: var(--tap);
+  height: var(--tap);
+}
+
+.reader-screen .highlight-swatch.small::before {
+  width: 16px;
+  height: 16px;
+}
+
+.reader-screen .note-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 12px 0 16px;
+}
+
+.reader-screen .note-editor textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.reader-screen .note-editor textarea:focus-visible,
+.reader-screen .highlight-action:focus-visible,
+.reader-screen .highlights-export:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.reader-screen .note-editor-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.reader-screen .panel-head h2:focus {
+  outline: none;
+}
+
+/* On a phone the top bar has no room for a Highlights button: the Contents drawer leads to the panel instead. */
+@media (max-width: 40rem) {
+  .reader-screen .highlights-tool {
+    display: none;
+  }
+}
+
+.reader-screen .drawer-highlights {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--tap);
+  margin: 0 12px 8px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.reader-screen .drawer-highlights:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.reader-screen .drawer-highlights-count {
+  min-width: 1.5em;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  font-size: 12px;
+  text-align: center;
+  color: var(--muted);
 }

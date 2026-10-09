@@ -6,6 +6,7 @@ import type { BookRow, Db } from "./db.ts";
 import { deleteBook } from "./delete.ts";
 import { fontsInfo, serveFonts } from "./fonts.ts";
 import { formatById } from "./formats/index.ts";
+import { highlightRoutes } from "./highlights.ts";
 import { importBook, type RejectionCode } from "./import.ts";
 import { parseReadingPosition } from "./reading-position.ts";
 import { searchBooks } from "./search.ts";
@@ -34,7 +35,7 @@ export interface AppContext {
   fontsDir: string;
 }
 
-const toSummary = (row: BookRow & { fraction?: number | null }) => ({
+const toSummary = (row: BookRow & { fraction?: number | null }, highlights = 0) => ({
   id: row.hash,
   title: row.title,
   author: row.author,
@@ -44,6 +45,8 @@ const toSummary = (row: BookRow & { fraction?: number | null }) => ({
   lastReadAt: row.last_read_at,
   /** How far through the Book the Reading position is, 0 to 1; null when the Book was never opened. */
   fraction: row.fraction ?? null,
+  /** How many highlights the Book has. */
+  highlights,
 });
 
 const rejectionStatus: Record<RejectionCode, 413 | 415 | 422> = {
@@ -73,7 +76,10 @@ export function createApp({ db, storage, libraryFolder, webDir, translator, sett
   const findBook = (id: string) => (isBookId(id) ? db.getBook(id) : undefined);
 
   // `?q=` narrows the list by title and author.
-  app.get("/api/books", (c) => c.json({ books: searchBooks(db.listBooks(), c.req.query("q") ?? "").map(toSummary) }));
+  app.get("/api/books", (c) => {
+    const counts = db.highlightCounts();
+    return c.json({ books: searchBooks(db.listBooks(), c.req.query("q") ?? "").map((row) => toSummary(row, counts.get(row.hash))) });
+  });
 
   // Import one file: the request body is the file itself, `name` is its file name.
   // The body is streamed to disk; to add several files the client sends several requests.
@@ -111,7 +117,7 @@ export function createApp({ db, storage, libraryFolder, webDir, translator, sett
   // One Book's summary, so the Reader knows its format and title before it fetches the file.
   app.get("/api/books/:id", (c) => {
     const book = findBook(c.req.param("id"));
-    return book ? c.json(toSummary(book)) : notFound(c);
+    return book ? c.json(toSummary(book, db.highlightCounts().get(book.hash))) : notFound(c);
   });
 
   // The Book file as stored, streamed. A Book's id is its content hash, so the bytes behind a URL never change.
@@ -158,6 +164,9 @@ export function createApp({ db, storage, libraryFolder, webDir, translator, sett
     if (!db.saveReadingPosition(id, parsed.value)) return notFound(c);
     return c.body(null, 204);
   });
+
+  // A Book's highlights, shared by every device (highlights.ts).
+  app.route("/api/books/:id/highlights", highlightRoutes(db, findBook));
 
   // Files in the watched library folder that could not be imported, so the front end can show them.
   app.get("/api/library-folder", (c) => c.json({ failures: libraryFolder.failures() }));

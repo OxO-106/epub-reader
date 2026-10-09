@@ -114,7 +114,8 @@ test.describe("translation", () => {
     await page.getByRole("button", { name: "Translate", exact: true }).click();
 
     await expect(page.getByRole("status").filter({ hasText: "Ready" })).toHaveCount(1, { timeout: 20_000 });
-    expect(model.chatRequests().some((request) => request.user.includes("K1 P001"))).toBe(true);
+    // The status can say Ready a moment before the request log has the first page's request in it.
+    await expect.poll(() => model.chatRequests().some((request) => request.user.includes("K1 P001")), { timeout: 10_000 }).toBe(true);
   });
 });
 

@@ -11,9 +11,11 @@
  * and Markdown and plain-text Books, which arrive as a `BookSource` of kind "custom" holding a
  * foliate-js book object built by an adapter and are passed to the same view (08, 09).
  */
-import type { FoliateBook, RelocateDetail, TocItem, View } from "../vendor/foliate-js/view.js";
+import type { DrawAnnotationDetail, FoliateBook, RelocateDetail, TocItem, View } from "../vendor/foliate-js/view.js";
+import { compare as compareCfi } from "../vendor/foliate-js/epubcfi.js";
 import { makeCustomBook, type CustomBook } from "./custom-book.ts";
-import { marginSizes, type DisplaySettings } from "../display-settings.ts";
+import { marginSizes, themes, type DisplaySettings } from "../display-settings.ts";
+import type { HighlightColor } from "../../shared/highlight-colors.ts";
 import { bookStyles } from "./book-styles.ts";
 import { normalizeFontSizes } from "./font-scale.ts";
 import { clickMayTurnPage, createTurnQueue, directionForKey, edgeAt, keyMayTurnPage, type Direction } from "./page-turn.ts";
@@ -87,6 +89,45 @@ export interface SearchUpdate {
   chapter?: SearchChapter;
   /** The Book has no text to search at all (a PDF that is only scanned pictures). */
   noText?: boolean;
+}
+
+/** A box on the app's page (CSS pixels from the top left of the window), for placing a menu next to something in the Book. */
+export interface ScreenRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/** Text the reader has selected in the Book. */
+export interface TextSelection {
+  /** A CFI range: where the selection is, for a highlight. */
+  cfi: string;
+  /** The selected text, as it reads. */
+  text: string;
+  /** Where it is on screen. */
+  rect: ScreenRect;
+  /** The selection was finished from the keyboard (Shift released), so a menu for it should take focus. */
+  byKeyboard: boolean;
+}
+
+/** A highlight as the Reader draws it. */
+export interface DrawnHighlight {
+  id: string;
+  /** A CFI range. */
+  cfi: string;
+  color: HighlightColor;
+  /** Marked with a dot at its end. */
+  hasNote?: boolean;
+}
+
+/** Where a highlight is in the open Book, for listing highlights in reading order. */
+export interface HighlightPlace {
+  cfi: string;
+  /** The label of the table-of-contents entry it is under; null when the Book has none for that place. */
+  chapter: string | null;
+  /** False when its place cannot be found in this Book any more. */
+  found: boolean;
 }
 
 /** How a fixed-layout Book (a PDF) fits the screen: the width, the whole page, or a scale (1 = the page's own size). */
@@ -165,6 +206,28 @@ export interface Reader {
    * anywhere on a scrolled one), which is how the Reader screen shows and hides its bars. Returns a function that stops listening.
    */
   onTap(listener: () => void): () => void;
+  /**
+   * Draws these highlights, replacing the set drawn before: each in its colour for the current theme, on whichever of
+   * their pages are shown now or later, and in place after the Display settings change. Not drawn in a fixed-layout Book.
+   */
+  setHighlights(highlights: DrawnHighlight[]): void;
+  /**
+   * Calls `listener` with the reader's text selection once it settles (a moment after it last changed, the pointer up),
+   * and with null when it goes. Never for a fixed-layout Book. Returns a function that stops listening.
+   */
+  onSelection(listener: (selection: TextSelection | null) => void): () => void;
+  /**
+   * Puts highlights (by CFI) in reading order, each with the chapter it is in; those whose place cannot be found come
+   * last, in the order given. Known once `open` has resolved.
+   */
+  placeHighlights(cfis: string[]): HighlightPlace[];
+  /** Removes the text selection, as after a highlight was made from it. */
+  clearSelection(): void;
+  /**
+   * Calls `listener` when the reader taps or clicks a drawn highlight (instead of the tap turning the page or reaching
+   * `onTap`). Returns a function that stops listening.
+   */
+  onHighlightTap(listener: (tap: { id: string; rect: ScreenRect }) => void): () => void;
   /** Removes the Book and everything the Reader added to its container. */
   close(): void;
 }
@@ -182,9 +245,121 @@ export function createReader(container: HTMLElement): Reader {
   let display: DisplaySettings | null = null;
   let fontFaces = "";
 
+  // ---- highlights -----------------------------------------------------------------------------------------------------
+  /** Drawn highlights by CFI (foliate-js keys annotations by their value, which is the CFI). */
+  let highlights = new Map<string, DrawnHighlight>();
+  const selectionListeners = new Set<(selection: TextSelection | null) => void>();
+  const highlightTapListeners = new Set<(tap: { id: string; rect: ScreenRect }) => void>();
+  /** The Book has finished opening, so foliate-js can be asked to draw. */
+  let ready = false;
+  let drawnTheme: string | null = null;
+  const palette = () => themes[display?.theme ?? "light"];
+  const draw = (highlight: DrawnHighlight) => {
+    if (view && ready && !fixed) view.addAnnotation({ value: highlight.cfi }).catch(() => {}); // a CFI that no longer resolves is simply not drawn
+  };
+  const undraw = (cfi: string) => {
+    if (view && ready && !fixed) view.deleteAnnotation({ value: cfi }).catch(() => {});
+  };
+  /** The highlight colours depend on the theme: when it changes, everything is drawn again in the new colours. */
+  const paintHighlights = () => {
+    if (!view || !ready) return;
+    view.style.setProperty("--overlayer-highlight-opacity", String(palette().highlightOpacity));
+    const theme = display?.theme ?? "light";
+    if (theme === drawnTheme) return;
+    drawnTheme = theme;
+    for (const highlight of highlights.values()) draw(highlight);
+  };
+
+  /** A box in a Book document (its own coordinates) as a box on the app's page. */
+  const toScreen = (box: DOMRect, doc: Document): ScreenRect => {
+    const frame = doc.defaultView?.frameElement?.getBoundingClientRect();
+    const dx = frame?.left ?? 0;
+    const dy = frame?.top ?? 0;
+    return { left: box.left + dx, top: box.top + dy, right: box.right + dx, bottom: box.bottom + dy };
+  };
+
+  /** The part of a range that is on screen (a selection can run onto the next page), as one box. */
+  const visibleBox = (range: Range, doc: Document): ScreenRect | null => {
+    const shown = container.getBoundingClientRect();
+    const boxes = [...range.getClientRects()]
+      .map((box) => toScreen(box, doc))
+      .filter((box) => box.right > shown.left && box.left < shown.right && box.bottom > shown.top && box.top < shown.bottom && box.right > box.left);
+    if (!boxes.length) return null;
+    return {
+      left: Math.max(shown.left, Math.min(...boxes.map((b) => b.left))),
+      top: Math.max(shown.top, Math.min(...boxes.map((b) => b.top))),
+      right: Math.min(shown.right, Math.max(...boxes.map((b) => b.right))),
+      bottom: Math.min(shown.bottom, Math.max(...boxes.map((b) => b.bottom))),
+    };
+  };
+
+  let reported: TextSelection | null = null;
+  const report = (selection: TextSelection | null) => {
+    if (!selection && !reported) return;
+    reported = selection;
+    for (const listener of selectionListeners) listener(selection);
+  };
+
+  /** Watches the selection in one Book document and reports it once it settles. */
+  function watchSelection(doc: Document, index: number) {
+    let pointerDown = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const check = (byKeyboard: boolean) => {
+      clearTimeout(timer);
+      if (!view) return;
+      const selection = doc.getSelection();
+      const range = selection && selection.rangeCount > 0 && !selection.isCollapsed ? selection.getRangeAt(0) : null;
+      const text = range?.toString().replace(/\s+/g, " ").trim() ?? "";
+      const rect = range && text ? visibleBox(range, doc) : null;
+      if (!range || !rect) return report(null);
+      let cfi: string;
+      try {
+        cfi = view.getCFI(index, range);
+      } catch {
+        return report(null);
+      }
+      report({ cfi, text, rect, byKeyboard });
+    };
+    const soon = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => check(false), 350);
+    };
+    doc.addEventListener("pointerdown", () => {
+      pointerDown = true;
+      clearTimeout(timer);
+    });
+    doc.addEventListener("pointerup", () => {
+      pointerDown = false;
+      soon();
+    });
+    doc.addEventListener("pointercancel", () => {
+      pointerDown = false; // a touch that became a long press hands over to the system's selection handles
+      soon();
+    });
+    doc.addEventListener("selectionchange", () => {
+      if (!pointerDown) soon();
+    });
+    // Releasing Shift ends a selection made with Shift and the arrows: report it at once, for the keyboard.
+    doc.addEventListener("keyup", (event) => {
+      if (event.key === "Shift") check(true);
+    });
+  }
+
+  /** The highlight under a click in a Book document, if any. */
+  function highlightAt(event: MouseEvent, doc: Document): { id: string; rect: ScreenRect } | null {
+    if (!view || highlights.size === 0) return null;
+    const contents = view.renderer.getContents?.().find((entry) => entry.doc === doc);
+    const [cfi, range] = contents?.overlayer?.hitTest({ x: event.clientX, y: event.clientY }) ?? [];
+    const highlight = cfi ? highlights.get(cfi) : undefined;
+    if (!highlight || !range) return null;
+    const rect = visibleBox(range, doc) ?? toScreen(range.getBoundingClientRect(), doc);
+    return { id: highlight.id, rect };
+  }
+
   const applyDisplay = () => {
     const renderer = view?.renderer;
     if (renderer && fixed) renderer.setAttribute("zoom", String(zoom));
+    if (renderer && display) paintHighlights();
     if (!renderer || !display) return;
     const margins = marginSizes[display.margins];
     renderer.setAttribute("flow", display.flow);
@@ -336,6 +511,11 @@ export function createReader(container: HTMLElement): Reader {
     if (event.defaultPrevented || event.button !== 0 || !view) return;
     if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
     if (!clickMayTurnPage(event.target, doc?.getSelection())) return;
+    const tapped = doc ? highlightAt(event, doc) : null;
+    if (tapped) {
+      for (const listener of highlightTapListeners) listener(tapped);
+      return;
+    }
     const edge = scrolled() ? null : edgeAt(x, container.getBoundingClientRect());
     if (edge) turnToward(edge);
     else for (const listener of tapListeners) listener();
@@ -348,6 +528,9 @@ export function createReader(container: HTMLElement): Reader {
     stopInput?.();
     stopInput = null;
     searchRun++;
+    ready = false;
+    drawnTheme = null;
+    report(null);
     view?.close();
     view?.remove();
     view = null;
@@ -361,7 +544,10 @@ export function createReader(container: HTMLElement): Reader {
       pdfFile = source.kind === "pdf" ? source.file : null;
       // A fixed-layout page is a drawing, not text that can carry a translation under each paragraph.
       english = fixed ? false : declaredEnglish(book.metadata?.language);
-      await import("../vendor/foliate-js/view.js"); // registers <foliate-view>
+      const [, { Overlayer }] = await Promise.all([
+        import("../vendor/foliate-js/view.js"), // registers <foliate-view>
+        import("../vendor/foliate-js/overlayer.js"),
+      ]);
       const next = document.createElement("foliate-view") as View;
       next.style.cssText = "display:block;width:100%;height:100%";
       container.append(next);
@@ -387,6 +573,43 @@ export function createReader(container: HTMLElement): Reader {
         if (/^(https?:|mailto:|tel:)/i.test(href)) window.open(href, "_blank", "noopener,noreferrer");
       });
 
+      // Highlights: foliate-js asks for each annotation to be drawn, and announces each section shown later so that
+      // its highlights can be added then.
+      next.addEventListener("draw-annotation", (event) => {
+        const { draw: drawWith, annotation } = (event as CustomEvent<DrawAnnotationDetail>).detail;
+        const highlight = highlights.get(annotation.value);
+        if (!highlight) return;
+        const color = palette().highlights[highlight.color];
+        if (!highlight.hasNote) return drawWith(Overlayer.highlight, { color });
+        // A highlight with a note gets a dot at the end of its last line, at full strength.
+        drawWith((rects) => {
+          const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          group.append(Overlayer.highlight(rects, { color }));
+          const last = rects[rects.length - 1];
+          if (last) {
+            const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            dot.setAttribute("cx", String(last.right));
+            dot.setAttribute("cy", String(last.top + 1));
+            dot.setAttribute("r", "3.5");
+            dot.setAttribute("fill", color);
+            dot.setAttribute("data-note", "");
+            group.append(dot);
+          }
+          return group;
+        });
+      });
+      next.addEventListener("create-overlay", (event) => {
+        const { index } = (event as CustomEvent<{ index: number }>).detail;
+        if (fixed || !ready) return;
+        for (const highlight of highlights.values()) {
+          try {
+            if (next.resolveNavigation(highlight.cfi)?.index === index) draw(highlight);
+          } catch {
+            // a CFI from an older copy of the Book: not drawn
+          }
+        }
+      });
+
       rtl = book.dir === "rtl";
       // Key and click events inside the Book's iframes do not reach this page, so listen inside each one too.
       next.addEventListener("load", (event) => {
@@ -395,7 +618,10 @@ export function createReader(container: HTMLElement): Reader {
         if (next.renderer?.setStyles) normalizeFontSizes(doc);
         setChineseLanguage(doc);
         english ??= looksEnglish((doc.body?.textContent ?? "").slice(0, 8000));
-        if (!fixed) attachTranslation(doc);
+        if (!fixed) {
+          attachTranslation(doc);
+          watchSelection(doc, (event as CustomEvent<{ index: number }>).detail.index);
+        }
         const frameLeft = () => doc.defaultView?.frameElement?.getBoundingClientRect().left ?? 0;
         doc.addEventListener("keydown", onKeyDown);
         doc.addEventListener("click", (click) => onClick(click, frameLeft() + click.clientX, doc));
@@ -422,6 +648,9 @@ export function createReader(container: HTMLElement): Reader {
         () => {},
       );
       await opening;
+      ready = true;
+      drawnTheme = null;
+      paintHighlights(); // the first page was shown before the Book was ready to draw on
       toc = flattenToc(book.toc ?? []);
       return { title: titleOf(book), toc };
     },
@@ -529,6 +758,59 @@ export function createReader(container: HTMLElement): Reader {
     onTap(listener) {
       tapListeners.add(listener);
       return () => tapListeners.delete(listener);
+    },
+    setHighlights(list) {
+      const next = new Map(list.map((highlight) => [highlight.cfi, highlight]));
+      const before = highlights;
+      highlights = next;
+      for (const cfi of before.keys()) if (!next.has(cfi)) undraw(cfi);
+      for (const [cfi, highlight] of next) {
+        const old = before.get(cfi);
+        if (!old || old.color !== highlight.color || old.id !== highlight.id || !old.hasNote !== !highlight.hasNote) draw(highlight);
+      }
+    },
+    onSelection(listener) {
+      selectionListeners.add(listener);
+      return () => selectionListeners.delete(listener);
+    },
+    placeHighlights(cfis) {
+      const found: HighlightPlace[] = [];
+      const lost: HighlightPlace[] = [];
+      const sectionOf = (target: string) => {
+        try {
+          const index = view?.resolveNavigation(target)?.index;
+          // foliate-js resolves a CFI into a section the Book does not have; that place is not found either.
+          const sections = (view?.getSectionFractions().length ?? 1) - 1;
+          return typeof index === "number" && index >= 0 && index < sections ? index : null;
+        } catch {
+          return null;
+        }
+      };
+      // The chapter of a section: the first table-of-contents entry inside it, else the last one before it.
+      const entries = toc.map((entry) => ({ label: entry.label, index: sectionOf(entry.target) })).filter((e) => e.index !== null) as Array<{ label: string; index: number }>;
+      const chapterOf = (index: number) =>
+        entries.find((e) => e.index === index)?.label ?? entries.filter((e) => e.index < index).at(-1)?.label ?? null;
+      for (const cfi of cfis) {
+        const index = fixed ? null : sectionOf(cfi);
+        if (index === null) lost.push({ cfi, chapter: null, found: false });
+        else found.push({ cfi, chapter: chapterOf(index) || null, found: true });
+      }
+      found.sort((a, b) => {
+        try {
+          return compareCfi(a.cfi, b.cfi);
+        } catch {
+          return 0;
+        }
+      });
+      return [...found, ...lost];
+    },
+    clearSelection() {
+      for (const { doc } of view?.renderer.getContents?.() ?? []) doc.getSelection()?.removeAllRanges();
+      report(null);
+    },
+    onHighlightTap(listener) {
+      highlightTapListeners.add(listener);
+      return () => highlightTapListeners.delete(listener);
     },
     close() {
       closeBook();

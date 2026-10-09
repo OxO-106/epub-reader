@@ -1,5 +1,8 @@
 /** Typed client for the server's HTTP API. */
+import type { HighlightColor } from "../shared/highlight-colors.ts";
 import { apiFetch } from "./connection.ts";
+
+export type { HighlightColor };
 
 /** The server answered, but with an error. (A server that cannot be reached throws the fetch error instead.) */
 export class HttpError extends Error {
@@ -20,6 +23,8 @@ export interface BookSummary {
   lastReadAt: number | null;
   /** How far through the Book the Reading position is, 0 to 1; null when the Book was never opened. */
   fraction: number | null;
+  /** How many highlights the Book has. */
+  highlights: number;
 }
 
 /** The saved Reading position of a Book: a CFI, and how far through the Book it is. Both null when never opened. */
@@ -203,4 +208,41 @@ export async function testTranslation(candidate: { url: string; model?: string; 
 export async function restartReader(): Promise<void> {
   const response = await apiFetch("/api/settings/restart", json("POST", {}));
   if (!response.ok) await settingsAnswer(response);
+}
+
+// ---- Highlights -------------------------------------------------------------------------------------------------
+
+/** A highlight: a passage of a Book (a CFI range), a short copy of its text, a colour and a note. */
+export interface Highlight {
+  id: string;
+  cfi: string;
+  text: string;
+  color: HighlightColor;
+  note: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export async function listHighlights(bookId: string): Promise<Highlight[]> {
+  const response = await apiFetch(`/api/books/${bookId}/highlights`);
+  if (!response.ok) throw new HttpError(response.status);
+  return ((await response.json()) as { highlights: Highlight[] }).highlights;
+}
+
+/** Adds or replaces a highlight; resolves with it as the server keeps it (a newer copy there wins). */
+export async function saveHighlight(bookId: string, highlight: Highlight): Promise<Highlight> {
+  const { id, ...body } = highlight;
+  const response = await apiFetch(`/api/books/${bookId}/highlights/${id}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new HttpError(response.status);
+  return (await response.json()) as Highlight;
+}
+
+/** Resolves when the highlight is gone (including when it already was). */
+export async function deleteHighlight(bookId: string, id: string): Promise<void> {
+  const response = await apiFetch(`/api/books/${bookId}/highlights/${id}`, { method: "DELETE" });
+  if (!response.ok && response.status !== 404) throw new HttpError(response.status);
 }

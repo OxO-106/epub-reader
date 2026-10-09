@@ -43,7 +43,8 @@ test("setting the model server's address turns translation on, without a restart
   await page.getByRole("link", { name: /Long Book/ }).click();
   await page.getByRole("button", { name: "Translate", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "Ready" })).toHaveCount(1, { timeout: 20_000 });
-  expect(model.chatRequests().length).toBeGreaterThan(0);
+  // The status can say Ready a moment before the request log has the first request in it.
+  await expect.poll(() => model.chatRequests().length, { timeout: 10_000 }).toBeGreaterThan(0);
 });
 
 test("a dead address fails the test with a plain explanation, and a bad one is refused next to the field", async ({ page }) => {

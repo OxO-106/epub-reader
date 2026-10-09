@@ -14,11 +14,17 @@ export function ContentsDrawer({
   chapterId,
   onPick,
   onClose,
+  highlights,
 }: {
   toc: TocEntry[];
   chapterId: number | null;
   onPick(entry: TocEntry): void;
   onClose(): void;
+  /**
+   * The way to the Highlights panel from the drawer, for a Book that can have highlights: on a phone the top bar has no
+   * room for its own Highlights button (see reader-chrome.css).
+   */
+  highlights?: { count: number; onOpen(): void };
 }) {
   const drawer = useRef<HTMLDivElement>(null);
 
@@ -63,6 +69,12 @@ export function ContentsDrawer({
             <CloseIcon />
           </button>
         </div>
+        {highlights && (
+          <button type="button" class="drawer-highlights" onClick={highlights.onOpen}>
+            <span>Highlights</span>
+            <span class="drawer-highlights-count">{highlights.count}</span>
+          </button>
+        )}
         <nav id="toc" class="panel-scroll toc" aria-label="Table of contents">
           {toc.length === 0 ? (
             <p class="empty">This Book has no table of contents.</p>
