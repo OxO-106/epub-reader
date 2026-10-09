@@ -1,6 +1,7 @@
 // Draws Reader's app icon (an open book in the paper colour on the terracotta accent) at every size the web app manifest
-// and the iPhone Home Screen need, from one drawing, into src/web/public/icons. Run `npm run icons` after changing it;
-// the results are committed. Uses @napi-rs/canvas, which comes with pdfjs-dist.
+// and the iPhone Home Screen need, from one drawing, into src/web/public/icons; and the desktop app's tray icons (two
+// status dots, Reader and Translation, in every pair of colours) into desktop/icons. Run `npm run icons` after changing
+// it; the results are committed. Uses @napi-rs/canvas, which comes with pdfjs-dist.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
@@ -64,4 +65,37 @@ function png(size: number, inset = 1): Buffer {
 writeFileSync(join(out, "icon.svg"), svg(0.92));
 for (const size of [32, 180, 192, 512]) writeFileSync(join(out, `icon-${size}.png`), png(size, size === 32 ? 1.05 : 0.92));
 writeFileSync(join(out, "maskable-512.png"), png(512, 0.74));
-console.log(`Icons written to ${out}`);
+// ---- the desktop app ----------------------------------------------------------------------------------------------
+
+const desktop = fileURLToPath(new URL("../desktop/icons/", import.meta.url));
+mkdirSync(desktop, { recursive: true });
+writeFileSync(join(desktop, "app.png"), png(256, 0.92));
+
+const dotColours = { green: "#2e9d57", amber: "#e3a21a", red: "#d0453a", grey: "#9a958c" } as const;
+type Dot = keyof typeof dotColours;
+
+/** Two dots side by side, each with a light ring so it shows on a dark taskbar as on a light one. */
+function tray(size: number, left: Dot, right: Dot): Buffer {
+  const canvas = createCanvas(size, size);
+  const ctx = canvas.getContext("2d");
+  const r = size * 0.21;
+  for (const [cx, colour] of [[size * 0.27, left], [size * 0.73, right]] as const) {
+    ctx.beginPath();
+    ctx.arc(cx, size / 2, r + size * 0.05, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, size / 2, r, 0, Math.PI * 2);
+    ctx.fillStyle = dotColours[colour];
+    ctx.fill();
+  }
+  return canvas.toBuffer("image/png");
+}
+
+for (const left of ["green", "amber", "red"] as const) {
+  for (const right of Object.keys(dotColours) as Dot[]) {
+    writeFileSync(join(desktop, `tray-${left}-${right}.png`), tray(16, left, right));
+    writeFileSync(join(desktop, `tray-${left}-${right}@2x.png`), tray(32, left, right));
+  }
+}
+console.log(`Icons written to ${out} and ${desktop}`);

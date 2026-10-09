@@ -1,15 +1,34 @@
-// Reader's desktop app (issue #33): the app shell. It starts the same Reader server as `npm start` in a utility process
-// (server-process.ts), waits for it to answer, and opens a window on it. The window is only the web front end: no Node,
-// context isolation, the sandbox, and the server's Content-Security-Policy. The shell owns the server's lifecycle, the
-// single-instance lock, the window's place, the menu, and turning startup problems into dialogs.
+// Reader's desktop app: the app shell (issues #33 and #34). It starts the same Reader server as `npm start` in a
+// utility process (server-process.ts), waits for it to answer, and opens a window on it. The window is only the web
+// front end: no Node, context isolation, the sandbox, and the server's Content-Security-Policy; a small preload bridge
+// (preload.cjs) lets the Settings screen change the app's own settings. The shell owns the server's lifecycle, the
+// translation model server (model-server.ts), the tray with its two status dots, the single-instance lock, the window's
+// place, the menu, starting with the system, and turning startup problems into dialogs.
 //
 // Data lives in the platform's app-data folder (on Windows %APPDATA%\Reader), or in READER_DESKTOP_DATA when set (the
 // tests use a temporary folder). The server's working directory is that folder, so its relative defaults land there.
-import { app, BrowserWindow, dialog, Menu, screen, shell, utilityProcess, type MenuItemConstructorOptions, type UtilityProcess } from "electron";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  nativeImage,
+  screen,
+  shell,
+  Tray,
+  utilityProcess,
+  type IpcMainInvokeEvent,
+  type MenuItemConstructorOptions,
+  type UtilityProcess,
+} from "electron";
+import { spawn } from "node:child_process";
+import { appendFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { defaultWindowState, isReaderPage, opensInBrowser, restoreWindowState, type WindowState } from "./shell-rules.ts";
+import { applyDesktopChange, loadDesktopSettings, saveDesktopSettings, type DesktopSettings } from "./desktop-settings.ts";
+import { createModelServer, type ModelServer } from "./model-server.ts";
+import { defaultWindowState, isReaderPage, opensInBrowser, restoreWindowState, trayLook, type ServerState, type WindowState } from "./shell-rules.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 app.setName("Reader");
@@ -17,10 +36,16 @@ if (process.env.READER_DESKTOP_DATA) app.setPath("userData", process.env.READER_
 const dataRoot = app.getPath("userData");
 const logsDir = join(dataRoot, "logs");
 const stateFile = join(dataRoot, "window-state.json");
+const settingsFile = join(dataRoot, "desktop.json");
+const startedHidden = process.argv.includes("--hidden"); // started with the system: straight to the tray
 
 let window: BrowserWindow | null = null;
 let server: { process: UtilityProcess; url: string } | null = null;
+let serverState: ServerState = "starting";
+let tray: Tray | null = null;
 let quitting = false;
+mkdirSync(dataRoot, { recursive: true });
+let settings: DesktopSettings = loadDesktopSettings(settingsFile);
 
 function log(line: string) {
   try {
@@ -31,17 +56,78 @@ function log(line: string) {
   }
 }
 
-// ---- the server --------------------------------------------------------------------------------------------------
-
 /** A startup problem for the reader: a dialog (or only the log, for the automated tests, READER_DESKTOP_NO_DIALOGS). */
 function showError(title: string, message: string) {
   log(`${title}: ${message}`);
   if (!process.env.READER_DESKTOP_NO_DIALOGS) dialog.showErrorBox(title, message);
 }
 
+// ---- the translation model server ----------------------------------------------------------------------------------
+
+/**
+ * The model folder: the one chosen in Settings; else, running from the repository, its git-ignored translation-models
+ * folder when it is there. READER_DESKTOP_MODELS replaces both (the tests point it at an empty folder).
+ */
+function modelFolder(): string | null {
+  if (process.env.READER_DESKTOP_MODELS !== undefined) return process.env.READER_DESKTOP_MODELS || null;
+  if (settings.modelFolder) return settings.modelFolder;
+  const repo = join(here, "../translation-models");
+  return !app.isPackaged && existsSync(repo) ? repo : null;
+}
+
+const model: ModelServer = createModelServer({
+  folder: modelFolder(),
+  deps: {
+    spawn(command, args) {
+      mkdirSync(logsDir, { recursive: true });
+      const output = createWriteStream(join(logsDir, "model-server.log"), { flags: "a" });
+      const child = spawn(command, args, { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+      child.stdout.pipe(output);
+      child.stderr.pipe(output);
+      log(`model server started: ${command}`);
+      return child;
+    },
+    async answers(url) {
+      try {
+        return (await fetch(`${url}/v1/models`, { signal: AbortSignal.timeout(2000) })).ok;
+      } catch {
+        return false;
+      }
+    },
+    wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  },
+});
+
+/** Once the model answers, the Reader server translates through it, unless Settings already names a model server. */
+async function pointReaderAtModel() {
+  if (!server || model.state() !== "running") return;
+  try {
+    const view = (await (await fetch(new URL("/api/settings", server.url))).json()) as { settings: { translateUrl: { value: unknown; fixed?: unknown } } };
+    if (view.settings.translateUrl.value || view.settings.translateUrl.fixed) return;
+    await fetch(new URL("/api/settings", server.url), {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ translateUrl: model.url }),
+    });
+    log(`translation set to the model server at ${model.url}`);
+  } catch (error) {
+    log(`could not set the translation address: ${(error as Error).message}`);
+  }
+}
+
+model.onState((state) => {
+  log(`translation: ${state}${model.problem() ? ` (${model.problem()})` : ""}`);
+  updateTray();
+  sendStatus();
+  if (state === "running") void pointReaderAtModel();
+});
+
+// ---- the server --------------------------------------------------------------------------------------------------
+
 /** Starts the server process and resolves with its address, or rejects with the message to show. */
 function startServerProcess(): Promise<{ process: UtilityProcess; url: string }> {
-  mkdirSync(dataRoot, { recursive: true });
+  serverState = "starting";
+  updateTray();
   const child = utilityProcess.fork(join(here, "server-process.ts"), [], {
     cwd: dataRoot,
     serviceName: "Reader server",
@@ -60,6 +146,8 @@ function startServerProcess(): Promise<{ process: UtilityProcess; url: string }>
     child.on("message", (message: { type?: string; url?: string; message?: string }) => {
       if (message?.type === "ready" && message.url) {
         clearTimeout(timer);
+        serverState = "running";
+        updateTray();
         resolve({ process: child, url: message.url });
       } else if (message?.type === "failed") {
         clearTimeout(timer);
@@ -74,6 +162,8 @@ function startServerProcess(): Promise<{ process: UtilityProcess; url: string }>
         log(`server exited unexpectedly (${code})`);
         server = null;
       }
+      serverState = "stopped";
+      updateTray();
       reject(new Error(`The Reader server stopped while starting (exit code ${code}). See the log in the data folder.`));
     });
   });
@@ -110,6 +200,37 @@ async function restartServer() {
   }
 }
 
+// ---- the tray ------------------------------------------------------------------------------------------------------
+
+function updateTray() {
+  if (!tray) return;
+  const look = trayLook(serverState, model.state());
+  tray.setImage(nativeImage.createFromPath(join(here, "icons", look.icon)));
+  tray.setToolTip(look.tooltip);
+  const translation = model.state();
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: "Open Reader", click: showWindow },
+      { type: "separator" },
+      translation === "running" || translation === "starting"
+        ? { label: "Stop translation", click: () => void model.stop() }
+        : { label: "Start translation", enabled: translation !== "not-set-up", click: () => void model.start() },
+      { type: "separator" },
+      { label: "Open data folder", click: () => void shell.openPath(dataRoot) },
+      { label: "Open logs", click: () => void shell.openPath(logsDir) },
+      { type: "separator" },
+      { label: "Quit Reader", click: () => app.quit() },
+    ]),
+  );
+}
+
+function createTray() {
+  const look = trayLook(serverState, model.state());
+  tray = new Tray(nativeImage.createFromPath(join(here, "icons", look.icon)));
+  tray.on("click", showWindow);
+  updateTray();
+}
+
 // ---- the window ----------------------------------------------------------------------------------------------------
 
 function loadWindowState(): WindowState {
@@ -129,6 +250,16 @@ function saveWindowState(win: BrowserWindow) {
   }
 }
 
+function showWindow() {
+  if (!server) return;
+  if (!window) openWindow(server.url);
+  else {
+    if (window.isMinimized()) window.restore();
+    window.show();
+    window.focus();
+  }
+}
+
 function openWindow(url: string) {
   const state = loadWindowState();
   const win = new BrowserWindow({
@@ -137,9 +268,10 @@ function openWindow(url: string) {
     minHeight: 400,
     show: false,
     title: "Reader",
+    icon: join(here, "icons", "app.png"),
     backgroundColor: "#faf8f3",
     autoHideMenuBar: process.platform !== "darwin",
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
+    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false, preload: join(here, "preload.cjs") },
   });
   if (state.maximized) win.maximize();
   win.once("ready-to-show", () => win.show());
@@ -153,7 +285,14 @@ function openWindow(url: string) {
     event.preventDefault();
     if (opensInBrowser(target)) void shell.openExternal(target);
   });
-  win.on("close", () => saveWindowState(win));
+  win.on("close", (event) => {
+    saveWindowState(win);
+    // With "keep running in the tray" on, closing the window only hides it: Reader keeps serving a phone.
+    if (settings.closeToTray && !quitting) {
+      event.preventDefault();
+      win.hide();
+    }
+  });
   win.on("closed", () => {
     window = null;
   });
@@ -188,22 +327,72 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+// ---- the bridge to the Settings screen -----------------------------------------------------------------------------
+
+function status() {
+  return { settings: { ...settings, modelFolder: modelFolder() }, translation: { state: model.state(), problem: model.problem() } };
+}
+
+function sendStatus() {
+  window?.webContents.send("desktop:status", status());
+}
+
+/** Only Reader's own page may use the bridge. */
+function fromReader(event: IpcMainInvokeEvent): boolean {
+  return !!server && isReaderPage(event.senderFrame?.url ?? "", server.url);
+}
+
+function applyStartWithSystem() {
+  // Only from the packaged app: a development copy must not register itself to start with the system.
+  if (!app.isPackaged) return;
+  app.setLoginItemSettings({ openAtLogin: settings.startWithSystem, args: ["--hidden"] });
+}
+
+function registerBridge() {
+  ipcMain.handle("desktop:status", (event) => (fromReader(event) ? status() : null));
+  ipcMain.handle("desktop:update", (event, change: unknown) => {
+    if (!fromReader(event)) return null;
+    const before = settings;
+    settings = applyDesktopChange(settings, change);
+    saveDesktopSettings(settingsFile, settings);
+    if (before.startWithSystem !== settings.startWithSystem) applyStartWithSystem();
+    return status();
+  });
+  ipcMain.handle("desktop:choose-model-folder", async (event) => {
+    if (!fromReader(event) || !window) return null;
+    const picked = await dialog.showOpenDialog(window, { title: "Choose the folder for the translation model", properties: ["openDirectory", "createDirectory"] });
+    if (picked.canceled || !picked.filePaths[0]) return status();
+    settings = { ...settings, modelFolder: picked.filePaths[0] };
+    saveDesktopSettings(settingsFile, settings);
+    await model.setFolder(modelFolder());
+    if (settings.startTranslation && model.state() === "stopped") void model.start();
+    return status();
+  });
+  ipcMain.handle("desktop:translation", (event, action: unknown) => {
+    if (!fromReader(event)) return null;
+    if (action === "start") void model.start();
+    else if (action === "stop") void model.stop();
+    return status();
+  });
+}
+
+// For the smoke test: what the tray shows.
+(globalThis as { __readerShell?: unknown }).__readerShell = {
+  tray: () => ({ tooltip: trayLook(serverState, model.state()).tooltip, present: !!tray && !tray.isDestroyed() }),
+};
+
 // ---- the app -------------------------------------------------------------------------------------------------------
 
 if (!app.requestSingleInstanceLock()) {
   // Another copy is running: it is told (second-instance below) and shows its window; this one leaves at once.
   app.quit();
 } else {
-  app.on("second-instance", () => {
-    if (!window && server) openWindow(server.url);
-    if (window) {
-      if (window.isMinimized()) window.restore();
-      window.focus();
-    }
-  });
+  app.on("second-instance", showWindow);
 
   app.whenReady().then(async () => {
     buildMenu();
+    registerBridge();
+    createTray();
     log(`starting (Electron ${process.versions.electron}, Node ${process.versions.node}, data ${dataRoot})`);
     try {
       server = await startServerProcess();
@@ -212,19 +401,23 @@ if (!app.requestSingleInstanceLock()) {
       app.exit(1);
       return;
     }
-    openWindow(server.url);
-    app.on("activate", () => {
-      if (!window && server) openWindow(server.url);
-    });
+    if (!startedHidden) openWindow(server.url);
+    if (settings.startTranslation && model.state() === "stopped") void model.start();
+    app.on("activate", showWindow);
   });
 
-  // Closing the last window quits (the tray, which keeps Reader running for a phone, comes with issue #34).
-  app.on("window-all-closed", () => app.quit());
+  // Closing the last window quits, unless Reader is to keep running in the tray.
+  app.on("window-all-closed", () => {
+    if (!settings.closeToTray) app.quit();
+  });
 
   app.on("before-quit", (event) => {
     if (quitting) return;
     quitting = true;
     event.preventDefault();
-    void stopServerProcess().finally(() => app.exit(0));
+    void Promise.all([stopServerProcess(), model.stop()]).finally(() => {
+      tray?.destroy();
+      app.exit(0);
+    });
   });
 }

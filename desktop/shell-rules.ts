@@ -65,3 +65,31 @@ export const openableExtensions = [".epub", ".pdf", ".mobi", ".azw3", ".azw", ".
 export function booksInArguments(argv: readonly string[]): string[] {
   return argv.filter((arg) => !arg.startsWith("-") && openableExtensions.some((ext) => arg.toLowerCase().endsWith(ext)));
 }
+
+/** The Reader server's state, for the tray's first dot. */
+export type ServerState = "starting" | "running" | "stopped";
+/** The translation model server's state, for the second dot (see model-server.ts). */
+export type TranslationDot = "not-set-up" | "stopped" | "starting" | "running" | "failed";
+
+/** The colour of a dot, as the PowerShell tray had it: green running, amber starting, red stopped, grey not set up. */
+export type DotColour = "green" | "amber" | "red" | "grey";
+
+const serverColour: Record<ServerState, DotColour> = { running: "green", starting: "amber", stopped: "red" };
+const translationColour: Record<TranslationDot, DotColour> = { running: "green", starting: "amber", stopped: "red", failed: "red", "not-set-up": "grey" };
+
+const serverWords: Record<ServerState, string> = { running: "running", starting: "starting", stopped: "stopped" };
+const translationWords: Record<TranslationDot, string> = {
+  running: "running",
+  starting: "starting",
+  stopped: "stopped",
+  failed: "failed",
+  "not-set-up": "not set up",
+};
+
+/** The tray icon (a file name in desktop/icons) and its tooltip for these states. */
+export function trayLook(server: ServerState, translation: TranslationDot): { icon: string; tooltip: string } {
+  return {
+    icon: `tray-${serverColour[server]}-${translationColour[translation]}.png`,
+    tooltip: `Reader: ${serverWords[server]}\nTranslation: ${translationWords[translation]}`,
+  };
+}

@@ -31,7 +31,7 @@ const electronPath = createRequire(import.meta.url)("electron") as unknown as st
 /** Runs the app without Playwright attached (for a copy that is expected to leave at once) and resolves with its exit code. */
 function runToExit(env: Record<string, string>, timeoutMs = 30_000): Promise<number | null> {
   return new Promise((resolve, reject) => {
-    const child = spawn(electronPath, [root], { cwd: root, env: { ...process.env, ...env }, stdio: "ignore" });
+    const child = spawn(electronPath, [root], { cwd: root, env: { ...process.env, READER_DESKTOP_MODELS: "", ...env }, stdio: "ignore" });
     const timer = setTimeout(() => {
       child.kill();
       reject(new Error("the app did not leave"));
@@ -48,7 +48,7 @@ let port = "";
 /** Launches the app on a free port, with its data in the test's temporary folder. */
 async function launch(): Promise<ElectronApplication> {
   port = String(20000 + Math.floor(Math.random() * 20000));
-  return electron.launch({ args: [root], cwd: root, env: { ...process.env, READER_DESKTOP_DATA: data, READER_PORT: port } });
+  return electron.launch({ args: [root], cwd: root, env: { ...process.env, READER_DESKTOP_DATA: data, READER_DESKTOP_MODELS: "", READER_PORT: port } });
 }
 
 test("starts the server, shows the Library, adds and opens a Book, and quits leaving nothing running", async () => {
@@ -94,4 +94,24 @@ test("a port already in use ends in a message, not a blank window", async () => 
   } finally {
     blocker.close();
   }
+});
+
+test("shows Reader and translation in the tray, and can keep running there when the window is closed", async () => {
+  app = await launch();
+  const page = await app.firstWindow();
+  await expect(page.getByRole("heading", { name: "Your Library is empty" })).toBeVisible({ timeout: 30_000 });
+  const tray = () => app!.evaluate(() => (globalThis as unknown as { __readerShell: { tray(): { tooltip: string; present: boolean } } }).__readerShell.tray());
+  await expect.poll(tray).toEqual({ tooltip: "Reader: running\nTranslation: not set up", present: true });
+
+  await page.goto(new URL("/#/settings", page.url()).href);
+  const desktop = page.getByRole("region", { name: "Desktop app" });
+  await expect(desktop).toContainText("Not set up");
+  await desktop.getByRole("checkbox", { name: "Keep Reader running in the tray when the window is closed" }).check();
+  await expect.poll(async () => JSON.parse(await readFile(join(data, "desktop.json"), "utf8")).closeToTray).toBe(true);
+
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.close());
+
+  // Still running, with the server answering, and the window only hidden.
+  await expect.poll(() => app!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((w) => w.isVisible()))).toEqual([false]);
+  expect((await fetch(new URL("/api/books", page.url()))).ok).toBe(true);
 });

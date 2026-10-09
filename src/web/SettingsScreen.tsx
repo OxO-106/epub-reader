@@ -13,6 +13,7 @@ import {
   type SettingsView,
 } from "./api.ts";
 import { ConnectionNotice } from "./ConnectionNotice.tsx";
+import { desktopBridge, type DesktopStatus, type ModelState } from "./desktop-bridge.ts";
 import { forgetAllBooks, forgetBook, formatBytes, keptBooks, keptEvent, loadAutoKeep, saveAutoKeep, storageEstimate, type KeptBook } from "./device-store.ts";
 import { forgetKnown } from "./outbox.ts";
 import { QrCode } from "./QrCode.tsx";
@@ -81,6 +82,7 @@ export function SettingsScreen() {
       )}
       {/* Kept in this browser, so it is there even when the PC cannot be reached. */}
       <DeviceSection />
+      {desktopBridge() && <DesktopSection />}
     </main>
   );
 }
@@ -631,6 +633,74 @@ function PhoneSection({ view }: { view: SettingsView }) {
       <p class="settings-hint">
         More in <a href="https://github.com/OxO-106/epub-reader/blob/main/docs/phone.md" target="_blank" rel="noopener noreferrer">the phone guide</a>.
       </p>
+    </Section>
+  );
+}
+
+const modelWords: Record<ModelState, string> = {
+  "not-set-up": "Not set up: choose the folder with llama-server and the model file.",
+  stopped: "Stopped.",
+  starting: "Starting… (loading the model takes up to a minute)",
+  running: "Running.",
+  failed: "Stopped with a problem.",
+};
+
+/** The desktop app's own settings (desktop/desktop-settings.ts), through its bridge: shown only inside the app. */
+function DesktopSection() {
+  const bridge = desktopBridge()!;
+  const [status, setStatus] = useState<DesktopStatus | null>(null);
+  useEffect(() => {
+    void bridge.status().then(setStatus);
+    return bridge.onStatus(setStatus);
+  }, []);
+  if (!status) return null;
+  const { settings, translation } = status;
+  const change = (patch: Parameters<typeof bridge.update>[0]) => void bridge.update(patch).then((next) => next && setStatus(next));
+  const busy = translation.state === "starting" || translation.state === "running";
+
+  return (
+    <Section title="Desktop app" description="How the app behaves on this PC, and the translation model it runs for you.">
+      <div class="settings-form">
+        <label class="settings-choice settings-toggle">
+          <input type="checkbox" checked={settings.closeToTray} onChange={(event) => change({ closeToTray: event.currentTarget.checked })} />
+          <span>
+            <span class="settings-choice-label">Keep Reader running in the tray when the window is closed</span>
+            <span class="settings-hint">So your phone can still reach it. Quit from the tray icon’s menu.</span>
+          </span>
+        </label>
+        <label class="settings-choice settings-toggle">
+          <input type="checkbox" checked={settings.startWithSystem} onChange={(event) => change({ startWithSystem: event.currentTarget.checked })} />
+          <span>
+            <span class="settings-choice-label">Start Reader when I sign in to this computer</span>
+            <span class="settings-hint">It starts in the tray, without a window.</span>
+          </span>
+        </label>
+
+        <h3 class="settings-subhead">Translation model</h3>
+        <p class="settings-hint">
+          Folder: <code>{settings.modelFolder ?? "none chosen"}</code>
+        </p>
+        <p role="status" class="settings-hint">
+          {modelWords[translation.state]}
+          {translation.problem ? ` ${translation.problem}` : ""}
+        </p>
+        <div class="settings-actions">
+          <button type="button" class="settings-button quiet" onClick={() => void bridge.chooseModelFolder().then((next) => next && setStatus(next))}>
+            Choose folder…
+          </button>
+          {translation.state !== "not-set-up" && (
+            <button type="button" class="settings-button quiet" onClick={() => void bridge.translation(busy ? "stop" : "start").then((next) => next && setStatus(next))}>
+              {busy ? "Stop translation" : "Start translation"}
+            </button>
+          )}
+        </div>
+        <label class="settings-choice settings-toggle">
+          <input type="checkbox" checked={settings.startTranslation} onChange={(event) => change({ startTranslation: event.currentTarget.checked })} />
+          <span>
+            <span class="settings-choice-label">Start the translation model with Reader</span>
+          </span>
+        </label>
+      </div>
     </Section>
   );
 }

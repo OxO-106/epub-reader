@@ -20,7 +20,7 @@ Add a line under **Unreleased** with every change a user would notice; `npm run 
 - Reader can be installed as an app (Add to Home Screen on iPhone, Install on Android and desktop browsers): its own icon, full screen in the theme's colours, clear of the notch and home indicator; it starts even when the PC cannot be reached, and updates itself the next time it starts online.
 - Keep Books on a device for reading without a connection: a Keep button on each Book (or keep the Book being read automatically), the kept Books listed and opened when the PC cannot be reached, and an "On this device" section in Settings showing what they take. Reading positions and highlights made offline are sent when the PC is back; the newer change wins.
 - Settings explains how to reach Reader from a phone over Tailscale HTTPS, step by step, and shows this PC's address with a QR code; a new phone guide (docs/phone.md) covers installing and reading offline.
-- A desktop app (Electron, run from the repository for now with `npm run desktop`): Reader in its own window, with the server started and stopped for you, one copy at a time, the window's place remembered, and links to other sites opened in your browser.
+- A desktop app (Electron, run from the repository for now with `npm run desktop`): Reader in its own window, with the server started and stopped for you, one copy at a time, the window's place remembered, and links to other sites opened in your browser. A tray icon shows Reader and translation; the app starts and stops the translation model server, can keep running in the tray when the window closes, and can start when you sign in.
 - Browser tests for the resting bars and the progress scrubber.
 
 ### Fixed

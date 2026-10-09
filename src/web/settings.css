@@ -421,3 +421,9 @@
   flex: none;
   border-radius: var(--radius-small);
 }
+
+.settings .settings-subhead {
+  margin: 0.75rem 0 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
