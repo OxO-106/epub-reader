@@ -3,6 +3,7 @@ import { ConfigError, parseTranslateUrl, type TranslateConfig } from "./config.t
 import { addressedDirectly, fromOwnOrigin, isJson, readLimited } from "./request-guards.ts";
 import { SettingsError, type SettingsStore } from "./settings.ts";
 import { createTranslator } from "./translate.ts";
+import { findPhoneAddress, type PhoneAddress } from "./phone-address.ts";
 
 /** A settings change is a few short strings; anything larger is not one. */
 export const maxSettingsBytes = 16 * 1024;
@@ -43,8 +44,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> => !!value &
  * GET  /api/settings/reading            -> {"reading": object | null}: the shared reading preferences
  * PUT  /api/settings/reading            body {"reading": {"display"?, "translate"?, "changedAt"?}} -> 204; a change older
  *                                       than the saved one (by changedAt) is ignored
+ * GET  /api/settings/phone              -> PhoneAddress: this PC's Tailscale HTTPS address for the phone, when it has one
  */
-export function settingsRoutes(store: SettingsStore): Hono {
+export function settingsRoutes(store: SettingsStore, phoneAddress: () => Promise<PhoneAddress> = () => findPhoneAddress()): Hono {
   const routes = new Hono();
   const noStore = { "cache-control": "no-store" };
 
@@ -95,6 +97,8 @@ export function settingsRoutes(store: SettingsStore): Hono {
   });
 
   routes.get("/reading", (c) => c.json({ reading: store.reading() }, 200, noStore));
+
+  routes.get("/phone", async (c) => c.json(await phoneAddress(), 200, noStore));
 
   routes.put("/reading", async (c) => {
     const read = await readWrite(c);

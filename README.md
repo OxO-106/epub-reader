@@ -40,6 +40,7 @@ Open <http://127.0.0.1:5174> and drop a Book on the page. On Windows you can als
 
 - [Running Reader](docs/running-reader.md): starting it, the tray launcher, where your files live, the library folder, and every setting.
 - [Reaching it from other devices](docs/network-access.md): your phone and other computers, over Tailscale.
+- [Reader on your phone](docs/phone.md): add it to the Home Screen over Tailscale HTTPS, and keep Books for reading offline.
 - [Translation](docs/translation.md) and its [set-up guide](docs/translation-setup.md): running the model, and what the Reader does with it.
 - [Changelog](CHANGELOG.md): what changed in each version.
 - [Glossary](GLOSSARY.md) and [decision records](docs/adr/): the language and the reasoning behind the code.

@@ -204,6 +204,20 @@ export async function testTranslation(candidate: { url: string; model?: string; 
   return settingsAnswer(await apiFetch("/api/settings/test-translation", json("POST", candidate)));
 }
 
+/** This PC's Tailscale HTTPS address for the phone (src/server/phone-address.ts). */
+export interface PhoneAddress {
+  tailscale: boolean;
+  dnsName: string | null;
+  httpsEnabled: boolean;
+  address: string | null;
+}
+
+export async function getPhoneAddress(): Promise<PhoneAddress> {
+  const response = await apiFetch("/api/settings/phone");
+  if (!response.ok) throw new HttpError(response.status);
+  return (await response.json()) as PhoneAddress;
+}
+
 /** Asks the app hosting Reader to restart it. */
 export async function restartReader(): Promise<void> {
   const response = await apiFetch("/api/settings/restart", json("POST", {}));

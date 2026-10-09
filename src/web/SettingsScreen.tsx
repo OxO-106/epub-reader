@@ -1,9 +1,21 @@
-import { forgetAllBooks, forgetBook, formatBytes, keptBooks, keptEvent, loadAutoKeep, saveAutoKeep, storageEstimate, type KeptBook } from "./device-store.ts";
-import { forgetKnown } from "./outbox.ts";
 import type { ComponentChildren } from "preact";
 import { useEffect, useId, useState } from "preact/hooks";
-import { getSettings, restartReader, saveSettings, SettingsRefusal, testTranslation, type SettingInfo, type SettingKey, type SettingsView } from "./api.ts";
+import {
+  getPhoneAddress,
+  getSettings,
+  restartReader,
+  saveSettings,
+  SettingsRefusal,
+  testTranslation,
+  type PhoneAddress,
+  type SettingInfo,
+  type SettingKey,
+  type SettingsView,
+} from "./api.ts";
 import { ConnectionNotice } from "./ConnectionNotice.tsx";
+import { forgetAllBooks, forgetBook, formatBytes, keptBooks, keptEvent, loadAutoKeep, saveAutoKeep, storageEstimate, type KeptBook } from "./device-store.ts";
+import { forgetKnown } from "./outbox.ts";
+import { QrCode } from "./QrCode.tsx";
 import { ChevronLeft } from "./ReaderIcons.tsx";
 import { followsShared, setFollowsShared } from "./shared-reading.ts";
 import "./settings.css";
@@ -55,6 +67,7 @@ export function SettingsScreen() {
           <TranslationSection view={view} onSaved={setView} />
           <LibrarySection view={view} onSaved={setView} />
           <NetworkSection view={view} onSaved={setView} />
+          <PhoneSection view={view} />
           <AboutSection view={view} />
         </>
       ) : failed ? (
@@ -564,6 +577,59 @@ function AboutSection({ view }: { view: SettingsView }) {
         <a href="https://github.com/OxO-106/epub-reader#readme">Documentation</a>
         <a href="https://github.com/OxO-106/epub-reader/issues/new/choose">Report a problem</a>
         <a href="https://github.com/OxO-106/epub-reader/blob/main/CHANGELOG.md">What is new</a>
+      </p>
+    </Section>
+  );
+}
+
+/**
+ * Reader on a phone (issue #32): an iPhone installs the app and keeps Books only from an HTTPS address, which Tailscale
+ * gives this PC (`tailscale serve`). The steps, this PC's address when Tailscale knows it, and its QR code.
+ */
+function PhoneSection({ view }: { view: SettingsView }) {
+  const [phone, setPhone] = useState<PhoneAddress | null | "failed">(null);
+  useEffect(() => {
+    getPhoneAddress().then(setPhone, () => setPhone("failed"));
+  }, []);
+  const port = Number(view.settings.port.value ?? 5174);
+  const found = phone && phone !== "failed" ? phone : null;
+  const command = `tailscale serve --bg ${port}`;
+
+  return (
+    <Section
+      title="Use Reader on your phone"
+      description="An iPhone can add Reader to its Home Screen and keep Books offline only from a secure (https) address. Tailscale gives this PC one, on your own private network."
+    >
+      <ol class="phone-steps">
+        <li>
+          Install <a href="https://tailscale.com/download" target="_blank" rel="noopener noreferrer">Tailscale</a> on this PC and on your phone, and sign in to
+          both with the same account.
+        </li>
+        <li>
+          In the Tailscale admin console, under DNS, turn on MagicDNS and HTTPS Certificates.
+          {found && !found.httpsEnabled && <strong class="phone-warning"> HTTPS Certificates are not on yet for this PC.</strong>}
+        </li>
+        <li>
+          On this PC, run <code class="phone-command">{command}</code> in a terminal once. Reader keeps listening on this PC only; Tailscale passes the phone’s
+          requests to it.
+        </li>
+        <li>On the phone, open the address below in Safari, tap Share, then Add to Home Screen.</li>
+      </ol>
+      {phone === null && <p class="settings-hint">Looking for this PC on Tailscale…</p>}
+      {(phone === "failed" || (found && !found.tailscale)) && (
+        <p class="settings-hint">Tailscale is not running on this PC, so its address is not known yet. It looks like https://your-pc.your-tailnet.ts.net.</p>
+      )}
+      {found?.address && (
+        <div class="phone-address">
+          <QrCode text={found.address} label={`QR code of ${found.address}`} />
+          <div>
+            <p class="settings-hint">Scan with the phone’s camera, or type:</p>
+            <p class="phone-url">{found.address}</p>
+          </div>
+        </div>
+      )}
+      <p class="settings-hint">
+        More in <a href="https://github.com/OxO-106/epub-reader/blob/main/docs/phone.md" target="_blank" rel="noopener noreferrer">the phone guide</a>.
       </p>
     </Section>
   );

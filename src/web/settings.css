@@ -374,3 +374,50 @@
   font-size: 0.8125rem;
   color: var(--muted);
 }
+
+/* ---- Use Reader on your phone ---- */
+
+.settings .phone-steps {
+  margin: 0 0 1rem;
+  padding-inline-start: 1.25rem;
+  line-height: 1.6;
+}
+
+.settings .phone-steps li + li {
+  margin-top: 0.5rem;
+}
+
+.settings .phone-command,
+.settings .phone-url {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.settings .phone-command {
+  padding: 1px 6px;
+  border-radius: var(--radius-small);
+  background: var(--raised);
+}
+
+.settings .phone-warning {
+  color: var(--danger);
+  font-weight: 500;
+}
+
+.settings .phone-address {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.settings .phone-url {
+  margin: 0.25rem 0 0;
+  font-size: 1rem;
+}
+
+.settings .qr-code {
+  flex: none;
+  border-radius: var(--radius-small);
+}

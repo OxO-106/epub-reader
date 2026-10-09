@@ -220,7 +220,14 @@ same package to read a PDF's title and author. pdf.js is licensed under the Apac
 vendored with foliate-js (`src/web/vendor/foliate-js/vendor/pdfjs/`).
 
 To draw a PDF's first page as its cover, the server uses `@napi-rs/canvas` (MIT licence; it contains Skia, under a
-BSD-style licence), which pdfjs-dist installs as its canvas for Node. It runs on the server only.
+BSD-style licence), which pdfjs-dist installs as its canvas for Node. It runs on the server only. The script that draws
+the app's icons (`scripts/make-icons.ts`) uses it too.
+
+## QR Code Generator
+
+The Settings screen draws the QR code of the phone address with `qrcode-generator` by Kazuhiko Arase
+(<https://github.com/kazuhikoarase/qrcode-generator>), from the npm package of that name, under the MIT licence; it is
+bundled into the front end. "QR Code" is a registered trademark of DENSO WAVE INCORPORATED.
 
 ## 京华老宋体 (KingHwa_OldSong)
 
