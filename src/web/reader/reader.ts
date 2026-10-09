@@ -196,14 +196,19 @@ export function createReader(container: HTMLElement): Reader {
     let nudging = false;
     let observer: ResizeObserver | null = null;
     let held: number | null = null;
+    let holdGeneration = 0;
     let holdTimer: ReturnType<typeof setTimeout> | undefined;
 
     /**
      * foliate-js scrolls back to its anchor whenever the Book document changes size, which would undo the correction
      * made for a change. Its observer was created first, so ours runs after it in the same frame, before anything is
-     * painted, and puts the position back; the position is only held for that one frame, so a scroll by the reader is
-     * never undone. A scroll event afterwards lets foliate-js notice where the reader is.
+     * painted, and puts the position back. Its anchor only catches up with where the reader is some 250 ms after the
+     * last scroll (it is debounced, and the scroll event below restarts that), and a change can be reported to the
+     * observers a frame or more after it was made, so the position is held for `holdMs`, long enough for the anchor to
+     * catch up. A scroll by the reader (or a jump) moves the held position along (see `onScroll`), so it is never undone.
+     * Only the hold that set a position may release it: an older hold's timer must not cancel a newer one.
      */
+    const holdMs = 450;
     const hold = (top: number) => {
       held = top;
       if (!observer && doc.body) {
@@ -212,8 +217,10 @@ export function createReader(container: HTMLElement): Reader {
         });
         observer.observe(doc.body);
       }
-      requestAnimationFrame(() => (held = null));
-      setTimeout(() => (held = null), 100); // a hidden page draws no frames
+      const mine = ++holdGeneration;
+      setTimeout(() => {
+        if (holdGeneration === mine) held = null;
+      }, holdMs);
       clearTimeout(holdTimer);
       holdTimer = setTimeout(() => {
         nudging = true;
@@ -246,7 +253,11 @@ export function createReader(container: HTMLElement): Reader {
       },
     };
     const onScroll = () => {
-      if (!nudging) translation.refresh();
+      if (nudging) return;
+      // A scroll event comes after the changes of a frame have settled (ours are put right within that frame), so this
+      // is where the reader is: hold that, not the place before they scrolled.
+      if (held !== null && scroller) held = scroller.scrollTop;
+      translation.refresh();
     };
     scroller?.addEventListener("scroll", onScroll);
     stopWatching = () => {

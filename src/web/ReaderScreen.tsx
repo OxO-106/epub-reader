@@ -171,6 +171,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     const next = !translate;
     setTranslate(next);
     saveTranslate(next);
+    reader.current?.setTranslation(next && ready && english); // at once, not after the next render: turning it off clears the page now
   }
 
   /** Retry from the panel: ask again for everything that failed, and put focus somewhere that stays. */
