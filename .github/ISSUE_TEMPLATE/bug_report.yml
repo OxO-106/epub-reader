@@ -1,0 +1,62 @@
+name: Bug report
+description: Something in Reader does not work as it should.
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please search existing issues first. Security problems go to the private route in SECURITY.md, not here.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a Book that ...
+        2. Turn on Translate
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Reader version or commit
+      placeholder: 0.1.0, or the commit hash
+    validations:
+      required: true
+  - type: dropdown
+    id: how
+    attributes:
+      label: How you run Reader
+      options:
+        - npm start / npm run dev
+        - Start Reader.cmd (tray)
+        - Desktop app
+        - Phone web app
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system and browser
+      placeholder: Windows 11, Chrome 141 / iPhone, iOS 26, Safari
+    validations:
+      required: true
+  - type: textarea
+    id: book
+    attributes:
+      label: About the Book (if it matters)
+      description: Format (EPUB, PDF, ...), language, where it came from. Please do not attach copyrighted Books.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error messages
+      description: The server's output, or the browser console. Remove anything private.
+      render: text

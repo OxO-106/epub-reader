@@ -1,0 +1,27 @@
+name: Feature request
+description: An idea for something Reader should do.
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you would like
+      description: How it could work, from a reader's point of view.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you have considered
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Screenshots, examples from other apps, links.
