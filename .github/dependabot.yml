@@ -14,6 +14,10 @@ updates:
       minor-and-patch:
         update-types: ["minor", "patch"]
     # A major update comes on its own, since it may need code changes.
+    ignore:
+      # The types follow the Node major Reader runs on (24, see engines), not the newest Node.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
