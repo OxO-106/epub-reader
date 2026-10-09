@@ -130,11 +130,11 @@ describe("files in the library folder are treated exactly like uploads", () => {
   it("reports an unsupported file with the message an upload gets", async () => {
     server = await startTestServer(fast);
 
-    await copyIn(server, "sample.pdf");
+    await copyIn(server, "sample.rtf");
 
     await eventually(async () => expect(await failures(server!)).toHaveLength(1));
     const [failure] = await failures(server);
-    expect(failure).toMatchObject({ path: "sample.pdf", fileName: "sample.pdf", code: "unsupported" });
+    expect(failure).toMatchObject({ path: "sample.rtf", fileName: "sample.rtf", code: "unsupported" });
     expect(failure!.message).toContain("not a supported file type");
     expect(await books(server)).toEqual([]);
   });
@@ -239,11 +239,11 @@ describe("a file that changes or disappears", () => {
 describe("the original files", () => {
   it("are left exactly as they were, whether imported, duplicate or rejected", async () => {
     server = await startTestServer(fast);
-    const names = ["sample.epub", "same.epub", "corrupt.epub", "sample.pdf"];
+    const names = ["sample.epub", "same.epub", "corrupt.epub", "sample.rtf"];
     await copyIn(server, "sample.epub");
     await copyIn(server, "sample.epub", "same.epub");
     await copyIn(server, "corrupt.epub");
-    await copyIn(server, "sample.pdf");
+    await copyIn(server, "sample.rtf");
     const snapshot = () =>
       Promise.all(
         names.map(async (name) => {

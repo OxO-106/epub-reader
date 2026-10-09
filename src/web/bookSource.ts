@@ -18,5 +18,6 @@ export async function loadBookSource(id: string): Promise<BookSource> {
     return { kind: "custom", book: renderText(await file.text(), book.title) };
   }
   if (book.format === "mobi") return { kind: "mobi", file };
+  if (book.format === "pdf") return { kind: "pdf", file };
   return { kind: "epub", file };
 }

@@ -8,6 +8,7 @@ import { crc32, deflateSync } from "node:zlib";
 import { zipSync, strToU8, type Zippable } from "fflate";
 import iconv from "iconv-lite";
 import { kf8, mobi6, type KindleBook } from "./kindle-writer.ts";
+import { imagePdf, lockedPdf, textPdf } from "./pdf-writer.ts";
 
 const out = join(dirname(fileURLToPath(import.meta.url)), "../tests/fixtures");
 mkdirSync(out, { recursive: true });
@@ -210,7 +211,7 @@ writeFileSync(
 writeFileSync(join(out, "corrupt.epub"), "This is not really an EPUB file.\n");
 
 // A file type Reader does not read.
-writeFileSync(join(out, "sample.pdf"), "%PDF-1.4\n% not a real document, only a file type Reader does not support\n");
+writeFileSync(join(out, "sample.rtf"), "{\\rtf1\\ansi A Rich Text file, a kind Reader does not import.}\n");
 
 writeFileSync(
   join(out, "sample.md"),
@@ -543,5 +544,27 @@ writeFileSync(join(out, "no-heading.md"), "Just a few words, with no heading any
   writeFileSync(join(out, "kindle-misnamed.txt"), mobi6(book("Misnamed Kindle")));
   // The Palm database header of a Kindle file and nothing after it.
   writeFileSync(join(out, "corrupt.mobi"), mobi6(book("Broken")).slice(0, 90));
+}
+
+// ---- PDFs, written by pdf-writer.ts ----
+{
+  const lines = (page: number, count: number, extra?: string) =>
+    Array.from({ length: count }, (_, i) =>
+      i === 4 && extra ? `D${page} L${String(i + 1).padStart(2, "0")} ${extra}` : `D${page} L${String(i + 1).padStart(2, "0")} The lamp burned low while the long story went on.`,
+    );
+  const pdf = textPdf({
+    title: "Lamplight Papers",
+    author: "Pdf Author",
+    pages: [lines(1, 30), lines(2, 30, "The ferryman sang of Quillmoor at dusk."), lines(3, 30), lines(4, 20)],
+    outline: [
+      { label: "Part One", page: 0 },
+      { label: "Part Two", page: 2 },
+    ],
+  });
+  writeFileSync(join(out, "sample.pdf"), pdf);
+  writeFileSync(join(out, "pdf-misnamed.txt"), pdf);
+  writeFileSync(join(out, "scanned.pdf"), imagePdf("A Scanned Page"));
+  writeFileSync(join(out, "locked.pdf"), lockedPdf());
+  writeFileSync(join(out, "corrupt.pdf"), "%PDF-1.7\nThis is not really a PDF: the header is all there is.\n");
 }
 

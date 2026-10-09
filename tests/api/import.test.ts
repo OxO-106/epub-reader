@@ -154,12 +154,12 @@ describe("files that are rejected", () => {
   it("refuses an unsupported file type with a clear message", async () => {
     server = await startTestServer();
 
-    const response = await uploadFixture(server, "sample.pdf");
+    const response = await uploadFixture(server, "sample.rtf");
 
     expect(response.status).toBe(415);
     const body = (await response.json()) as { code: string; error: string };
     expect(body.code).toBe("unsupported");
-    expect(body.error).toContain("sample.pdf");
+    expect(body.error).toContain("sample.rtf");
     expect(body.error).toContain("not a supported file type");
     expect(await listBooks(server)).toEqual([]);
     expect(await storedFiles(server)).toEqual([]);

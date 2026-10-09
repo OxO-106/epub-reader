@@ -42,5 +42,11 @@ export interface BookFormat {
 
 export class CorruptBookError extends Error {}
 
-/** The file is a readable format but locked by DRM, so Reader cannot open it. */
-export class ProtectedBookError extends Error {}
+/** The file is a readable format but locked (by DRM, or a password it needs to open), so Reader cannot open it. */
+export class ProtectedBookError extends Error {
+  readonly lock: "drm" | "password";
+  constructor(lock: "drm" | "password" = "drm") {
+    super(`locked by ${lock}`);
+    this.lock = lock;
+  }
+}

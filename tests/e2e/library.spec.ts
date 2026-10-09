@@ -43,13 +43,13 @@ test("drag an EPUB onto the page, then pick several more files, and see them in 
   // File picker with several files at once: a new one, the same one again, a corrupt one and an unsupported one.
   await page
     .locator("input[type=file]")
-    .setInputFiles(["sample.epub", "chinese.epub", "corrupt.epub", "sample.pdf"].map(fixture));
+    .setInputFiles(["sample.epub", "chinese.epub", "corrupt.epub", "sample.rtf"].map(fixture));
 
   const results = page.getByRole("list", { name: "Import results" });
   await expect(results).toContainText('Added "Sample Book"');
   await expect(results).toContainText('"chinese.epub" is already in your Library');
   await expect(results).toContainText('"corrupt.epub" is not a valid EPUB');
-  await expect(results).toContainText('"sample.pdf" is not a supported file type');
+  await expect(results).toContainText('"sample.rtf" is not a supported file type');
   await expect(page.locator(".books > li").filter({ hasText: "Sample Book" })).toContainText("Sample Author");
   await expect(page.locator(".books > li")).toHaveCount(2);
 

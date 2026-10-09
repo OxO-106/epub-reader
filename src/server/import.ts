@@ -93,7 +93,12 @@ export async function importBook({ db, storage }: ImportContext, input: ImportIn
         metadata = await format.extract(temp);
       } catch (error) {
         if (error instanceof ProtectedBookError) {
-          return rejected("protected", `${quoted} is protected by DRM, so Reader cannot open it and it was not added. Only DRM-free Books can be read.`);
+          return rejected(
+            "protected",
+            error.lock === "password"
+              ? `${quoted} needs a password to open, so Reader cannot read it and it was not added.`
+              : `${quoted} is protected by DRM, so Reader cannot open it and it was not added. Only DRM-free Books can be read.`,
+          );
         }
         if (!(error instanceof CorruptBookError)) throw error;
         return corrupt(quoted, format);

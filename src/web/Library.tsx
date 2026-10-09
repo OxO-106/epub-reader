@@ -101,6 +101,7 @@ export function Library() {
       <span class="chip">EPUB</span>
       <span class="chip">MOBI</span>
       <span class="chip">AZW3</span>
+      <span class="chip">PDF</span>
       <span class="chip">Markdown</span>
       <span class="chip">TXT</span>
     </span>
@@ -165,7 +166,7 @@ export function Library() {
         <section class="library-empty" aria-label="Add your first books">
           <ShelfIllustration />
           <h1>Your Library is empty</h1>
-          <p class="lede">Add an EPUB, Kindle (MOBI, AZW3), Markdown or text file to start reading. Your books stay on your computer.</p>
+          <p class="lede">Add an EPUB, PDF, Kindle (MOBI, AZW3), Markdown or text file to start reading. Your books stay on your computer.</p>
           <div class={`dropzone large${dragging ? " dragging" : ""}`} data-testid="dropzone">
             <span class="dropzone-icon">
               <UploadIcon size={24} />

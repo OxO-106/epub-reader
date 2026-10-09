@@ -8,7 +8,8 @@ import { ContentsDrawer } from "./ContentsDrawer.tsx";
 import { applyTheme, loadDisplay, saveDisplay, type DisplaySettings } from "./display-settings.ts";
 import { DisplaySettingsPanel } from "./DisplaySettingsPanel.tsx";
 import { fontFaceCss } from "./fonts.ts";
-import { createReader, type Reader, type TocEntry, type TranslationStatus } from "./reader/reader.ts";
+import { createReader, type Reader, type TocEntry, type TranslationStatus, type Zoom } from "./reader/reader.ts";
+import { loadZoom, saveZoom } from "./pdf-zoom.ts";
 import { ReaderBottomBar, ReaderTopBar, type Panel } from "./ReaderBars.tsx";
 import { trackReadingPosition } from "./reading-position.ts";
 import { SearchPanel } from "./SearchPanel.tsx";
@@ -48,6 +49,9 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const [minutesLeft, setMinutesLeft] = useState<number | null>(null);
   const [chapterStarts, setChapterStarts] = useState<number[]>([]);
   const [display, setDisplay] = useState(loadDisplay);
+  // The open Book has fixed pages (a PDF): the Display panel offers zoom instead of the text settings.
+  const [fixed, setFixed] = useState(false);
+  const [zoom, setZoom] = useState<Zoom>(loadZoom);
   const displayNow = useRef(display);
   const [translate, setTranslate] = useState(loadTranslate);
   // Whether the open Book is English, which is when Translate is offered; known once the Book has opened.
@@ -101,6 +105,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     // retryTranslation); switching translation on and off goes through the Translate button like a reader's would.
     (window as { __reader?: Reader }).__reader = instance;
     instance.setDisplay(displayNow.current);
+    instance.setZoom(loadZoom());
     setState({ kind: "loading" });
     setChapterId(null);
     setFraction(null);
@@ -108,6 +113,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     setChapterStarts([]);
     setResting(false);
     setEnglish(false);
+    setFixed(false);
     setTranslation(null);
     let stopTracking = () => {};
     const stopListening = instance.onLocation((location) => {
@@ -135,12 +141,15 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
           ({ title, toc }) => {
             if (cancelled) return;
             setEnglish(instance.isEnglish());
+            setFixed(instance.isFixedLayout());
             setState({ kind: "ready", title, toc });
             setChapterStarts(instance.chapterStarts());
             opened = true;
             restSoon();
           },
-          () => {
+          (error: unknown) => {
+            // For whoever reports the problem: why, not the Book's text.
+            console.warn("Reader: this Book could not be opened.", error);
             if (!cancelled) setState({ kind: "error", message: "This Book could not be opened. Its file may be damaged." });
           },
         );
@@ -270,6 +279,12 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     reader.current?.setDisplay(next);
   }
 
+  function changeZoom(next: Zoom) {
+    setZoom(next);
+    saveZoom(next);
+    reader.current?.setZoom(next);
+  }
+
   function toggleTranslate() {
     const next = !translate;
     setTranslate(next);
@@ -312,7 +327,14 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         <div class="reader-body">
           <div class="reader-view" ref={viewport} />
           {panel === "contents" && <ContentsDrawer toc={toc} chapterId={chapterId} onPick={openChapter} onClose={() => closePanel()} />}
-          {panel === "display" && <DisplaySettingsPanel settings={display} onChange={changeDisplay} onClose={() => closePanel()} />}
+          {panel === "display" && (
+            <DisplaySettingsPanel
+              settings={display}
+              onChange={changeDisplay}
+              onClose={() => closePanel()}
+              fixed={fixed ? { zoom, onZoom: changeZoom } : undefined}
+            />
+          )}
           {panel === "translation" && statusView?.panel && translation && (
             <TranslationPanel view={statusView} status={translation} onRetry={retryTranslation} onClose={() => closePanel()} />
           )}

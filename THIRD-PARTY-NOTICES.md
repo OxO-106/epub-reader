@@ -209,6 +209,16 @@ FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 ```
 
+## pdf.js
+
+The Reader shows PDFs with pdf.js by the Mozilla Foundation (<https://github.com/mozilla/pdf.js>), from the npm package
+[`pdfjs-dist`](https://www.npmjs.com/package/pdfjs-dist) (version in `package-lock.json`): its library is bundled into the
+front end, and its worker, character maps (from Adobe, under a BSD-style licence) and standard fonts (Foxit and
+Liberation fonts, under their own open licences, listed in the package) are copied into the build. The server uses the
+same package to read a PDF's title and author. pdf.js is licensed under the Apache License, Version 2.0
+(<https://www.apache.org/licenses/LICENSE-2.0>); its `LICENSE` file is in the package. Two of its style sheets are
+vendored with foliate-js (`src/web/vendor/foliate-js/vendor/pdfjs/`).
+
 ## 京华老宋体 (KingHwa_OldSong)
 
 The original font file, version 2.002, is included at `assets/fonts/KingHwa_OldSong-2.002.ttf`, unmodified. Its own

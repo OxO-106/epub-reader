@@ -18,6 +18,8 @@ updates:
       # The types follow the Node major Reader runs on (24, see engines), not the newest Node.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # Pinned to the pdf.js build foliate-js's PDF adapter is written for; updated by hand with the vendored foliate-js.
+      - dependency-name: "pdfjs-dist"
 
   - package-ecosystem: github-actions
     directory: /

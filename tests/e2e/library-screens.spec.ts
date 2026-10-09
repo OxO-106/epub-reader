@@ -222,9 +222,9 @@ test.describe("the empty Library", () => {
     await expect(page.getByText("copy files into the library folder")).toBeVisible();
     await expect(page.getByRole("searchbox")).toHaveCount(0);
 
-    await page.locator("input[type=file]").setInputFiles(["sample.epub", "sample.pdf"].map(fixture));
+    await page.locator("input[type=file]").setInputFiles(["sample.epub", "sample.rtf"].map(fixture));
     await expect(page.getByRole("list", { name: "Import results" })).toContainText('Added "Sample Book"');
-    await expect(page.getByRole("list", { name: "Import results" })).toContainText('"sample.pdf" is not a supported file type');
+    await expect(page.getByRole("list", { name: "Import results" })).toContainText('"sample.rtf" is not a supported file type');
     await expect(page.getByText("Your Library is empty")).toBeHidden();
     await expect(page.locator(".books > li")).toHaveCount(1);
   });

@@ -6,6 +6,8 @@ import type { Handler } from "hono";
 const types: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".wasm": "application/wasm",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml",
@@ -40,8 +42,10 @@ export function serveFrontEnd(webDir: string): Handler {
     const requested = normalize(join(root, decodeURIComponent(c.req.path)));
     const inside = requested === root || requested.startsWith(root + sep);
     if (inside && existsSync(requested) && statSync(requested).isFile()) {
-      // Vite fingerprints everything under /assets, so it can be cached for good.
-      const cache = c.req.path.startsWith("/assets/") ? "public, max-age=31536000, immutable" : "no-cache";
+      // Vite fingerprints everything under /assets, so it can be cached for good; pdf.js's own files, copied in as they
+      // are (assets/vendor/), keep their names from one version to the next, so they are checked each time.
+      const fingerprinted = c.req.path.startsWith("/assets/") && !c.req.path.startsWith("/assets/vendor/");
+      const cache = fingerprinted ? "public, max-age=31536000, immutable" : "no-cache";
       return fileResponse(requested, cache);
     }
     return fileResponse(index, "no-cache");

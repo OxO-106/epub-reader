@@ -31,6 +31,8 @@ export type BookSource =
   | { kind: "epub"; file: Blob }
   /** A Kindle file (MOBI 6 or KF8/AZW3), read by foliate-js's own MOBI reader. */
   | { kind: "mobi"; file: Blob }
+  /** A PDF, shown page by page by foliate-js's PDF adapter (pdf.js). */
+  | { kind: "pdf"; file: Blob }
   /** A Book that is not an EPUB (Markdown, plain text), already turned into HTML sections; see `custom-book.ts`. */
   | { kind: "custom"; book: CustomBook };
 
@@ -83,7 +85,12 @@ export interface SearchUpdate {
   progress: number;
   /** Present when this update brings the matches of one more chapter. */
   chapter?: SearchChapter;
+  /** The Book has no text to search at all (a PDF that is only scanned pictures). */
+  noText?: boolean;
 }
+
+/** How a fixed-layout Book (a PDF) fits the screen: the width, the whole page, or a scale (1 = the page's own size). */
+export type Zoom = "fit-width" | "fit-page" | number;
 
 export interface Reader {
   /** Shows a Book, replacing any open one. Starts at `options.position` (a CFI), or at the beginning. */
@@ -144,6 +151,13 @@ export interface Reader {
    * line. Known once `open` has resolved; empty for a Book without a table of contents.
    */
   chapterStarts(): number[];
+  /**
+   * Whether the open Book has fixed pages (a PDF): its text does not reflow, so the Display settings for fonts, size,
+   * spacing and margins do not apply, translation is not offered, and `setZoom` does. Known once `open` has resolved.
+   */
+  isFixedLayout(): boolean;
+  /** How a fixed-layout Book fits the screen; ignored for others. Applies to the open Book and every one opened after. */
+  setZoom(zoom: Zoom): void;
   /** Calls `listener` whenever the visible place changes. Returns a function that stops listening. */
   onLocation(listener: (location: ReaderLocation) => void): () => void;
   /**
@@ -161,11 +175,16 @@ export function createReader(container: HTMLElement): Reader {
   const listeners = new Set<(location: ReaderLocation) => void>();
   const tapListeners = new Set<() => void>();
   let toc: TocEntry[] = [];
+  /** The open Book has fixed pages (a PDF), and the file it came from, for searching it. */
+  let fixed = false;
+  let pdfFile: Blob | null = null;
+  let zoom: Zoom = "fit-page";
   let display: DisplaySettings | null = null;
   let fontFaces = "";
 
   const applyDisplay = () => {
     const renderer = view?.renderer;
+    if (renderer && fixed) renderer.setAttribute("zoom", String(zoom));
     if (!renderer || !display) return;
     const margins = marginSizes[display.margins];
     renderer.setAttribute("flow", display.flow);
@@ -338,7 +357,10 @@ export function createReader(container: HTMLElement): Reader {
     async open(source, options = {}) {
       closeBook();
       const book = await makeBook(source);
-      english = declaredEnglish(book.metadata?.language);
+      fixed = (book as { rendition?: { layout?: string } }).rendition?.layout === "pre-paginated";
+      pdfFile = source.kind === "pdf" ? source.file : null;
+      // A fixed-layout page is a drawing, not text that can carry a translation under each paragraph.
+      english = fixed ? false : declaredEnglish(book.metadata?.language);
       await import("../vendor/foliate-js/view.js"); // registers <foliate-view>
       const next = document.createElement("foliate-view") as View;
       next.style.cssText = "display:block;width:100%;height:100%";
@@ -373,7 +395,7 @@ export function createReader(container: HTMLElement): Reader {
         if (next.renderer?.setStyles) normalizeFontSizes(doc);
         setChineseLanguage(doc);
         english ??= looksEnglish((doc.body?.textContent ?? "").slice(0, 8000));
-        attachTranslation(doc);
+        if (!fixed) attachTranslation(doc);
         const frameLeft = () => doc.defaultView?.frameElement?.getBoundingClientRect().left ?? 0;
         doc.addEventListener("keydown", onKeyDown);
         doc.addEventListener("click", (click) => onClick(click, frameLeft() + click.clientX, doc));
@@ -416,6 +438,15 @@ export function createReader(container: HTMLElement): Reader {
         searched.clearSearch();
         return;
       }
+      if (pdfFile) {
+        const { searchPdf } = await import("./pdf-search.ts");
+        for await (const update of searchPdf(pdfFile, text, () => run !== searchRun)) {
+          if (run !== searchRun) return;
+          yield update;
+        }
+        if (run === searchRun) yield { progress: 1 };
+        return;
+      }
       let progress = 0;
       for await (const result of searched.search({ query: text })) {
         if (run !== searchRun) return; // a newer search, or clearSearch, took over
@@ -440,6 +471,12 @@ export function createReader(container: HTMLElement): Reader {
       view?.clearSearch();
     },
     async goToMatch(match) {
+      const page = /^pdf-page:(\d+):\d+$/.exec(match.target);
+      if (page) {
+        await turns.cancel();
+        await requireView().goTo(Number(page[1]));
+        return;
+      }
       await this.goTo(match.target);
     },
     next: () => turn("next"),
@@ -452,6 +489,11 @@ export function createReader(container: HTMLElement): Reader {
       applyDisplay();
     },
     isEnglish: () => english === true,
+    isFixedLayout: () => fixed,
+    setZoom(next) {
+      zoom = next;
+      view?.renderer.setAttribute("zoom", String(next));
+    },
     setTranslation: (enabled) => translation.setEnabled(enabled),
     translationStatus: () => translation.status(),
     onTranslationStatus: (listener) => translation.onStatus(listener),
@@ -519,6 +561,10 @@ async function makeBook(source: BookSource): Promise<FoliateBook> {
         import("../vendor/foliate-js/vendor/fflate.js"),
       ]);
       return new MOBI({ unzlib: fflate.unzlibSync }).open(source.file);
+    }
+    case "pdf": {
+      const { makePDF } = await import("../vendor/foliate-js/pdf.js");
+      return makePDF(source.file);
     }
     case "custom":
       return makeCustomBook(source.book);

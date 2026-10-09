@@ -11,7 +11,7 @@ Reader runs on your PC and is used from any browser: your desk, your laptop, you
 
 ## Features
 
-- **Your Library, everywhere.** EPUB, Kindle files (MOBI and AZW3, DRM-free), Markdown and plain text (UTF-8, UTF-16 and the Chinese GBK family), added by dragging files in, choosing them, or dropping them into a watched folder. Covers, sorting by recently read, title or author (Chinese by pinyin), and a Continue reading card.
+- **Your Library, everywhere.** EPUB, PDF, Kindle files (MOBI and AZW3, DRM-free), Markdown and plain text (UTF-8, UTF-16 and the Chinese GBK family), added by dragging files in, choosing them, or dropping them into a watched folder. Covers, sorting by recently read, title or author (Chinese by pinyin), and a Continue reading card.
 - **Reading that gets out of the way.** The controls fade while you read, leaving just the chapter and your progress; a tap brings them back. Paginated or scrolling, with keyboard, click, tap and swipe page turns.
 - **Know where you are.** A progress line over the whole Book with a mark at every chapter, drag it to jump, and an estimate of the time left in the chapter. Your Reading position follows you to every device.
 - **Make it yours.** Four themes (Light, Sepia, Dark and true-black Black), text size that reaches every part of the Book, line spacing, margins, and fonts set for reading: Libertinus Serif, IBM Plex Sans, 京华老宋体 and more.

@@ -934,6 +934,16 @@
   box-shadow: 0 1px 3px color-mix(in srgb, var(--fg) 18%, transparent);
 }
 
+.reader-screen .setting-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .reader-screen .text-button {
   align-self: flex-start;
   box-sizing: border-box;

@@ -58,9 +58,9 @@ for (const size of sizes) {
       await expectLayoutFits(page, "in the empty Library");
       await expectNoHoverOnlyContent(page);
 
-      await page.locator("input[type=file]").setInputFiles(["sample.epub", "chinese.epub", "corrupt.epub", "sample.pdf"].map(fixture));
+      await page.locator("input[type=file]").setInputFiles(["sample.epub", "chinese.epub", "corrupt.epub", "sample.rtf"].map(fixture));
       await expect(page.locator(".books > li")).toHaveCount(2);
-      await expect(page.getByRole("list", { name: "Import results" })).toContainText("sample.pdf");
+      await expect(page.getByRole("list", { name: "Import results" })).toContainText("sample.rtf");
       await expectLayoutFits(page, "in the Library with Books and import messages");
       await expectNoHoverOnlyContent(page);
 

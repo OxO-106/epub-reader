@@ -6,6 +6,7 @@ type Status =
   | { kind: "idle" }
   | { kind: "searching"; progress: number }
   | { kind: "done" }
+  | { kind: "no-text" }
   | { kind: "failed" };
 
 /**
@@ -60,6 +61,10 @@ export function SearchPanel({
         if (mine !== run.current) return;
         const { chapter } = update;
         if (chapter) setChapters((found) => [...found, chapter]);
+        if (update.noText) {
+          setStatus({ kind: "no-text" });
+          return;
+        }
         setStatus({ kind: "searching", progress: update.progress });
       }
       if (mine === run.current) setStatus({ kind: "done" });
@@ -176,6 +181,8 @@ function statusText(status: Status, query: string, count: number): string {
       return `Searching… ${Math.round(status.progress * 100)}%${count ? ` — ${matches} so far` : ""}`;
     case "done":
       return count ? matches : `No matches for “${query}”.`;
+    case "no-text":
+      return "This Book has no text to search: its pages are pictures, as in a scan.";
     case "failed":
       return "The search failed. Try again.";
   }
