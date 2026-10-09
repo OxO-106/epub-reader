@@ -246,3 +246,60 @@ export async function deleteHighlight(bookId: string, id: string): Promise<void>
   const response = await apiFetch(`/api/books/${bookId}/highlights/${id}`, { method: "DELETE" });
   if (!response.ok && response.status !== 404) throw new HttpError(response.status);
 }
+
+// ---- A Book's Glossary ------------------------------------------------------------------------------------------
+
+/** One name of a Book's Glossary with the Chinese form translation uses for it. */
+export interface GlossaryEntry {
+  key: string;
+  name: string;
+  form: string;
+  /** The reader set this form: the model never replaces it. */
+  byReader: boolean;
+  /** In how many paragraphs translation met it. */
+  seen: number;
+}
+
+/** The server refused a Glossary change; `message` says why, for the reader. */
+export class GlossaryRefusal extends Error {}
+
+async function glossaryWrite(response: Response): Promise<Response> {
+  if (response.ok) return response;
+  let message = `The server answered ${response.status}.`;
+  try {
+    const body = (await response.json()) as { error?: unknown };
+    if (typeof body.error === "string") message = body.error;
+  } catch {
+    // not JSON: the status says enough
+  }
+  throw new GlossaryRefusal(message);
+}
+
+export async function getGlossary(bookId: string): Promise<GlossaryEntry[]> {
+  const response = await apiFetch(`/api/books/${bookId}/glossary`);
+  if (!response.ok) throw new HttpError(response.status);
+  return ((await response.json()) as { entries: GlossaryEntry[] }).entries;
+}
+
+/** Adds a name or changes its form. Rejects with a GlossaryRefusal saying what is wrong with it. */
+export async function setGlossaryEntry(bookId: string, entry: { name: string; form: string }): Promise<GlossaryEntry> {
+  const response = await glossaryWrite(
+    await apiFetch(`/api/books/${bookId}/glossary`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(entry) }),
+  );
+  return (await response.json()) as GlossaryEntry;
+}
+
+export async function deleteGlossaryEntry(bookId: string, key: string): Promise<void> {
+  const response = await apiFetch(`/api/books/${bookId}/glossary/${encodeURIComponent(key)}`, { method: "DELETE" });
+  if (!response.ok && response.status !== 404) throw new HttpError(response.status);
+}
+
+export const glossaryExportUrl = (bookId: string) => `/api/books/${bookId}/glossary/export`;
+
+/** Imports a Glossary file (as exported). Rejects with a GlossaryRefusal when it is not one. */
+export async function importGlossary(bookId: string, file: unknown): Promise<{ added: number; changed: number; kept: number }> {
+  const response = await glossaryWrite(
+    await apiFetch(`/api/books/${bookId}/glossary/import`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(file) }),
+  );
+  return (await response.json()) as { added: number; changed: number; kept: number };
+}

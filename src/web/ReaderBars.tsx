@@ -1,13 +1,13 @@
 import type { ComponentChildren, Ref } from "preact";
 import { useState } from "preact/hooks";
 import type { ChapterProgress } from "./chapter-progress.ts";
-import { ChevronLeft, ChevronRight, HighlighterIcon, ListIcon, SearchIcon, TranslateIcon, TypeIcon } from "./ReaderIcons.tsx";
+import { ChevronLeft, ChevronRight, GlossaryIcon, HighlighterIcon, ListIcon, SearchIcon, TranslateIcon, TypeIcon } from "./ReaderIcons.tsx";
 import { ReadingFraction } from "./ReadingFraction.tsx";
 import { formatFraction } from "./reading-position.ts";
 import { TranslationPill, type StatusView } from "./TranslationStatus.tsx";
 
 /** The panels the top bar opens. At most one is open at a time. "translation" is opened by the status pill, not by a button of its own. */
-export type Panel = "contents" | "search" | "highlights" | "display" | "translation";
+export type Panel = "contents" | "search" | "highlights" | "glossary" | "display" | "translation";
 
 /**
  * One button of the top bar: an icon, with its word kept for assistive technology and shown as a tooltip. Icons only,
@@ -39,7 +39,7 @@ export function ToolButton({
       class={className ? `bar-button ${className}` : "bar-button"}
       title={label}
       aria-expanded={open}
-      aria-controls={{ contents: "toc", search: "book-search", highlights: "book-highlights", display: "display-settings" }[panel]}
+      aria-controls={{ contents: "toc", search: "book-search", highlights: "book-highlights", glossary: "book-glossary", display: "display-settings" }[panel]}
       disabled={disabled}
       onClick={onToggle}
     >
@@ -106,7 +106,7 @@ export function ReaderTopBar({ title, chapter, open, searchReady, highlightsRead
         />
         {highlightsReady && (
           <ToolButton
-            className="highlights-tool"
+            className="wide-only"
             label="Highlights"
             icon={<HighlighterIcon />}
             panel="highlights"
@@ -130,6 +130,18 @@ export function ReaderTopBar({ title, chapter, open, searchReady, highlightsRead
         )}
         {translate?.status && (
           <TranslationPill view={translate.status} open={open === "translation"} buttonRef={buttons.translation} onToggle={() => onToggle("translation")} />
+        )}
+        {/* After the pill, which belongs to Translate. */}
+        {translate && (
+          <ToolButton
+            className="wide-only"
+            label="Glossary"
+            icon={<GlossaryIcon />}
+            panel="glossary"
+            buttonRef={buttons.glossary}
+            open={open === "glossary"}
+            onToggle={() => onToggle("glossary")}
+          />
         )}
         <ToolButton label="Display" icon={<TypeIcon />} panel="display" buttonRef={buttons.display} open={open === "display"} onToggle={() => onToggle("display")} />
       </div>

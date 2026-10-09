@@ -11,6 +11,7 @@ import { fontFaceCss } from "./fonts.ts";
 import type { Highlight, HighlightColor } from "./api.ts";
 import { HighlightMenu } from "./HighlightMenu.tsx";
 import { HighlightsPanel } from "./HighlightsPanel.tsx";
+import { GlossaryPanel } from "./GlossaryPanel.tsx";
 import { useHighlights } from "./highlights.ts";
 import { createReader, type Reader, type ScreenRect, type TextSelection, type TocEntry, type TranslationStatus, type Zoom } from "./reader/reader.ts";
 import { loadZoom, saveZoom } from "./pdf-zoom.ts";
@@ -84,6 +85,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     contents: useRef<HTMLButtonElement>(null),
     search: useRef<HTMLButtonElement>(null),
     highlights: useRef<HTMLButtonElement>(null),
+    glossary: useRef<HTMLButtonElement>(null),
     display: useRef<HTMLButtonElement>(null),
     translation: useRef<HTMLButtonElement>(null), // the status pill, when it is a button
   };
@@ -433,7 +435,10 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
               chapterId={chapterId}
               onPick={openChapter}
               onClose={() => closePanel()}
-              highlights={ready && !fixed ? { count: highlights.list.length, onOpen: () => setPanel("highlights") } : undefined}
+              shortcuts={[
+                ...(ready && !fixed ? [{ label: "Highlights", count: highlights.list.length, onOpen: () => setPanel("highlights") }] : []),
+                ...(ready && english ? [{ label: "Glossary", onOpen: () => setPanel("glossary") }] : []),
+              ]}
             />
           )}
           {panel === "display" && (
@@ -502,6 +507,10 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
             if (searchOverlays()) closePanel("book");
           }}
         />
+      )}
+
+      {panel === "glossary" && ready && english && (
+        <GlossaryPanel bookId={bookId} onChanged={() => reader.current?.retranslate()} onClose={() => closePanel()} />
       )}
 
       {menu?.kind === "selection" && (

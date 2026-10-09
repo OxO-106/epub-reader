@@ -527,14 +527,14 @@
 
 /* ---- Search: docked beside the text on a wide window, over it on a narrow one ---- */
 
-.reader-screen :is(.reader-search, .reader-highlights) {
+.reader-screen :is(.reader-search, .reader-highlights, .reader-glossary) {
   flex: 0 0 380px;
   width: 380px;
   border-inline-start: 1px solid var(--border);
 }
 
 @media (max-width: 59.99rem) {
-  .reader-screen :is(.reader-search, .reader-highlights) {
+  .reader-screen :is(.reader-search, .reader-highlights, .reader-glossary) {
     position: fixed;
     z-index: 5;
     top: var(--bar-top);
@@ -1217,7 +1217,7 @@
   }
 
   /* Search: the same, between the bars (it already covers the text below 60rem). */
-  .reader-screen :is(.reader-search, .reader-highlights) {
+  .reader-screen :is(.reader-search, .reader-highlights, .reader-glossary) {
     inset-inline: 0;
     width: auto;
     border-inline-start: 0;
@@ -1548,12 +1548,12 @@
 
 /* On a phone the top bar has no room for a Highlights button: the Contents drawer leads to the panel instead. */
 @media (max-width: 40rem) {
-  .reader-screen .highlights-tool {
+  .reader-screen .wide-only {
     display: none;
   }
 }
 
-.reader-screen .drawer-highlights {
+.reader-screen .drawer-shortcut {
   flex: none;
   display: flex;
   align-items: center;
@@ -1572,12 +1572,12 @@
   cursor: pointer;
 }
 
-.reader-screen .drawer-highlights:focus-visible {
+.reader-screen .drawer-shortcut:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
-.reader-screen .drawer-highlights-count {
+.reader-screen .drawer-shortcut-count {
   min-width: 1.5em;
   padding: 1px 6px;
   border-radius: var(--radius-pill);
@@ -1585,4 +1585,137 @@
   font-size: 12px;
   text-align: center;
   color: var(--muted);
+}
+
+/* ---- Glossary panel: docked like Search ---- */
+
+.reader-screen .glossary-intro {
+  flex: none;
+  margin: 0;
+  padding: 0 20px 10px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.reader-screen .glossary-tools {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  padding: 0 20px 6px;
+}
+
+.reader-screen .glossary-tool {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.reader-screen .glossary-message {
+  flex: none;
+  min-height: 1.4em;
+  margin: 0;
+  padding: 2px 20px 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.reader-screen .glossary-message.alert {
+  color: var(--danger);
+}
+
+.reader-screen .glossary-list {
+  padding: 0 12px 16px;
+}
+
+.reader-screen .glossary-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reader-screen .glossary-empty {
+  margin: 12px 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.reader-screen .glossary-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8.5rem var(--tap);
+  align-items: center;
+  gap: 8px;
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.reader-screen .glossary-name {
+  overflow-wrap: anywhere;
+  font-size: 14.5px;
+}
+
+.reader-screen .glossary-form,
+.reader-screen .glossary-add input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 15px;
+}
+
+.reader-screen .glossary-remove {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.reader-screen .glossary-add {
+  margin-top: 16px;
+  padding: 0 8px;
+}
+
+.reader-screen .glossary-add h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.reader-screen .glossary-add-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7rem auto;
+  gap: 8px;
+}
+
+.reader-screen .glossary-tool:focus-visible,
+.reader-screen .glossary-form:focus-visible,
+.reader-screen .glossary-remove:focus-visible,
+.reader-screen .glossary-add input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }

@@ -181,3 +181,86 @@ describe("reading names and forms", () => {
     ]);
   });
 });
+
+describe("the Glossary API", () => {
+  const send = (server: TestServer, bookId: string, method: string, path: string, body?: unknown, headers: Record<string, string> = {}) =>
+    fetch(`${server.url}/api/books/${bookId}/glossary${path}`, {
+      method,
+      headers: { "content-type": "application/json", ...headers },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
+  it("adds a name the reader gives, and changes a form; the model never replaces it", async () => {
+    const { server, bookId, model } = await setup();
+
+    const added = await send(server, bookId, "PUT", "", { name: "River", form: "里弗" });
+    expect(added.status).toBe(200);
+    expect(await added.json()).toMatchObject({ key: "river", name: "River", form: "里弗", byReader: true });
+
+    await translate(server, { text: "They met River at dawn.", bookId });
+    expect(model.nameRequests()).toHaveLength(0);
+    expect(paragraphRequests(model)[0]!.user).toContain("River = 里弗");
+
+    await send(server, bookId, "PUT", "", { name: "Mr. River", form: "瑞福" });
+    expect(await glossary(server, bookId)).toMatchObject([{ name: "River", form: "瑞福" }]);
+  });
+
+  it("refuses a form that is not Chinese, and a missing name", async () => {
+    const { server, bookId } = await setup();
+    expect((await send(server, bookId, "PUT", "", { name: "River", form: "River" })).status).toBe(400);
+    expect((await send(server, bookId, "PUT", "", { name: " ", form: "瑞弗" })).status).toBe(400);
+    expect((await send(server, bookId, "PUT", "", { name: "x".repeat(81), form: "瑞弗" })).status).toBe(400);
+  });
+
+  it("removes a name, so it is asked about afresh", async () => {
+    const { server, bookId, model } = await setup();
+    await translate(server, { text: "They met River at dawn.", bookId });
+
+    const removed = await fetch(`${server.url}/api/books/${bookId}/glossary/${encodeURIComponent("river")}`, { method: "DELETE" });
+
+    expect(removed.status).toBe(204);
+    expect(await glossary(server, bookId)).toEqual([]);
+    await translate(server, { text: "They met River at dawn.", bookId });
+    expect(model.nameRequests()).toHaveLength(2);
+    expect((await fetch(`${server.url}/api/books/${bookId}/glossary/nobody`, { method: "DELETE" })).status).toBe(404);
+  });
+
+  it("lists the names most often met first", async () => {
+    const { server, bookId } = await setup();
+    await translate(server, { text: "They met River and Darcy.", bookId });
+    await translate(server, { text: "Then Darcy left.", bookId });
+    expect((await glossary(server, bookId)).map((entry) => entry.name)).toEqual(["Darcy", "River"]);
+  });
+
+  it("exports the Glossary as JSON and imports it into another Book, keeping the reader's own forms", async () => {
+    const { server, bookId } = await setup();
+    await translate(server, { text: "They met River and Darcy.", bookId });
+    const exported = await fetch(`${server.url}/api/books/${bookId}/glossary/export`);
+    expect(exported.headers.get("content-disposition")).toMatch(/attachment/);
+    const file = await exported.json();
+    expect(file).toMatchObject({ format: "reader-glossary", version: 1, entries: expect.arrayContaining([{ name: "River", form: "瑞弗" }]) });
+
+    const other = (await (await uploadFixture(server, "sample.md")).json()).book.id as string;
+    await send(server, other, "PUT", "", { name: "Darcy", form: "达尔西" });
+    const imported = await send(server, other, "POST", "/import", file);
+
+    expect(await imported.json()).toEqual({ added: 1, changed: 0, kept: 1 });
+    const entries = await glossary(server, other);
+    expect(entries).toEqual(expect.arrayContaining([expect.objectContaining({ name: "River", form: "瑞弗" }), expect.objectContaining({ name: "Darcy", form: "达尔西" })]));
+  });
+
+  it("refuses an import that is not a Glossary", async () => {
+    const { server, bookId } = await setup();
+    expect((await send(server, bookId, "POST", "/import", { entries: "no" })).status).toBe(400);
+    expect((await send(server, bookId, "POST", "/import", { entries: [{ name: "River", form: "River" }] })).status).toBe(400);
+    expect(await glossary(server, bookId)).toEqual([]);
+  });
+
+  it("refuses writes from other sites, and anything but JSON", async () => {
+    const { server, bookId } = await setup();
+    expect((await send(server, bookId, "PUT", "", { name: "River", form: "瑞弗" }, { origin: "https://example.com" })).status).toBe(403);
+    expect((await send(server, bookId, "PUT", "", { name: "River", form: "瑞弗" }, { "content-type": "text/plain" })).status).toBe(415);
+    expect((await fetch(`${server.url}/api/books/${bookId}/glossary/river`, { method: "DELETE", headers: { origin: "https://example.com" } })).status).toBe(403);
+    expect((await fetch(`${server.url}/api/books/${"0".repeat(64)}/glossary`)).status).toBe(404);
+  });
+});

@@ -75,3 +75,10 @@ export const HighlighterIcon = () => (
     <path d="M9 11l-6 6v3h9l3-3M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" />
   </Svg>
 );
+
+/** A book with lines of text: the Glossary button. */
+export const GlossaryIcon = () => (
+  <Svg>
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14zM4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5M8 7h8M8 11h5" />
+  </Svg>
+);
