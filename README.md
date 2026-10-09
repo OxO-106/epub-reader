@@ -74,27 +74,6 @@ On Windows PowerShell set a variable for one run like this (in a POSIX shell, `R
 $env:READER_PORT = "8080"; npm start
 ```
 
-## Fonts
-
-English text is set in Libertinus Serif, which is installed with `npm install` (the package `@fontsource/libertinus-serif`, SIL Open Font License; the notice is in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)) and bundled into the front end. The interface itself is set in the system sans-serif font.
-
-**IBM Plex Sans** is one of the choices in the Reader's Display settings (Font). It is installed the same way (the package `@fontsource/ibm-plex-sans`, SIL Open Font License, notice in the same file) and bundled, so it needs nothing from you. It has no Chinese, so Chinese text in a Book set in it uses the system's Chinese sans-serif font.
-
-**Text size** (Display settings) scales all of a Book's text, including text the Book sizes for itself with CSS keywords (`small`, `x-large`), pixels or points, which would otherwise ignore the setting. The Book's own proportions are kept: small print stays smaller than body text and chapter titles stay larger. The number is the base size; a Book whose body text is "small" in its own design shows it at about 80% of that number, so raise the setting for such a Book.
-
-Chinese text is set in 京华老宋体 (KingHwa_OldSong). Its licence is not stated, so **it is not in this repository** and must never be committed. If you have it installed on your PC, cut it into web pieces once; the server then serves them to every device that opens the Reader, the phone included, and the Library and every Book use the font for Chinese. Without it, everything still works and Chinese falls back to the system's Chinese serif font.
-
-```
-pip install fonttools brotli       # once; needs Python 3.9 or newer
-npm run fonts:build                # about four minutes; finds the installed font by itself
-```
-
-The script looks for the font in the usual font folders (on Windows `%LOCALAPPDATA%\Microsoft\Windows\Fonts` and `C:\Windows\Fonts`) and says what to do if it cannot find it; or give the file: `npm run fonts:build -- "C:\path\to\京華老宋体.ttf"`. It writes about 120 woff2 pieces of roughly 150 KB (18 MB in all) with a style sheet and a manifest to the fonts folder, which git ignores, and refuses to write anywhere git would track. The result is the same every time. A browser downloads only the pieces its text needs (a page of common characters takes about 2 MB, once, then they are cached for good). No restart is needed after building.
-
-| Variable           | Default    | What it is                                                                      |
-| ------------------ | ---------- | ------------------------------------------------------------------------------- |
-| `READER_FONTS_DIR` | `./fonts`  | The cut pieces of the Chinese font, served read-only at `/fonts/`. May be missing. |
-
 ## Translation (optional)
 
 The Reader can show a Chinese translation under each English paragraph, produced on your own machines by a local model; nothing is sent to a cloud service. Translation is off until you point the app at a model server that speaks the OpenAI-style streaming API (`llama-server` from llama.cpp, Ollama, LM Studio, vLLM). The full set-up guide (what to download and where it goes, the start command and its flags, checking it, troubleshooting, and running the model on a second PC with a graphics card over Tailscale) is [docs/translation-setup.md](docs/translation-setup.md). In short, on the PC that has the files unpacked in `%USERPROFILE%\translation-models` (the model is `Hy-MT2-7B-Q4_K_M.gguf`, 4.6 GB, and the runtime is llama.cpp's Vulkan build):
