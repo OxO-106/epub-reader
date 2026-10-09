@@ -10,7 +10,7 @@ export const standInCharacters = "中文汉";
 /**
  * Fills `dir` the way `npm run fonts:build` fills the fonts folder (manifest.json, a CSS file with @font-face rules and
  * the font files), but with the tiny generated stand-in font instead of the real 京华老宋体. The real font, which is
- * 35 MB and is not in the repository, is never needed to run a test.
+ * 35 MB (its original is in assets/fonts), is never needed to run a test.
  */
 export async function writeStandInFonts(dir: string): Promise<void> {
   await mkdir(dir, { recursive: true });

@@ -1,12 +1,12 @@
 """Cuts the Chinese font 京华老宋体 (KingHwa_OldSong) into web font pieces for the Reader to serve.
 
-The font is not in the repository: its licence is not stated ("All rights reserved"), so neither the font nor any piece
-of it may be committed. This script reads the copy installed on this PC and writes woff2 pieces, a style sheet with one
-@font-face rule per piece (each with a `unicode-range`, so a browser downloads only the pieces its text needs, the way
-Google Fonts serves Chinese), and a manifest to the fonts folder, which git ignores. The server serves that folder
-under /fonts/ and tells the front end whether the font is there.
+The original font ships with the repository, in assets/fonts (ADR 0140). This script reads it (or, without it, the copy
+installed on this PC) and writes woff2 pieces, a style sheet with one @font-face rule per piece (each with a
+`unicode-range`, so a browser downloads only the pieces its text needs, the way Google Fonts serves Chinese), and a
+manifest to the fonts folder. The pieces are generated output, so git ignores that folder. The server serves it under
+/fonts/ and tells the front end whether the font is there.
 
-    npm run fonts:build                          finds the installed font by itself
+    npm run fonts:build                          uses assets/fonts, else finds the installed font by itself
     npm run fonts:build -- "C:\\path\\to\\font.ttf"  uses this file
     npm run fonts:build -- --out some\\folder     writes there (default: READER_FONTS_DIR, else ./fonts)
 
@@ -45,6 +45,8 @@ CSS_NAME = f"{STEM}.css"
 # Characters per piece. About 480 bytes each as woff2, so about 150 KB per piece.
 PIECE_CHARACTERS = 320
 FORMAT_VERSION = 1
+# The copy of the font that ships with the repository.
+REPO_FONT = Path(__file__).resolve().parent.parent / "assets" / "fonts" / "KingHwa_OldSong-2.002.ttf"
 
 
 def is_ideograph(code: int) -> bool:
@@ -163,7 +165,7 @@ def find_installed_font() -> Path | None:
 
 
 def refuse_if_git_would_track(folder: Path) -> None:
-    """The pieces must never be committed. If the folder is inside a git repository and not ignored, stop."""
+    """The pieces are generated output, never committed (the original is). If git would track the folder, stop."""
     folder.mkdir(parents=True, exist_ok=True)
     probe = str(folder / "manifest.json")
     try:
@@ -175,8 +177,8 @@ def refuse_if_git_would_track(folder: Path) -> None:
         return
     if ignored.returncode == 1:
         sys.exit(
-            f"Refusing to write to {folder}: git does not ignore it, and the font's licence does not allow it to be "
-            "committed. Use the git-ignored ./fonts folder (the default), or add the folder to .gitignore first."
+            f"Refusing to write to {folder}: git does not ignore it, and the pieces are generated output that should "
+            "not be committed. Use the git-ignored ./fonts folder (the default), or add the folder to .gitignore first."
         )
 
 
@@ -189,12 +191,15 @@ def write_atomically(path: Path, data: bytes) -> None:
 def main() -> None:
     for stream in (sys.stdout, sys.stderr):  # a Windows console that cannot show Chinese must not stop the build
         stream.reconfigure(errors="replace")
-    parser = argparse.ArgumentParser(description="Cut the installed 京华老宋体 into web font pieces for the Reader.")
-    parser.add_argument("font", nargs="?", type=Path, help="the font file (.ttf or .otf); default: find the installed one")
+    parser = argparse.ArgumentParser(description="Cut 京华老宋体 into web font pieces for the Reader.")
+    parser.add_argument("font", nargs="?", type=Path, help="the font file (.ttf or .otf); default: assets/fonts, else the installed one")
     parser.add_argument("--out", type=Path, help="folder to write to; default: $READER_FONTS_DIR, else ./fonts")
     args = parser.parse_args()
 
     source = args.font
+    if source is None and REPO_FONT.is_file():
+        source = REPO_FONT
+        print(f"Using the font in the repository: {source}")
     if source is None:
         source = find_installed_font()
         if source is None:

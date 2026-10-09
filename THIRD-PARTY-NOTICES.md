@@ -211,7 +211,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ## 京华老宋体 (KingHwa_OldSong)
 
-Not part of this repository and not covered by this file. Its licence is not stated (the font's copyright line is "All
-rights reserved"), so no copy of it, no piece of it and nothing derived from it is committed. `npm run fonts:build`
-reads the copy installed on the owner's own PC and writes web font pieces to a git-ignored folder (see README.md,
-"Fonts").
+The original font file, version 2.002, is included at `assets/fonts/KingHwa_OldSong-2.002.ttf`, unmodified. Its own
+copyright line reads: "Font © Copyright 2022 TerryWang. All rights reserved." No licence is stated in the font; it is
+included by the repository owner's decision (ADR 0140). `npm run fonts:build` cuts it into web font pieces in a
+git-ignored folder, which the Reader serves to the browsers that use it.

@@ -3,9 +3,10 @@
  *
  * - Libertinus Serif (English), from the `@fontsource/libertinus-serif` package. The build bundles the files, so it is
  *   always there.
- * - IBM Plex Sans (the "IBM Plex Sans" choice in the Display settings), from the `@fontsource/ibm-plex-sans` package,
- *   bundled the same way. The browser fetches only the pieces (scripts) a page really uses.
- * - 京华老宋体 (Chinese), which is not in the repository. The server serves the pieces made by `npm run fonts:build`
+ * - IBM Plex Sans (the interface's own font, and the "Plex" choice in the Display settings), from the
+ *   `@fontsource/ibm-plex-sans` package, bundled the same way (400, 600 for the interface's emphasis, and 700). The
+ *   browser fetches only the pieces (scripts) a page really uses.
+ * - 京华老宋体 (Chinese), whose original is in assets/fonts. The server serves the pieces made by `npm run fonts:build`
  *   from its fonts folder and says, at `GET /api/fonts`, whether they exist. Only then is the font declared.
  *
  * Both are declared twice: in the app's page (`declareFontsInPage`) and, through the Reader, in every Book's page
@@ -17,6 +18,7 @@ import boldItalic from "@fontsource/libertinus-serif/700-italic.css?inline";
 import regular from "@fontsource/libertinus-serif/400.css?inline";
 import italic from "@fontsource/libertinus-serif/400-italic.css?inline";
 import plexBold from "@fontsource/ibm-plex-sans/700.css?inline";
+import plexSemibold from "@fontsource/ibm-plex-sans/600.css?inline";
 import plexBoldItalic from "@fontsource/ibm-plex-sans/700-italic.css?inline";
 import plexRegular from "@fontsource/ibm-plex-sans/400.css?inline";
 import plexItalic from "@fontsource/ibm-plex-sans/400-italic.css?inline";
@@ -30,7 +32,7 @@ export function absoluteUrls(css: string, base: string): string {
 }
 
 const libertinusCss = (): string => absoluteUrls([regular, italic, bold, boldItalic].join("\n"), location.href);
-const plexCss = (): string => absoluteUrls([plexRegular, plexItalic, plexBold, plexBoldItalic].join("\n"), location.href);
+const plexCss = (): string => absoluteUrls([plexRegular, plexItalic, plexSemibold, plexBold, plexBoldItalic].join("\n"), location.href);
 /** The fonts that are always there, whatever the server has. */
 const bundledCss = (): string => `${libertinusCss()}\n${plexCss()}`;
 
