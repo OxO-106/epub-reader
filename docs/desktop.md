@@ -2,7 +2,7 @@
 
 Reader's desktop app is the same Reader (the same server, the same pages, the same data format) in a window of its own, built with [Electron](https://www.electronjs.org/). It starts the Reader server for you on this PC and stops it when you quit; phones on your Tailscale network reach it as they reach `npm start` (see [Reader on your phone](phone.md)).
 
-The installer, the model download and automatic updates are on their way (issues #35 and #36). Until then the app runs from a clone of the repository.
+The installer and automatic updates are on their way (issue #36). Until then the app runs from a clone of the repository.
 
 ## Run it from the repository
 
@@ -33,6 +33,8 @@ Set `READER_DESKTOP_DATA` to use another folder (the tests do, with a temporary 
 A tray icon (the menu bar on macOS) shows two dots, like the PowerShell tray it replaces: Reader and Translation, green running, amber starting, red stopped, grey not set up. Its menu opens Reader, starts or stops translation, and opens the data folder and the logs.
 
 The app runs the translation model server for you: llama.cpp's `llama-server`, from the model folder chosen in **Settings, Desktop app** (running from the repository, its `translation-models` folder is used until you choose one), with the flags of `scripts/start-translation-server.ps1`, listening on this PC only (port 8080). When it answers, Reader translates through it, unless Settings already names a model server. If something already answers on that port (a model server you started yourself), the app uses it and leaves it alone.
+
+No model yet? In **Settings, Desktop app**, choose a folder (it needs about 5 GB; pick a drive with room), then **Download the model**: the app fetches llama.cpp (32 MB) and the model (4.6 GB) with a progress bar, checks both against their published SHA-256 (a file that does not match is deleted and the download says so), unpacks llama.cpp, and starts translation. **Pause** keeps what has arrived; **Resume download**, or quitting and starting again, carries on from there. The download is for Windows; on another system put `llama-server` and a `.gguf` model in the folder yourself ([translation setup](translation-setup.md)).
 
 **Settings, Desktop app** also chooses whether closing the window keeps Reader running in the tray (for your phone) or quits, and whether Reader starts when you sign in (in the tray, without a window; only for the installed app).
 

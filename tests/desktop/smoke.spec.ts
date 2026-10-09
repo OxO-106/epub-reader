@@ -106,6 +106,8 @@ test("shows Reader and translation in the tray, and can keep running there when 
   await page.goto(new URL("/#/settings", page.url()).href);
   const desktop = page.getByRole("region", { name: "Desktop app" });
   await expect(desktop).toContainText("Not set up");
+  // The model is downloaded only into a folder the reader chose.
+  await expect(desktop.getByRole("button", { name: "Download the model" })).toBeDisabled();
   await desktop.getByRole("checkbox", { name: "Keep Reader running in the tray when the window is closed" }).check();
   await expect.poll(async () => JSON.parse(await readFile(join(data, "desktop.json"), "utf8")).closeToTray).toBe(true);
 

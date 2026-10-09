@@ -427,3 +427,22 @@
   font-size: 0.9375rem;
   font-weight: 600;
 }
+
+.settings .model-download {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.settings .model-progress {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.settings .model-progress progress {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.settings .settings-problem {
+  color: var(--danger);
+}

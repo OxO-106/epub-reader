@@ -5,12 +5,14 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("readerDesktop", {
-  /** -> {settings, translation: {state, problem, folder}} */
+  /** -> {settings, translation: {state, problem}, download} */
   status: () => ipcRenderer.invoke("desktop:status"),
   /** Changes closeToTray, startWithSystem or startTranslation. -> the new status */
   update: (change) => ipcRenderer.invoke("desktop:update", change),
   /** Asks for the model folder with the system's folder picker. -> the new status */
   chooseModelFolder: () => ipcRenderer.invoke("desktop:choose-model-folder"),
+  /** "start" (or resume) or "pause" downloading the model into the model folder. -> the new status */
+  download: (action) => ipcRenderer.invoke("desktop:download", action),
   /** "start" or "stop" the translation model server. -> the new status */
   translation: (action) => ipcRenderer.invoke("desktop:translation", action),
   /** Calls `listener` with the new status whenever it changes. Returns a function that stops listening. */

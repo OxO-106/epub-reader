@@ -27,7 +27,8 @@ import { appendFileSync, createWriteStream, existsSync, mkdirSync, readFileSync,
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { applyDesktopChange, loadDesktopSettings, saveDesktopSettings, type DesktopSettings } from "./desktop-settings.ts";
-import { createModelServer, type ModelServer } from "./model-server.ts";
+import { downloadFile, translationDownloads, unzip } from "./downloads.ts";
+import { createModelServer, findModelFiles, type ModelServer } from "./model-server.ts";
 import { defaultWindowState, isReaderPage, opensInBrowser, restoreWindowState, trayLook, type ServerState, type WindowState } from "./shell-rules.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -121,6 +122,73 @@ model.onState((state) => {
   sendStatus();
   if (state === "running") void pointReaderAtModel();
 });
+
+// ---- downloading the model (issue #35) ----------------------------------------------------------------------------
+
+type DownloadState =
+  | { state: "idle" | "done" }
+  | { state: "downloading" | "verifying" | "paused"; name: string; received: number; total: number }
+  | { state: "failed"; message: string };
+
+let download: DownloadState = { state: "idle" };
+let downloadAbort: AbortController | null = null;
+let statusTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** Progress arrives many times a second; the page hears of it at most four times a second. */
+function sendStatusSoon() {
+  statusTimer ??= setTimeout(() => {
+    statusTimer = undefined;
+    sendStatus();
+  }, 250);
+}
+
+/**
+ * Downloads llama.cpp's runtime and the model into the chosen model folder (never a folder the reader did not choose),
+ * resuming what an earlier attempt left, verifying both, unpacking the runtime, then starting the model server.
+ */
+async function startDownload() {
+  const folder = modelFolder();
+  if (!folder) {
+    download = { state: "failed", message: "Choose the folder for the model first: it needs about 5 GB." };
+    return sendStatus();
+  }
+  if (process.platform !== "win32") {
+    download = { state: "failed", message: "The download is for Windows. On this system, put llama.cpp's llama-server and the model in the folder yourself (see docs/translation-setup.md)." };
+    return sendStatus();
+  }
+  if (downloadAbort) return;
+  const abort = (downloadAbort = new AbortController());
+  let last: { name: string; received: number; total: number } = { name: "", received: 0, total: 0 };
+  try {
+    for (const item of [translationDownloads.runtime, translationDownloads.model]) {
+      const dest = join(folder, item.name);
+      if (existsSync(dest)) continue;
+      await downloadFile(item, dest, {
+        signal: abort.signal,
+        onProgress: (progress) => {
+          last = { name: progress.name, received: progress.received, total: progress.total };
+          download = { state: progress.phase, ...last };
+          sendStatusSoon();
+        },
+      });
+    }
+    if (!findModelFiles(folder)) await unzip(join(folder, translationDownloads.runtime.name), join(folder, "llama-vulkan"));
+    download = { state: "done" };
+    log(`translation model downloaded into ${folder}`);
+    await model.setFolder(modelFolder());
+    if (settings.startTranslation && model.state() === "stopped") void model.start();
+  } catch (error) {
+    download = abort.signal.aborted ? { state: "paused", ...last } : { state: "failed", message: (error as Error).message };
+    log(`download ${download.state}: ${(error as Error).message}`);
+  } finally {
+    downloadAbort = null;
+    sendStatus();
+  }
+}
+
+function pauseDownload() {
+  downloadAbort?.abort();
+}
 
 // ---- the server --------------------------------------------------------------------------------------------------
 
@@ -330,7 +398,7 @@ function buildMenu() {
 // ---- the bridge to the Settings screen -----------------------------------------------------------------------------
 
 function status() {
-  return { settings: { ...settings, modelFolder: modelFolder() }, translation: { state: model.state(), problem: model.problem() } };
+  return { settings: { ...settings, modelFolder: modelFolder() }, translation: { state: model.state(), problem: model.problem() }, download };
 }
 
 function sendStatus() {
@@ -366,6 +434,12 @@ function registerBridge() {
     saveDesktopSettings(settingsFile, settings);
     await model.setFolder(modelFolder());
     if (settings.startTranslation && model.state() === "stopped") void model.start();
+    return status();
+  });
+  ipcMain.handle("desktop:download", (event, action: unknown) => {
+    if (!fromReader(event)) return null;
+    if (action === "start") void startDownload();
+    else if (action === "pause") pauseDownload();
     return status();
   });
   ipcMain.handle("desktop:translation", (event, action: unknown) => {
@@ -415,6 +489,7 @@ if (!app.requestSingleInstanceLock()) {
     if (quitting) return;
     quitting = true;
     event.preventDefault();
+    pauseDownload(); // what has arrived is kept, and the next download carries on from there
     void Promise.all([stopServerProcess(), model.stop()]).finally(() => {
       tray?.destroy();
       app.exit(0);

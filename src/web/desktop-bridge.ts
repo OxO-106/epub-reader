@@ -4,9 +4,15 @@
  */
 export type ModelState = "not-set-up" | "stopped" | "starting" | "running" | "failed";
 
+export type DownloadStatus =
+  | { state: "idle" | "done" }
+  | { state: "downloading" | "verifying" | "paused"; name: string; received: number; total: number }
+  | { state: "failed"; message: string };
+
 export interface DesktopStatus {
   settings: { closeToTray: boolean; startWithSystem: boolean; modelFolder: string | null; startTranslation: boolean };
   translation: { state: ModelState; problem: string | null };
+  download: DownloadStatus;
 }
 
 export interface DesktopBridge {
@@ -14,6 +20,7 @@ export interface DesktopBridge {
   update(change: Partial<Pick<DesktopStatus["settings"], "closeToTray" | "startWithSystem" | "startTranslation">>): Promise<DesktopStatus | null>;
   chooseModelFolder(): Promise<DesktopStatus | null>;
   translation(action: "start" | "stop"): Promise<DesktopStatus | null>;
+  download(action: "start" | "pause"): Promise<DesktopStatus | null>;
   onStatus(listener: (status: DesktopStatus) => void): () => void;
 }
 

@@ -654,7 +654,8 @@ function DesktopSection() {
     return bridge.onStatus(setStatus);
   }, []);
   if (!status) return null;
-  const { settings, translation } = status;
+  const { settings, translation, download } = status;
+  const downloading = download.state === "downloading" || download.state === "verifying";
   const change = (patch: Parameters<typeof bridge.update>[0]) => void bridge.update(patch).then((next) => next && setStatus(next));
   const busy = translation.state === "starting" || translation.state === "running";
 
@@ -694,6 +695,44 @@ function DesktopSection() {
             </button>
           )}
         </div>
+        {translation.state === "not-set-up" && (
+          <div class="model-download">
+            <p class="settings-hint">
+              Reader can download the translation model (Tencent Hy-MT2-7B, 4.6 GB) and llama.cpp (32 MB) into the folder above, checking both against their
+              published SHA-256. A download that stops carries on from where it was.
+            </p>
+            {(download.state === "downloading" || download.state === "verifying" || download.state === "paused") && (
+              <div class="model-progress">
+                <progress max={download.total} value={download.received} aria-label={`Downloading ${download.name}`} />
+                <span class="settings-hint" role="status">
+                  {download.state === "verifying" ? `Checking ${download.name}…` : `${download.name}: ${formatBytes(download.received)} of ${formatBytes(download.total)}`}
+                  {download.state === "paused" ? " (paused)" : ""}
+                </span>
+              </div>
+            )}
+            {download.state === "failed" && (
+              <p role="alert" class="settings-hint settings-problem">
+                {download.message}
+              </p>
+            )}
+            <div class="settings-actions">
+              {downloading ? (
+                <button type="button" class="settings-button quiet" disabled={download.state === "verifying"} onClick={() => void bridge.download("pause").then((next) => next && setStatus(next))}>
+                  Pause
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  class="settings-button primary"
+                  disabled={!settings.modelFolder}
+                  onClick={() => void bridge.download("start").then((next) => next && setStatus(next))}
+                >
+                  {download.state === "paused" ? "Resume download" : "Download the model"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         <label class="settings-choice settings-toggle">
           <input type="checkbox" checked={settings.startTranslation} onChange={(event) => change({ startTranslation: event.currentTarget.checked })} />
           <span>
