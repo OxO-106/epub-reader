@@ -16,8 +16,10 @@ Reader runs on your PC and is used from any browser: your desk, your laptop, you
 - **Know where you are.** A progress line over the whole Book with a mark at every chapter, drag it to jump, and an estimate of the time left in the chapter. Your Reading position follows you to every device.
 - **Make it yours.** Four themes (Light, Sepia, Dark and true-black Black), text size that reaches every part of the Book, line spacing, margins, and fonts set for reading: Libertinus Serif, IBM Plex Sans, 京华老宋体 and more.
 - **Search inside a Book**, Chinese included, with results grouped by chapter.
-- **Live Chinese translation.** Turn on Translate in an English Book and a Chinese rendering appears under each paragraph, written by a model you run yourself (llama.cpp, Ollama, LM Studio or vLLM). Names are put into Chinese by their sound.
-- **Phone-friendly.** Layouts designed for a phone, reachable over your own Tailscale network.
+- **Highlights and notes.** Select text and pick one of four colours; add a note; see every highlight of a Book in reading order and export them as Markdown. They follow you to every device.
+- **Live Chinese translation.** Turn on Translate in an English Book and a Chinese rendering appears under each paragraph, written by a model you run yourself (llama.cpp, Ollama, LM Studio or vLLM). Names are put into Chinese by their sound, and each Book keeps a Glossary so a name is written the same way every time; you can change any of them.
+- **On your phone, even offline.** Add Reader to your iPhone or Android Home Screen over your own Tailscale network, keep Books on the phone, and read without a connection; your place and highlights sync when you are back.
+- **A desktop app** for Windows: Reader in its own window, a tray icon, the translation model started (and downloaded) for you, and automatic updates.
 
 | Library | Reading | Phone |
 |---|---|---|
@@ -34,7 +36,7 @@ npm install
 npm start
 ```
 
-Open <http://127.0.0.1:5174> and drop a Book on the page. On Windows you can also double-click **`Start Reader.cmd`**, which starts Reader (and translation, if set up) behind a tray icon.
+Open <http://127.0.0.1:5174> and drop a Book on the page. On Windows you can instead install the [desktop app](docs/desktop.md) from the Releases page, or double-click **`Start Reader.cmd`**, which starts Reader (and translation, if set up) behind a tray icon.
 
 ## Learn more
 
