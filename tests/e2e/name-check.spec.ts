@@ -41,6 +41,9 @@ test("a new name is asked about: Keep saves the form as the reader's, and Not a 
   await expect(card(page)).toContainText("Darcy");
   await expect.poll(() => model.chatRequests().slice(asked).some((request) => request.user.includes("Elizabeth = 丽萃"))).toBe(true);
 
+  // Let the retranslation Keep started finish first: its requests still list Darcy as a name, and one still on its
+  // way to the model when the count is taken would be counted below.
+  await untilReady(page, 3);
   const before = model.chatRequests().length;
   await card(page).getByRole("button", { name: "Not a name" }).click();
 
