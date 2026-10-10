@@ -93,6 +93,8 @@ export interface FixedName {
 export interface BookGlossary {
   /** Every name in the Glossary, as known names for the detector (a first name at a sentence start is still a name). */
   names(): string[];
+  /** The keys of the words the reader said are not names (ADR 0180), for the detector to leave out. */
+  notNames(): Set<string>;
   /** The forms already decided for single words, to keep the parts of a new name of several words the same. */
   partForms(names: readonly string[]): FixedName[];
   /** Splits the names of a paragraph into those with a form already and those still without. */
@@ -113,12 +115,24 @@ export function bookGlossary(db: Db, hash: string): BookGlossary {
     }
     return keyed;
   };
+  // A "not a name" entry has no form: it never fixes a name, and its key is never asked about.
   const toFixed = (rows: GlossaryRow[], keyed: Map<string, string>): FixedName[] =>
-    rows.map((row) => ({ name: displayName(keyed.get(row.key) ?? row.name), form: row.form }));
+    rows.filter((row) => !row.not_name).map((row) => ({ name: displayName(keyed.get(row.key) ?? row.name), form: row.form }));
 
   return {
     names() {
-      return db.listGlossary(hash).map((row) => row.name);
+      return db
+        .listGlossary(hash)
+        .filter((row) => !row.not_name)
+        .map((row) => row.name);
+    },
+    notNames() {
+      return new Set(
+        db
+          .listGlossary(hash)
+          .filter((row) => row.not_name)
+          .map((row) => row.key),
+      );
     },
     partForms(names) {
       const words = names.filter((name) => /\s/u.test(name.trim())).flatMap((name) => displayName(name).split(/\s+/u));

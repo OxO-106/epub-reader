@@ -23,12 +23,14 @@ import { clickMayTurnPage, createTurnQueue, directionForKey, edgeAt, keyMayTurnP
 import { canCurl, curling, curlTurn, type Lift } from "./page-curl.ts";
 import { sha1 } from "./sha1.ts";
 import { resolveLanguage } from "./chinese.ts";
+import type { NewName } from "./translation/client.ts";
 import { createTranslationEngine, type Surface, type TranslationStatus } from "./translation/engine.ts";
 import { declaredEnglish, looksEnglish } from "./translation/language.ts";
 import { translationStyles } from "./translation/style.ts";
 
 export type { CustomBook } from "./custom-book.ts";
 export type { TranslationState, TranslationStatus } from "./translation/engine.ts";
+export type { NewName } from "./translation/client.ts";
 
 export type BookSource =
   /** An EPUB file, as downloaded from the server. */
@@ -196,6 +198,8 @@ export interface Reader {
   retryTranslation(blockId?: number): void;
   /** Translates what is on screen again, from scratch: the Book's Glossary has changed. */
   retranslate(): void;
+  /** Calls `listener` with the names translation adds to the Book's Glossary, for the reader to check (ADR 0180). */
+  onNewNames(listener: (names: NewName[]) => void): () => void;
   /** Moves to a place given as a fraction of the whole Book (0 to 1), as a progress scrubber asks. */
   goToFraction(fraction: number): Promise<void>;
   /**
@@ -850,6 +854,7 @@ export function createReader(container: HTMLElement): Reader {
     onTranslationStatus: (listener) => translation.onStatus(listener),
     retryTranslation: (blockId) => translation.retry(blockId),
     retranslate: () => translation.retranslate(),
+    onNewNames: (listener) => translation.onNewNames(listener),
     setFontFaces(css) {
       fontFaces = css;
       applyDisplay();

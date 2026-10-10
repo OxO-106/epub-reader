@@ -14,27 +14,39 @@ export interface GlossaryEntry {
   key: string;
   name: string;
   form: string;
-  /** The reader set this form (or imported it): the model never replaces it. */
+  /** The reader set this form (or imported it, or kept it when asked): the model never replaces it. */
   byReader: boolean;
+  /** The reader said this is not a name (ADR 0180): translation leaves the word alone. `form` is empty. */
+  notName: boolean;
   /** In how many paragraphs translation met it. */
   seen: number;
 }
 
-const toEntry = (row: GlossaryRow): GlossaryEntry => ({ key: row.key, name: row.name, form: row.form, byReader: row.by_reader === 1, seen: row.seen });
+const toEntry = (row: GlossaryRow): GlossaryEntry => ({
+  key: row.key,
+  name: row.name,
+  form: row.form,
+  byReader: row.by_reader === 1,
+  notName: row.not_name === 1,
+  seen: row.seen,
+});
 
 const refuse = (status: 400 | 403 | 404 | 413 | 415, error: string) => Response.json({ error }, { status });
 
-/** A name and form the reader gives, checked; or the reason it is refused. */
-export function parseGlossaryEntry(value: unknown): { ok: true; name: string; key: string; form: string } | { ok: false; error: string } {
-  const { name, form } = (value && typeof value === "object" && !Array.isArray(value) ? value : {}) as Record<string, unknown>;
+type ParsedEntry = { ok: true; name: string; key: string; form: string; notName: boolean };
+
+/** A name and form the reader gives (or a word with `notName: true` and no form), checked; or the reason it is refused. */
+export function parseGlossaryEntry(value: unknown): ParsedEntry | { ok: false; error: string } {
+  const { name, form, notName } = (value && typeof value === "object" && !Array.isArray(value) ? value : {}) as Record<string, unknown>;
   if (typeof name !== "string" || name.trim() === "" || name.length > maxGlossaryNameLength) {
     return { ok: false, error: `\`name\` must be a name of at most ${maxGlossaryNameLength} characters.` };
   }
   const key = glossaryKey(name);
   if (!key) return { ok: false, error: "`name` must be a name." };
+  if (notName === true) return { ok: true, name: displayName(name.trim()), key, form: "", notName: true };
   const checked = typeof form === "string" ? chineseForm(form) : undefined;
   if (!checked) return { ok: false, error: `\`form\` must be Chinese characters (the dot · may separate parts), at most ${maxFormLength}.` };
-  return { ok: true, name: displayName(name.trim()), key, form: checked };
+  return { ok: true, name: displayName(name.trim()), key, form: checked, notName: false };
 }
 
 /**
@@ -42,10 +54,10 @@ export function parseGlossaryEntry(value: unknown): { ok: true; name: string; ke
  * follow the rules of the other writes: from Reader's own page, addressed to Reader directly, as JSON.
  *
  * GET    /             -> {"entries": GlossaryEntry[]} most often met first
- * PUT    /             body {name, form} -> the entry: adds it, or changes its form; either way it is the reader's now.
+ * PUT    /             body {name, form} or {name, notName: true} -> the entry: adds it, or changes its form; either way it is the reader's now.
  *                      A dotted form of a name of several words also gives its parts an entry, unless they have one
  * DELETE /:key         -> 204 (the key as listed, URL-encoded), or 404
- * GET    /export       -> {"format":"reader-glossary","version":1,"entries":[{name, form}]} as a download
+ * GET    /export       -> {"format":"reader-glossary","version":1,"entries":[{name, form} or {name, notName: true}]} as a download
  * POST   /import       body as the export -> {"added", "changed", "kept"}: entries the reader set keep their form,
  *                      the rest take the imported one
  */
@@ -82,7 +94,7 @@ export function glossaryRoutes(db: Db, findBook: (id: string) => { title: string
     const entry = parseGlossaryEntry(read.body);
     if (!entry.ok) return refuse(400, entry.error);
     const saved = db.setGlossaryEntry(read.id, entry);
-    db.addGlossaryEntries(read.id, partsOf(saved.name, saved.form)); // River Cartwright = 瑞弗·卡特怀特 gives River = 瑞弗
+    if (!entry.notName) db.addGlossaryEntries(read.id, partsOf(saved.name, saved.form)); // River Cartwright = 瑞弗·卡特怀特 gives River = 瑞弗
     return c.json(toEntry(saved), 200, noStore);
   });
 
@@ -90,7 +102,7 @@ export function glossaryRoutes(db: Db, findBook: (id: string) => { title: string
     const id = c.req.param("id")!;
     const book = findBook(id);
     if (!book) return refuse(404, "Not found");
-    const body = { format: "reader-glossary", version: 1, book: book.title, entries: db.listGlossary(id).map((row) => ({ name: row.name, form: row.form })) };
+    const body = { format: "reader-glossary", version: 1, book: book.title, entries: db.listGlossary(id).map((row) => (row.not_name ? { name: row.name, notName: true } : { name: row.name, form: row.form })) };
     const file = `${book.title.replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Book"} - glossary.json`;
     return c.body(JSON.stringify(body, null, 2), 200, {
       ...noStore,
@@ -107,19 +119,19 @@ export function glossaryRoutes(db: Db, findBook: (id: string) => { title: string
       return refuse(400, `Send a Glossary exported from Verso: {"entries": [{"name", "form"}]}, at most ${maxImportEntries} entries.`);
     }
     const parsed = entries.map(parseGlossaryEntry);
-    if (parsed.some((entry) => !entry.ok)) return refuse(400, "Every entry needs a name and a Chinese form.");
+    if (parsed.some((entry) => !entry.ok)) return refuse(400, "Every entry needs a name and a Chinese form (or notName: true).");
     let added = 0;
     let changed = 0;
     let kept = 0;
     const existing = new Map(db.listGlossary(read.id).map((row) => [row.key, row]));
-    for (const entry of parsed as Array<{ ok: true; name: string; key: string; form: string }>) {
+    for (const entry of parsed as ParsedEntry[]) {
       const before = existing.get(entry.key);
       if (before?.by_reader === 1) {
         kept++;
         continue;
       }
       if (!before) added++;
-      else if (before.form !== entry.form) changed++;
+      else if (before.form !== entry.form || (before.not_name === 1) !== entry.notName) changed++;
       existing.set(entry.key, db.setGlossaryEntry(read.id, entry));
     }
     return c.json({ added, changed, kept }, 200, noStore);

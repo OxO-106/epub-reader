@@ -11,6 +11,13 @@ export interface TranslateRequest {
   bookId?: string;
 }
 
+/** A name translation has just added to the Book's Glossary, with the form the model gave it (ADR 0180). */
+export interface NewName {
+  key: string;
+  name: string;
+  form: string;
+}
+
 export type TranslateOutcome =
   | { kind: "done" }
   /** The browser cancelled the request. */
@@ -28,11 +35,15 @@ export const backendTrouble = new Set(["unreachable", "network", "timeout", "sta
 
 const failed = (code: string, message: string): TranslateOutcome => ({ kind: "failed", failure: { code, message } });
 
-/** Translates one block, calling `onDelta` with each piece of Chinese as it arrives. */
+/**
+ * Translates one block, calling `onDelta` with each piece of Chinese as it arrives, and `onNames` with the names the
+ * request added to the Book's Glossary.
+ */
 export async function translateBlock(
   request: TranslateRequest,
   signal: AbortSignal,
   onDelta: (delta: string) => void,
+  onNames: (names: NewName[]) => void = () => {},
 ): Promise<TranslateOutcome> {
   let response: Response;
   try {
@@ -68,7 +79,7 @@ export async function translateBlock(
   /** Handles one line; true when the stream is over. */
   const handle = (line: string): boolean => {
     if (!line.trim()) return false;
-    let event: { delta?: unknown; done?: unknown; error?: { code?: unknown; message?: unknown } };
+    let event: { delta?: unknown; done?: unknown; names?: unknown; error?: { code?: unknown; message?: unknown } };
     try {
       event = JSON.parse(line);
     } catch {
@@ -76,6 +87,7 @@ export async function translateBlock(
       return true;
     }
     if (typeof event.delta === "string") onDelta(event.delta);
+    else if (Array.isArray(event.names)) onNames(event.names.filter(isNewName));
     else if (event.done === true) outcome = { kind: "done" };
     else if (event.error) {
       outcome = failed(
@@ -107,6 +119,11 @@ export async function translateBlock(
   }
   // The stream ended without saying it was done.
   return signal.aborted ? { kind: "aborted" } : failed("bad-stream", "The answer ended early.");
+}
+
+function isNewName(value: unknown): value is NewName {
+  const { key, name, form } = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  return typeof key === "string" && typeof name === "string" && typeof form === "string";
 }
 
 export interface BackendStatus {

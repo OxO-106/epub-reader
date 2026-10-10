@@ -1720,6 +1720,226 @@
   outline-offset: 1px;
 }
 
+/* Names not checked yet, "not a name", and the switch for asking (ADR 0180). */
+
+.reader-screen .glossary-ask {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 20px 4px;
+  font-size: 13.5px;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.reader-screen .glossary-ask input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.reader-screen .glossary-row .glossary-row-actions {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  display: flex;
+  gap: 4px;
+  margin: -4px 0 4px -8px;
+}
+
+.reader-screen .glossary-row .glossary-remove {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.reader-screen .glossary-row-action {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.reader-screen .glossary-row-action:active {
+  background: var(--raised);
+}
+
+.reader-screen .glossary-unchecked {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  vertical-align: 1px;
+}
+
+.reader-screen .glossary-not-names {
+  margin-top: 16px;
+  padding: 0 8px;
+}
+
+.reader-screen .glossary-not-names h3 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.reader-screen .glossary-hint {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.reader-screen .glossary-not-names .glossary-row {
+  grid-template-columns: minmax(0, 1fr) var(--tap);
+}
+
+.reader-screen .glossary-not-names .glossary-row .glossary-remove {
+  grid-column: 2;
+}
+
+.reader-screen .glossary-ask input:focus-visible,
+.reader-screen .glossary-row-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---- The name check (ADR 0180): a card asking about a name translation has just met; it never blocks reading ---- */
+
+.reader-screen .name-check {
+  position: fixed;
+  z-index: 9;
+  right: 16px;
+  bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  width: min(20rem, calc(100% - 32px));
+  padding: 10px 12px 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow-panel);
+  animation: fade-in 160ms ease;
+}
+
+.reader-screen .name-check-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-right: -6px;
+}
+
+.reader-screen .name-check-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.reader-screen .name-check-name {
+  margin: 0 0 8px;
+  font-family: var(--font-serif);
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.reader-screen .name-check-form {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 17px;
+}
+
+.reader-screen .name-check-problem {
+  min-height: 0;
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--danger);
+}
+
+.reader-screen .name-check-problem:empty {
+  display: none;
+}
+
+.reader-screen .name-check-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.reader-screen .name-check-actions button {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.reader-screen .name-check-keep {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.reader-screen .name-check-action {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--fg);
+}
+
+.reader-screen .name-check-actions .name-check-stop {
+  margin-left: auto;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.reader-screen .name-check-actions button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.reader-screen .name-check-form:focus-visible,
+.reader-screen .name-check-actions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-screen .name-check {
+    animation: none;
+  }
+}
+
 /* ---- The book look (issue #40): a paginated Book in a wide window, drawn as an open book on a desk ----
  *
  * Set by ReaderScreen (`data-look="book"`, from 60rem wide in the paginated layout; `data-spread="two"` when two pages

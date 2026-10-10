@@ -32,7 +32,7 @@ const paragraphRequests = (model: ModelStandIn) => model.chatRequests();
 const nameRequests = (model: ModelStandIn) => model.nameRequests();
 const glossary = async (server: TestServer, bookId: string) => {
   const response = await fetch(`${server.url}/api/books/${bookId}/glossary`);
-  return ((await response.json()) as { entries: Array<{ name: string; form: string; seen: number }> }).entries;
+  return ((await response.json()) as { entries: Array<{ name: string; form: string; seen: number; byReader: boolean; notName: boolean }> }).entries;
 };
 
 const put = (server: TestServer, bookId: string, body: unknown) =>
@@ -313,5 +313,77 @@ describe("the Glossary API", () => {
     expect((await send(server, bookId, "PUT", "", { name: "River", form: "瑞弗" }, { "content-type": "text/plain" })).status).toBe(415);
     expect((await fetch(`${server.url}/api/books/${bookId}/glossary/river`, { method: "DELETE", headers: { origin: "https://example.com" } })).status).toBe(403);
     expect((await fetch(`${server.url}/api/books/${"0".repeat(64)}/glossary`)).status).toBe(404);
+  });
+});
+
+describe("checking new names (issue #44)", () => {
+  it("reports the names a request added, before the text, and only the first time", async () => {
+    const { server, bookId } = await setup({ forms: { "River Cartwright": "瑞弗·卡特怀特" } });
+
+    const first = await translate(server, { text: "River Cartwright looked up.", bookId });
+    const again = await translate(server, { text: "They saw River Cartwright.", bookId });
+
+    expect(first.events[0]).toEqual({ names: [{ key: "river cartwright", name: "River Cartwright", form: "瑞弗·卡特怀特" }] });
+    expect(first.text).toBe("译文。");
+    expect(again.events.some((event) => "names" in event)).toBe(false);
+  });
+
+  it("sends no names without a Book", async () => {
+    const { server } = await setup();
+    expect((await translate(server, { text: "They met River at dawn." })).events.some((event) => "names" in event)).toBe(false);
+  });
+
+  it("keeps a word the reader says is not a name out of the names, and never asks about it", async () => {
+    const { model, server, bookId } = await setup();
+    const marked = await put(server, bookId, { name: "Hope", notName: true });
+    expect(marked.status).toBe(200);
+    expect(await marked.json()).toMatchObject({ key: "hope", name: "Hope", form: "", notName: true, byReader: true });
+
+    await translate(server, { text: "They said Hope was gone, and River smiled.", bookId });
+
+    expect(nameRequests(model)[0]!.user).toMatch(/\n\nRiver$/);
+    expect(paragraphRequests(model)[0]!.user).toContain("Use exactly these Chinese forms for names: River = 瑞弗.");
+    expect(paragraphRequests(model)[0]!.user).not.toMatch(/Hope =|Names in the text:[^.]*Hope/);
+  });
+
+  it("shortens a joined name the reader says is not one to the name after the first word", async () => {
+    const { model, server, bookId } = await setup({ forms: { Cartwright: "卡特怀特" } });
+    await put(server, bookId, { name: "Dawn Cartwright", notName: true });
+
+    await translate(server, { text: "Dawn Cartwright woke.", bookId });
+
+    expect(nameRequests(model)[0]!.user).toMatch(/\n\nCartwright$/);
+  });
+
+  it("lists not-a-name entries, exports and imports them, and removing one lets the word be a name again", async () => {
+    const { model, server, bookId } = await setup();
+    await put(server, bookId, { name: "River", notName: true });
+    expect(await glossary(server, bookId)).toMatchObject([{ name: "River", notName: true }]);
+
+    const exported = await (await fetch(`${server.url}/api/books/${bookId}/glossary/export`)).json();
+    expect(exported.entries).toEqual([{ name: "River", notName: true }]);
+
+    expect((await fetch(`${server.url}/api/books/${bookId}/glossary/river`, { method: "DELETE" })).status).toBe(204);
+    await translate(server, { text: "They met River at dawn.", bookId });
+    expect(nameRequests(model)).toHaveLength(1);
+
+    const other = (await (await uploadFixture(server, "english-mixed.epub")).json()).book.id as string;
+    const imported = await fetch(`${server.url}/api/books/${other}/glossary/import`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(exported),
+    });
+    expect(await imported.json()).toEqual({ added: 1, changed: 0, kept: 0 });
+    expect(await glossary(server, other)).toMatchObject([{ name: "River", notName: true }]);
+  });
+
+  it("keeps a name with the model's form when the reader keeps it, which marks it checked", async () => {
+    const { server, bookId } = await setup();
+    await translate(server, { text: "They met River at dawn.", bookId });
+    expect(await glossary(server, bookId)).toMatchObject([{ name: "River", form: "瑞弗", byReader: false }]);
+
+    await put(server, bookId, { name: "River", form: "瑞弗" });
+
+    expect(await glossary(server, bookId)).toMatchObject([{ name: "River", form: "瑞弗", byReader: true, notName: false }]);
   });
 });

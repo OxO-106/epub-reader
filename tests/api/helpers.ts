@@ -68,7 +68,11 @@ export function eventually<T>(assertion: () => T | Promise<T>): Promise<T> {
 }
 
 /** One line of the translate stream as the browser sees it. */
-export type StreamedEvent = { delta: string } | { done: true } | { error: { code: string; message: string } };
+export type StreamedEvent =
+  | { names: Array<{ key: string; name: string; form: string }> }
+  | { delta: string }
+  | { done: true }
+  | { error: { code: string; message: string } };
 
 /** POSTs a paragraph to the translate endpoint and reads the whole newline-delimited JSON answer. */
 export async function translate(

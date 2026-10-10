@@ -268,8 +268,10 @@ export interface GlossaryEntry {
   key: string;
   name: string;
   form: string;
-  /** The reader set this form: the model never replaces it. */
+  /** The reader set this form or kept it when asked: the model never replaces it. Otherwise it is not checked yet. */
   byReader: boolean;
+  /** The reader said this word is not a name (ADR 0180): translation leaves it alone. `form` is empty. */
+  notName: boolean;
   /** In how many paragraphs translation met it. */
   seen: number;
 }
@@ -295,8 +297,11 @@ export async function getGlossary(bookId: string): Promise<GlossaryEntry[]> {
   return ((await response.json()) as { entries: GlossaryEntry[] }).entries;
 }
 
-/** Adds a name or changes its form. Rejects with a GlossaryRefusal saying what is wrong with it. */
-export async function setGlossaryEntry(bookId: string, entry: { name: string; form: string }): Promise<GlossaryEntry> {
+/**
+ * Adds a name or changes its form, or marks a word as not a name. Rejects with a GlossaryRefusal saying what is wrong
+ * with it.
+ */
+export async function setGlossaryEntry(bookId: string, entry: { name: string; form: string } | { name: string; notName: true }): Promise<GlossaryEntry> {
   const response = await glossaryWrite(
     await apiFetch(`/api/books/${bookId}/glossary`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(entry) }),
   );

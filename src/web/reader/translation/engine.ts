@@ -5,7 +5,7 @@
 // Everything is in memory. A Translation exists only while its block is near the reader and goes when the reader
 // moves away, when translation is switched off, or when the Book section is replaced.
 import { findBlocks, type Block } from "./blocks.ts";
-import { backendTrouble, fetchStatus, translateBlock, type TranslateOutcome } from "./client.ts";
+import { backendTrouble, fetchStatus, translateBlock, type NewName, type TranslateOutcome } from "./client.ts";
 import { collectNames } from "./names.ts";
 import { stateAttribute, textAttribute, type BlockState } from "./style.ts";
 
@@ -57,6 +57,8 @@ export interface TranslationEngine {
   retranslate(): void;
   status(): TranslationStatus;
   onStatus(listener: (status: TranslationStatus) => void): () => void;
+  /** Calls `listener` with the names translation adds to the Book's Glossary, for the reader to check (ADR 0180). */
+  onNewNames(listener: (names: NewName[]) => void): () => void;
   dispose(): void;
 }
 
@@ -107,6 +109,18 @@ export function createTranslationEngine(options: EngineOptions = {}): Translatio
   let recheckTimer: ReturnType<typeof setTimeout> | undefined;
   let lastStatus: TranslationStatus = { state: "idle", translated: 0, waiting: 0, failed: [] };
   const listeners = new Set<(status: TranslationStatus) => void>();
+  const nameListeners = new Set<(names: NewName[]) => void>();
+
+  function announceNames(names: NewName[]) {
+    if (!names.length) return;
+    for (const listener of [...nameListeners]) {
+      try {
+        listener(names);
+      } catch (error) {
+        console.error("translation: a new-names listener failed", error);
+      }
+    }
+  }
 
   // ---- status ---------------------------------------------------------------------------------------------------
 
@@ -340,7 +354,7 @@ export function createTranslationEngine(options: EngineOptions = {}): Translatio
         broke = true;
         abort.abort();
       }
-    }).then(settle, () => {
+    }, announceNames).then(settle, () => {
       broke = true; // translateBlock never rejects; if it somehow does, the block fails and the loop goes on
       settle(internal);
     });
@@ -495,11 +509,16 @@ export function createTranslationEngine(options: EngineOptions = {}): Translatio
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+    onNewNames(listener) {
+      nameListeners.add(listener);
+      return () => nameListeners.delete(listener);
+    },
     dispose() {
       enabled = false;
       api.detach();
       clearTimeout(recheckTimer);
       listeners.clear();
+      nameListeners.clear();
     },
   };
   return api;

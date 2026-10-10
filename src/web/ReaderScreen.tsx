@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { getBook, getReadingPosition, HttpError, type SavedReadingPosition } from "./api.ts";
+import { getBook, getReadingPosition, GlossaryRefusal, HttpError, setGlossaryEntry, type SavedReadingPosition } from "./api.ts";
+import { loadAskNames, saveAskNames } from "./ask-names-setting.ts";
 import { DeviceFullError, forgetBook, keepBook, keptBook, keptEvent, loadAutoKeep } from "./device-store.ts";
 import { knownPosition, positionWaiting } from "./outbox.ts";
 import { loadBookSource } from "./bookSource.ts";
@@ -15,7 +16,8 @@ import { HighlightMenu } from "./HighlightMenu.tsx";
 import { HighlightsPanel } from "./HighlightsPanel.tsx";
 import { GlossaryPanel } from "./GlossaryPanel.tsx";
 import { useHighlights } from "./highlights.ts";
-import { createReader, type Reader, type ScreenRect, type TextSelection, type TocEntry, type TranslationStatus, type Zoom } from "./reader/reader.ts";
+import { NameCheck } from "./NameCheck.tsx";
+import { createReader, type NewName, type Reader, type ScreenRect, type TextSelection, type TocEntry, type TranslationStatus, type Zoom } from "./reader/reader.ts";
 import { loadZoom, saveZoom } from "./pdf-zoom.ts";
 import { ReaderBottomBar, ReaderTopBar, type Panel } from "./ReaderBars.tsx";
 import { trackReadingPosition } from "./reading-position.ts";
@@ -111,6 +113,13 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   // Whether the open Book is English, which is when Translate is offered; known once the Book has opened.
   const [english, setEnglish] = useState(false);
   const [translation, setTranslation] = useState<TranslationStatus | null>(null);
+  // Names translation has just added to the Glossary, oldest first, waiting for the reader to check them (ADR 0180).
+  const [newNames, setNewNames] = useState<NewName[]>([]);
+  const [askNames, setAskNames] = useState(loadAskNames);
+  const askNamesNow = useRef(askNames);
+  askNamesNow.current = askNames;
+  // Bumped when the Glossary changes outside its panel, so an open panel shows it.
+  const [glossaryVersion, setGlossaryVersion] = useState(0);
   // Bumped to open the Book again after the server could not be reached.
   const [attempt, setAttempt] = useState(0);
   // Whether the bars are resting (faded); see the comment above.
@@ -201,6 +210,11 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     });
     const stopHighlightTaps = instance.onHighlightTap(({ id, rect }) => setMenu({ kind: "highlight", id, rect }));
     const stopStatus = instance.onTranslationStatus(setTranslation);
+    const stopNames = instance.onNewNames((names) => {
+      setGlossaryVersion((version) => version + 1);
+      if (!askNamesNow.current) return;
+      setNewNames((waiting) => [...waiting, ...names.filter((name) => !waiting.some((other) => other.key === name.key))]);
+    });
     const stopTaps = instance.onTap(() => {
       // A tap elsewhere on the page puts an open highlight menu away, and does nothing else.
       if (menuNow.current) {
@@ -260,6 +274,8 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       stopTracking();
       stopListening();
       stopStatus();
+      stopNames();
+      setNewNames([]);
       stopTaps();
       stopSelection();
       stopHighlightTaps();
@@ -400,6 +416,26 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     setPanel(null);
     if (focus === "book") reader.current?.focus();
     else if (was) buttons[was].current?.focus();
+  }
+
+  /** Saves the reader's answer about a new name; null when saved, else what went wrong. */
+  async function answerName(name: NewName, entry: { name: string; form: string } | { name: string; notName: true }): Promise<string | null> {
+    try {
+      await setGlossaryEntry(bookId, entry);
+    } catch (error) {
+      return error instanceof GlossaryRefusal ? error.message : "The answer could not be saved. Check that Verso is running.";
+    }
+    setNewNames((waiting) => waiting.filter((other) => other.key !== name.key));
+    setGlossaryVersion((version) => version + 1);
+    // A changed form, or a word that is no longer a name, changes the Chinese on screen.
+    if ("notName" in entry || entry.form !== name.form) reader.current?.retranslate();
+    return null;
+  }
+
+  function changeAskNames(on: boolean) {
+    setAskNames(on);
+    saveAskNames(on);
+    if (!on) setNewNames([]);
   }
 
   function changeDisplay(next: DisplaySettings) {
@@ -612,7 +648,24 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       )}
 
       {panel === "glossary" && ready && english && (
-        <GlossaryPanel bookId={bookId} onChanged={() => reader.current?.retranslate()} onClose={() => closePanel()} />
+        <GlossaryPanel
+          bookId={bookId}
+          version={glossaryVersion}
+          askNames={askNames}
+          onAskNames={changeAskNames}
+          onChanged={() => reader.current?.retranslate()}
+          onClose={() => closePanel()}
+        />
+      )}
+
+      {ready && english && askNames && !panel && newNames.length > 0 && (
+        <NameCheck
+          names={newNames}
+          onKeep={(name, form) => answerName(name, { name: name.name, form })}
+          onNotName={(name) => answerName(name, { name: name.name, notName: true })}
+          onLater={(name) => setNewNames((waiting) => waiting.filter((other) => other.key !== name.key))}
+          onStopAsking={() => changeAskNames(false)}
+        />
       )}
 
       {menu?.kind === "selection" && (

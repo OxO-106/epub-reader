@@ -8,9 +8,27 @@ type Load = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; entries:
  * The Book's Glossary (ADR 0170): every name translation has met, most often met first, with the Chinese form it is
  * always translated to. A form can be changed in place (Enter or leaving the field saves it), a name removed or added;
  * after each change the paragraphs on screen are translated again (`onChanged`). Export downloads the Glossary as JSON;
- * Import adds one, keeping the forms the reader set. Docked beside the text on a wide window, over it on a narrow one.
+ * Import adds one, keeping the forms the reader set. Names the model decided and the reader has not checked yet are
+ * marked, with Keep; any name can be marked "not a name" (ADR 0180), and those words are listed apart, removable. The
+ * switch says whether the Reader asks about new names as they come. `version` changes when the Glossary changed
+ * elsewhere (translation, the name check), and the list is loaded again. Docked beside the text on a wide window, over
+ * it on a narrow one.
  */
-export function GlossaryPanel({ bookId, onChanged, onClose }: { bookId: string; onChanged(): void; onClose(): void }) {
+export function GlossaryPanel({
+  bookId,
+  version = 0,
+  askNames,
+  onAskNames,
+  onChanged,
+  onClose,
+}: {
+  bookId: string;
+  version?: number;
+  askNames: boolean;
+  onAskNames(on: boolean): void;
+  onChanged(): void;
+  onClose(): void;
+}) {
   const [load, setLoad] = useState<Load>({ kind: "loading" });
   const [message, setMessage] = useState<{ text: string; alert: boolean } | null>(null);
   const head = useRef<HTMLHeadingElement>(null);
@@ -26,16 +44,18 @@ export function GlossaryPanel({ bookId, onChanged, onClose }: { bookId: string; 
 
   useEffect(() => {
     head.current?.focus();
-    void refresh();
   }, [bookId]);
+  useEffect(() => {
+    void refresh();
+  }, [bookId, version]);
 
-  /** Runs a change, then reloads the list and translates again; a refusal is shown, not thrown. */
-  async function change(run: () => Promise<unknown>, done: string): Promise<boolean> {
+  /** Runs a change, then reloads the list and translates again (unless nothing on screen changes); a refusal is shown, not thrown. */
+  async function change(run: () => Promise<unknown>, done: string, retranslate = true): Promise<boolean> {
     try {
       await run();
       setMessage({ text: done, alert: false });
       await refresh();
-      onChanged();
+      if (retranslate) onChanged();
       return true;
     } catch (error) {
       setMessage({ text: error instanceof GlossaryRefusal ? error.message : "The change could not be saved. Check that Verso is running.", alert: true });
@@ -61,7 +81,9 @@ export function GlossaryPanel({ bookId, onChanged, onClose }: { bookId: string; 
     }
   }
 
-  const entries = load.kind === "ready" ? load.entries : [];
+  const all = load.kind === "ready" ? load.entries : [];
+  const entries = all.filter((entry) => !entry.notName);
+  const notNames = all.filter((entry) => entry.notName);
 
   return (
     <aside id="book-glossary" class="reader-panel reader-glossary" aria-labelledby="book-glossary-title" data-no-page-turn>
@@ -74,6 +96,10 @@ export function GlossaryPanel({ bookId, onChanged, onClose }: { bookId: string; 
         </button>
       </div>
       <p class="glossary-intro">Each name in this Book is always translated to the Chinese form listed here. Change one and the text on screen is translated again.</p>
+      <label class="glossary-ask">
+        <input type="checkbox" checked={askNames} onChange={(event) => onAskNames(event.currentTarget.checked)} />
+        Ask about new names as they come
+      </label>
 
       <div class="glossary-tools">
         <a class="glossary-tool" href={glossaryExportUrl(bookId)} download="glossary.json">
@@ -113,10 +139,33 @@ export function GlossaryPanel({ bookId, onChanged, onClose }: { bookId: string; 
                 key={entry.key}
                 entry={entry}
                 onSave={(form) => change(() => setGlossaryEntry(bookId, { name: entry.name, form }), `${entry.name} is now ${form}.`)}
+                onKeep={() => change(() => setGlossaryEntry(bookId, { name: entry.name, form: entry.form }), `${entry.name} is kept as ${entry.form}.`, false)}
+                onNotName={() => change(() => setGlossaryEntry(bookId, { name: entry.name, notName: true }), `${entry.name} is no longer treated as a name.`)}
                 onRemove={() => change(() => deleteGlossaryEntry(bookId, entry.key), `${entry.name} was removed.`)}
               />
             ))}
           </ul>
+        )}
+        {notNames.length > 0 && (
+          <section class="glossary-not-names" aria-labelledby="glossary-not-names-title">
+            <h3 id="glossary-not-names-title">Not names</h3>
+            <p class="glossary-hint">These words are translated as ordinary words. Remove one to let translation treat it as a name again.</p>
+            <ul aria-label="Not names">
+              {notNames.map((entry) => (
+                <li key={entry.key} class="glossary-row">
+                  <span class="glossary-name">{entry.name}</span>
+                  <button
+                    type="button"
+                    class="glossary-remove"
+                    aria-label={`Treat ${entry.name} as a name again`}
+                    onClick={() => change(() => deleteGlossaryEntry(bookId, entry.key), `${entry.name} may be treated as a name again.`)}
+                  >
+                    <CloseIcon size={16} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
         <AddName onAdd={(name, form) => change(() => setGlossaryEntry(bookId, { name, form }), `${name} was added as ${form}.`)} />
       </div>
@@ -124,7 +173,19 @@ export function GlossaryPanel({ bookId, onChanged, onClose }: { bookId: string; 
   );
 }
 
-function GlossaryRow({ entry, onSave, onRemove }: { entry: GlossaryEntry; onSave(form: string): Promise<boolean>; onRemove(): void }) {
+function GlossaryRow({
+  entry,
+  onSave,
+  onKeep,
+  onNotName,
+  onRemove,
+}: {
+  entry: GlossaryEntry;
+  onSave(form: string): Promise<boolean>;
+  onKeep(): void;
+  onNotName(): void;
+  onRemove(): void;
+}) {
   const [form, setForm] = useState(entry.form);
   useEffect(() => setForm(entry.form), [entry.form]);
   const save = () => {
@@ -133,8 +194,11 @@ function GlossaryRow({ entry, onSave, onRemove }: { entry: GlossaryEntry; onSave
     else setForm(entry.form);
   };
   return (
-    <li class="glossary-row">
-      <span class="glossary-name">{entry.name}</span>
+    <li class={entry.byReader ? "glossary-row" : "glossary-row unchecked"}>
+      <span class="glossary-name">
+        {entry.name}
+        {!entry.byReader && <span class="glossary-unchecked">not checked</span>}
+      </span>
       <input
         class="glossary-form"
         lang="zh-Hans"
@@ -154,6 +218,16 @@ function GlossaryRow({ entry, onSave, onRemove }: { entry: GlossaryEntry; onSave
           }
         }}
       />
+      <div class="glossary-row-actions">
+        {!entry.byReader && (
+          <button type="button" class="glossary-row-action" aria-label={`Keep ${entry.name} as ${entry.form}`} onClick={onKeep}>
+            Keep
+          </button>
+        )}
+        <button type="button" class="glossary-row-action" aria-label={`${entry.name} is not a name`} onClick={onNotName}>
+          Not a name
+        </button>
+      </div>
       <button type="button" class="glossary-remove" aria-label={`Remove ${entry.name}`} onClick={onRemove}>
         <CloseIcon size={16} />
       </button>

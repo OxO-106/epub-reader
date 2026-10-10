@@ -1,13 +1,22 @@
 import type { TranslateConfig } from "./config.ts";
-import { parseNameForms, type BookGlossary, type FixedName } from "./glossary.ts";
+import { glossaryKey, parseNameForms, type BookGlossary, type FixedName } from "./glossary.ts";
 import { findNames } from "./translate-names.ts";
 import { chatRequest, createOutputCleaner, namesRequest } from "./translate-prompt.ts";
+
+/** A name the model has just given a form, as the translate stream reports it. */
+export interface NewName {
+  key: string;
+  name: string;
+  form: string;
+}
 
 // Live translation: the app server sits between the browser and an OpenAI-style model server (ADR 0120).
 // Nothing here logs or stores the text it handles; errors carry a code and a fixed sentence, never Book text.
 
 /** One line of the translate stream (newline-delimited JSON, one event per line). */
 export type TranslateEvent =
+  /** Names this request added to the Book's Glossary, for the reader to check (ADR 0180); sent before the text. */
+  | { names: NewName[] }
   | { delta: string }
   | { done: true }
   | { error: { code: TranslateErrorCode; message: string } };
@@ -284,9 +293,15 @@ export function createTranslator(config: TranslateConfig): Translator {
    * The Glossary forms of a paragraph's names: those saved already, and those of new names, asked of the model in one
    * short request and saved. A name request that fails or answers nonsense leaves its names without a form (the
    * paragraph is translated with the plain rule, and they are asked about again next time); only giving up on the
-   * whole request (the browser leaving, a time limit) ends it.
+   * whole request (the browser leaving, a time limit) ends it. `added` are the new names given a form here.
    */
-  async function fixedForms(url: string, glossary: BookGlossary, names: readonly string[], signal: AbortSignal, alive: () => void): Promise<FixedName[]> {
+  async function fixedForms(
+    url: string,
+    glossary: BookGlossary,
+    names: readonly string[],
+    signal: AbortSignal,
+    alive: () => void,
+  ): Promise<{ fixed: FixedName[]; added: FixedName[] }> {
     const { known, unknown } = glossary.lookup(names);
     let found: FixedName[] = [];
     const asked = unknown.slice(0, maxNewNamesPerRequest);
@@ -301,7 +316,7 @@ export function createTranslator(config: TranslateConfig): Translator {
       }
     }
     glossary.seen(names);
-    return [...known, ...found];
+    return { fixed: [...known, ...found], added: found };
   }
 
   async function* translate(input: TranslateInput, clientSignal: AbortSignal): AsyncGenerator<TranslateEvent> {
@@ -333,9 +348,12 @@ export function createTranslator(config: TranslateConfig): Translator {
       // The names found here are listed in the prompt, so the model puts them into Chinese by sound (ADR 0150).
       // The Book's Glossary names count as known, so "River said." is caught once River Cartwright is in it.
       const callerNames = input.glossary ? [...(input.names ?? []), ...input.glossary.names()] : input.names;
-      const names = findNames(input.context ? [input.context, input.text] : [input.text], callerNames);
+      const names = findNames(input.context ? [input.context, input.text] : [input.text], callerNames, input.glossary?.notNames());
       // With the Book's Glossary, names met before are given their saved forms, and new ones are decided first (ADR 0170).
-      const fixed = input.glossary && names.length ? await fixedForms(base, input.glossary, names, upstream.signal, alive) : [];
+      const { fixed, added } =
+        input.glossary && names.length ? await fixedForms(base, input.glossary, names, upstream.signal, alive) : { fixed: [], added: [] };
+      // The reader is asked about the new ones (ADR 0180).
+      if (added.length) yield { names: added.map((entry) => ({ key: glossaryKey(entry.name), name: entry.name, form: entry.form })) };
       const request = chatRequest({ passage: input.text, context: input.context, names, fixed, model: config.model });
       const cleaner = createOutputCleaner();
       let sent = false;

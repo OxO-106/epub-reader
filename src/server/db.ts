@@ -51,6 +51,9 @@ const migrations: string[] = [
   // When a Reading position was changed, on the device that changed it (ms), so a position saved late (a phone that was
   // offline) never replaces a newer one. Null for positions saved before this column existed.
   `ALTER TABLE reading_positions ADD COLUMN changed_at INTEGER`,
+  // A Glossary entry the reader marked as not a name (ADR 0180): translation no longer treats the word as one in this
+  // Book. Its `form` is empty.
+  `ALTER TABLE glossary ADD COLUMN not_name INTEGER NOT NULL DEFAULT 0`,
 ];
 
 export interface BookRow {
@@ -91,6 +94,8 @@ export interface GlossaryRow {
   name: string;
   form: string;
   by_reader: number;
+  /** 1 when the reader said this is not a name (ADR 0180); `form` is then empty. */
+  not_name: number;
   seen: number;
   created_at: number;
   updated_at: number;
@@ -136,9 +141,9 @@ export interface Db {
   addGlossaryEntries(hash: string, entries: ReadonlyArray<{ key: string; name: string; form: string }>): GlossaryRow[];
   /**
    * Sets an entry as the reader wants it (adding it if new); `by_reader` is set, so the model never replaces it.
-   * Returns the entry as saved.
+   * `notName` marks the word as not a name (the form is then empty). Returns the entry as saved.
    */
-  setGlossaryEntry(hash: string, entry: { key: string; name: string; form: string }): GlossaryRow;
+  setGlossaryEntry(hash: string, entry: { key: string; name: string; form: string; notName?: boolean }): GlossaryRow;
   /** Returns false when there was no such entry. */
   deleteGlossaryEntry(hash: string, key: string): boolean;
   /** Counts one more paragraph for each of these keys. */
@@ -261,12 +266,12 @@ export function openDb(path: string): Db {
     },
     listGlossary(hash) {
       return db
-        .prepare("SELECT key, name, form, by_reader, seen, created_at, updated_at FROM glossary WHERE book_hash = ? ORDER BY seen DESC, created_at, key")
+        .prepare("SELECT key, name, form, by_reader, not_name, seen, created_at, updated_at FROM glossary WHERE book_hash = ? ORDER BY seen DESC, created_at, key")
         .all(hash) as unknown as GlossaryRow[];
     },
     glossaryEntries(hash, keys) {
       if (!keys.length) return [];
-      const select = db.prepare("SELECT key, name, form, by_reader, seen, created_at, updated_at FROM glossary WHERE book_hash = ? AND key = ?");
+      const select = db.prepare("SELECT key, name, form, by_reader, not_name, seen, created_at, updated_at FROM glossary WHERE book_hash = ? AND key = ?");
       return keys.map((key) => select.get(hash, key) as unknown as GlossaryRow | undefined).filter((row): row is GlossaryRow => !!row);
     },
     addGlossaryEntries(hash, entries) {
@@ -287,9 +292,9 @@ export function openDb(path: string): Db {
     setGlossaryEntry(hash, entry) {
       const now = Date.now();
       db.prepare(
-        `INSERT INTO glossary (book_hash, key, name, form, by_reader, seen, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 0, ?, ?)
-         ON CONFLICT(book_hash, key) DO UPDATE SET form = excluded.form, by_reader = 1, updated_at = excluded.updated_at`,
-      ).run(hash, entry.key, entry.name, entry.form, now, now);
+        `INSERT INTO glossary (book_hash, key, name, form, by_reader, not_name, seen, created_at, updated_at) VALUES (?, ?, ?, ?, 1, ?, 0, ?, ?)
+         ON CONFLICT(book_hash, key) DO UPDATE SET form = excluded.form, by_reader = 1, not_name = excluded.not_name, updated_at = excluded.updated_at`,
+      ).run(hash, entry.key, entry.name, entry.notName ? "" : entry.form, entry.notName ? 1 : 0, now, now);
       return this.glossaryEntries(hash, [entry.key])[0]!;
     },
     deleteGlossaryEntry(hash, key) {

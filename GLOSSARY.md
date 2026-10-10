@@ -35,3 +35,7 @@ _Avoid_: Annotation, bookmark, mark (a search match is outlined, not highlighted
 **Glossary** (of a Book):
 The names translation has met in one Book, each with the single Chinese form it is always translated to; decided the first time a name is met, changeable by the reader, kept by the server. Not this file.
 _Avoid_: Dictionary, name list, term base
+
+**Name check**:
+The card the Reader shows when translation adds a name to the Book's Glossary, asking whether it is a name and whether its Chinese form is right (Keep, Not a name, Later). A name the reader has not kept or changed is *not checked*; a word the reader said is *not a name* stays in the Glossary so translation leaves it alone.
+_Avoid_: Popup, confirmation dialog, review
