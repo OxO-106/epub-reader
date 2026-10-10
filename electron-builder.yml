@@ -47,14 +47,14 @@ win:
     - target: nsis
       arch: [x64]
   icon: desktop/icons/app.png
-  executableName: Reader
+  executableName: Verso
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Reader
+  shortcutName: Verso
   artifactName: Verso-Setup-${version}.${ext}
   deleteAppDataOnUninstall: false
 mac:
