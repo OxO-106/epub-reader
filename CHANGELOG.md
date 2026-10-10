@@ -6,6 +6,8 @@ Add a line under **Unreleased** with every change a user would notice; `npm run 
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-10
+
 ### Added
 
 - Settings are saved by the server (`settings.json` in the data folder) and served at `/api/settings`; translation settings (model server address, model, key, how many paragraphs at once) apply without a restart. Environment variables still work and win over saved settings.
@@ -44,5 +46,6 @@ The first versioned release: everything Reader can do so far.
 - A Windows tray launcher that starts Reader and the translation model.
 - Continuous integration on Windows and Linux; contributor guide, security policy and code of conduct.
 
-[Unreleased]: https://github.com/OxO-106/epub-reader/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/OxO-106/epub-reader/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/OxO-106/epub-reader/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/OxO-106/epub-reader/releases/tag/v0.1.0
