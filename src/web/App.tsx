@@ -1,5 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import { Library } from "./Library.tsx";
+import { ModelDownload } from "./ModelDownload.tsx";
 import { ReaderScreen } from "./ReaderScreen.tsx";
 import { SettingsScreen } from "./SettingsScreen.tsx";
 
@@ -13,7 +14,12 @@ export function App() {
   }, []);
 
   const bookId = /^#\/read\/([0-9a-f]{64})$/.exec(hash)?.[1];
-  if (bookId) return <ReaderScreen key={bookId} bookId={bookId} />;
-  if (hash === "#/settings") return <SettingsScreen />;
-  return <Library />;
+  const screen = bookId ? <ReaderScreen key={bookId} bookId={bookId} /> : hash === "#/settings" ? <SettingsScreen /> : <Library />;
+  return (
+    <>
+      {screen}
+      {/* The desktop app's model download, over whichever screen is open. */}
+      <ModelDownload />
+    </>
+  );
 }

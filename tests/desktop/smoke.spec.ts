@@ -196,3 +196,20 @@ test("the first start offers the translation model once, naming the folder it wo
   expect(question!.buttons).toEqual(["Download", "Choose another folder…", "Not now"]);
   expect(JSON.parse(await readFile(join(data, "desktop.json"), "utf8")).modelOffered).toBe(true);
 });
+
+test("a download stopped by closing the app shows as paused, with Resume, when it starts again", async () => {
+  const models = join(data, "translation-model");
+  await import("node:fs/promises").then(async (fs) => {
+    await fs.mkdir(models, { recursive: true });
+    await fs.writeFile(join(models, "Hy-MT2-7B-Q4_K_M.gguf.part"), Buffer.alloc(3 * 1024 * 1024));
+    await fs.writeFile(join(data, "desktop.json"), JSON.stringify({ modelOffered: true }));
+  });
+  port = String(20000 + Math.floor(Math.random() * 20000));
+  app = await electron.launch({ args: [root], cwd: root, env: { ...process.env, READER_DESKTOP_DATA: data, READER_DESKTOP_MODELS: models, READER_PORT: port } });
+  const page = await app.firstWindow();
+
+  const card = page.getByRole("region", { name: "Translation model download" });
+  await expect(card).toContainText("Translation model download paused", { timeout: 30_000 });
+  await expect(card.getByRole("status")).toContainText("3.0 MB of 4.3 GB");
+  await expect(card.getByRole("button", { name: "Resume" })).toBeVisible();
+});

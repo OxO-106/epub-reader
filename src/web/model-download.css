@@ -1,0 +1,123 @@
+/* The translation model's download card (ModelDownload.tsx): above everything, at the bottom corner, clear of the
+   Reader's bottom bar and the home indicator; the whole width on a phone. */
+.model-download-card {
+  position: fixed;
+  z-index: 50;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  width: min(340px, calc(100vw - 32px));
+  padding: 14px 16px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow-panel);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  animation: model-download-in 180ms ease;
+}
+
+@keyframes model-download-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .model-download-card {
+    animation: none;
+  }
+}
+
+.model-download-title {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.model-download-detail {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.model-download-card[data-state="failed"] .model-download-detail {
+  color: var(--danger);
+}
+
+.model-download-bar {
+  display: block;
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  accent-color: var(--accent);
+  appearance: none;
+  overflow: hidden;
+}
+
+.model-download-bar::-webkit-progress-bar {
+  background: var(--raised);
+  border-radius: var(--radius-pill);
+}
+
+.model-download-bar::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+  transition: width 240ms linear;
+}
+
+.model-download-bar::-moz-progress-bar {
+  background: var(--accent);
+}
+
+.model-download-card[data-state="paused"] .model-download-bar::-webkit-progress-value {
+  background: var(--muted);
+}
+
+.model-download-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.model-download-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.model-download-button.primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.model-download-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.model-download-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 40rem) {
+  .model-download-card {
+    left: max(16px, env(safe-area-inset-left, 0px));
+    width: auto;
+  }
+}

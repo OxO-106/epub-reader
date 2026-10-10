@@ -24,7 +24,7 @@ import {
   type UtilityProcess,
 } from "electron";
 import { spawn } from "node:child_process";
-import { appendFileSync, createWriteStream, existsSync, mkdirSync, openAsBlob, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, createWriteStream, existsSync, mkdirSync, openAsBlob, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import updater from "electron-updater";
 import { fileURLToPath } from "node:url";
@@ -554,11 +554,43 @@ function checkForUpdates() {
 
 function status() {
   const modelFile = findModelFile(modelFolder());
-  return { settings: { ...settings, modelFolder: modelFolder() }, translation: { state: model.state(), problem: model.problem(), modelFile }, download };
+  return { settings: { ...settings, modelFolder: modelFolder() }, translation: { state: model.state(), problem: model.problem(), modelFile }, download: currentDownload() };
 }
 
 function sendStatus() {
   window?.webContents.send("desktop:status", status());
+  showProgressOnTaskbar();
+}
+
+/**
+ * The download's progress on the app's taskbar button (Windows) or Dock icon (macOS): filling while it downloads,
+ * moving while the file is checked, yellow when paused, red when it failed, gone otherwise.
+ */
+function showProgressOnTaskbar() {
+  if (!window || window.isDestroyed()) return;
+  const now = currentDownload();
+  if (now.state === "downloading") window.setProgressBar(now.total ? now.received / now.total : 0);
+  else if (now.state === "verifying") window.setProgressBar(2); // more than 1: indeterminate
+  else if (now.state === "paused" && downloadAbort === null && download.state === "paused") window.setProgressBar(now.total ? now.received / now.total : 0, { mode: "paused" });
+  else if (now.state === "failed") window.setProgressBar(1, { mode: "error" });
+  else window.setProgressBar(-1);
+}
+
+/**
+ * The download as the page and the taskbar show it: a download stopped by quitting the app is reported as paused (its
+ * .part file is still there, and Download carries on from it), so it can be resumed from wherever it is shown.
+ */
+function currentDownload(): DownloadState {
+  if (download.state !== "idle" || model.state() !== "not-set-up") return download;
+  const folder = modelFolder();
+  if (!folder) return download;
+  const item = translationDownloads.model;
+  try {
+    const received = statSync(join(folder, `${item.name}.part`)).size;
+    return { state: "paused", name: item.name, received, total: item.size };
+  } catch {
+    return download;
+  }
 }
 
 /** Only Reader's own page may use the bridge. */
