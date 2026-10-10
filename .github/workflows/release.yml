@@ -78,10 +78,23 @@ jobs:
       - name: Build the Chinese font's web pieces
         run: npm run fonts:build
 
-      - name: Build the front end and the installer, and attach them to the release
+      - name: Build the front end and the installer
         run: |
           npm run build
-          npx electron-builder --win --publish always
+          npx electron-builder --win --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      # The packaged app as the installer ships it must start and show the Library before anything is attached.
+      - name: Start the packaged app once
+        run: npx playwright test --config playwright.desktop.config.ts -g "packaged app"
+        env:
+          READER_DESKTOP_EXE: ${{ github.workspace }}/release/win-unpacked/Reader.exe
+
+      # The release already exists (the job above made it): the installer, its block map and latest.yml (which installed
+      # apps read to update themselves) are added to it.
+      - name: Attach the installer to the release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: gh release upload "${{ github.ref_name }}" release/Reader-Setup-*.exe release/Reader-Setup-*.exe.blockmap release/latest.yml --clobber
