@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createModelServer, findModelFiles, modelServerArgs, type ChildLike, type ModelState } from "../../desktop/model-server.ts";
+import { createModelServer, findModelFile, findModelFiles, findRuntime, modelServerArgs, type ChildLike, type ModelState } from "../../desktop/model-server.ts";
 import { trayLook } from "../../desktop/shell-rules.ts";
 import { applyDesktopChange, defaultDesktopSettings, parseDesktopSettings } from "../../desktop/desktop-settings.ts";
 
@@ -67,6 +67,27 @@ describe("finding the model files", () => {
     const folder = await modelFolder();
     await writeFile(join(folder, "Hy-MT2-7B-Q4_K_M.gguf"), "x");
     expect(findModelFiles(folder)).toBeNull();
+  });
+
+  it("finds llama-server where the installer put it when the folder has only the model", async () => {
+    const folder = await modelFolder();
+    const shipped = await mkdtemp(join(tmpdir(), "reader-runtime-"));
+    folders.push(shipped);
+    await writeFile(join(shipped, exe), "");
+    await rm(join(folder, "llama-vulkan"), { recursive: true });
+
+    expect(findModelFiles(folder)).toBeNull();
+    expect(findModelFiles(folder, [shipped])).toEqual({ runtime: join(shipped, exe), model: join(folder, "Hy-MT2-7B-Q4_K_M.gguf") });
+    expect(findRuntime(null, [shipped])).toBe(join(shipped, exe));
+  });
+
+  it("uses any GGUF model put in the folder, the largest when there are several", async () => {
+    const folder = await modelFolder();
+    await rm(join(folder, "Hy-MT2-7B-Q4_K_M.gguf"));
+    await writeFile(join(folder, "small.gguf"), Buffer.alloc(1024 * 1024 + 1));
+    await writeFile(join(folder, "large.gguf"), Buffer.alloc(3 * 1024 * 1024));
+    await writeFile(join(folder, "unfinished.gguf.part"), Buffer.alloc(9 * 1024 * 1024));
+    expect(findModelFile(folder)).toBe(join(folder, "large.gguf"));
   });
 
   it("starts llama-server with the benchmark's settings, on this PC only", () => {

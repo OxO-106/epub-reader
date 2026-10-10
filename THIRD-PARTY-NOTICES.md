@@ -223,6 +223,38 @@ To draw a PDF's first page as its cover, the server uses `@napi-rs/canvas` (MIT 
 BSD-style licence), which pdfjs-dist installs as its canvas for Node. It runs on the server only. The script that draws
 the app's icons (`scripts/make-icons.ts`) uses it too.
 
+## llama.cpp
+
+The desktop app's installer includes llama.cpp's `llama-server` for Windows (Vulkan build b11510, from
+<https://github.com/ggml-org/llama.cpp/releases>), which runs the translation model on this PC. llama.cpp is MIT
+licensed; the LLVM OpenMP runtime it bundles has its licence file beside it (`resources/runtime/llama-vulkan`). The
+translation model itself (Tencent Hy-MT2-7B, Apache-2.0) is not included: the app downloads it from Hugging Face when
+the reader asks.
+
+```
+MIT License
+
+Copyright (c) 2023-2024 The ggml authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## QR Code Generator
 
 The Settings screen draws the QR code of the phone address with `qrcode-generator` by Kazuhiko Arase

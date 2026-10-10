@@ -22,6 +22,11 @@ files:
   - "!**/*.map"
   - LICENSE
   - THIRD-PARTY-NOTICES.md
+# llama.cpp, the translation model's runtime (32 MB), fetched by `npm run runtime`: the installed app then needs only
+# the model, which it offers to download on first start (it is 4.6 GB, too large for an installer or a release file).
+extraResources:
+  - from: runtime/llama-vulkan
+    to: runtime/llama-vulkan
 extraMetadata:
   main: desktop/main.ts
 fileAssociations:

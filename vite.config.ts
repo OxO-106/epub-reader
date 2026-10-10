@@ -121,6 +121,6 @@ export default defineConfig({
   server: {
     port: 5173,
     // In development the API runs separately (npm run dev starts both).
-    proxy: { "/api": "http://127.0.0.1:5174", "/fonts": "http://127.0.0.1:5174" },
+    proxy: { "/api": "http://127.0.0.1:5174", "/fonts/": "http://127.0.0.1:5174" },
   },
 });

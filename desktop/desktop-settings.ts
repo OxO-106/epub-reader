@@ -12,9 +12,11 @@ export interface DesktopSettings {
   modelFolder: string | null;
   /** Start the model server with the app when it is set up. */
   startTranslation: boolean;
+  /** The first start has offered to download the translation model (asked once, whatever the answer). */
+  modelOffered: boolean;
 }
 
-export const defaultDesktopSettings: DesktopSettings = { closeToTray: false, startWithSystem: false, modelFolder: null, startTranslation: true };
+export const defaultDesktopSettings: DesktopSettings = { closeToTray: false, startWithSystem: false, modelFolder: null, startTranslation: true, modelOffered: false };
 
 /** Reads the settings file, keeping only sound values; anything missing or odd takes its default. */
 export function parseDesktopSettings(raw: unknown): DesktopSettings {
@@ -25,6 +27,7 @@ export function parseDesktopSettings(raw: unknown): DesktopSettings {
     startWithSystem: bool("startWithSystem"),
     modelFolder: typeof value.modelFolder === "string" && value.modelFolder.trim() ? value.modelFolder : null,
     startTranslation: bool("startTranslation"),
+    modelOffered: bool("modelOffered"),
   };
 }
 

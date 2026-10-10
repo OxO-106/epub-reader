@@ -14,6 +14,7 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  Notification,
   screen,
   shell,
   Tray,
@@ -23,13 +24,13 @@ import {
   type UtilityProcess,
 } from "electron";
 import { spawn } from "node:child_process";
-import { appendFileSync, createWriteStream, existsSync, mkdirSync, openAsBlob, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, createWriteStream, existsSync, mkdirSync, openAsBlob, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import updater from "electron-updater";
 import { fileURLToPath } from "node:url";
 import { applyDesktopChange, loadDesktopSettings, saveDesktopSettings, type DesktopSettings } from "./desktop-settings.ts";
 import { downloadFile, translationDownloads, unzip } from "./downloads.ts";
-import { createModelServer, findModelFiles, type ModelServer } from "./model-server.ts";
+import { createModelServer, findModelFile, findRuntime, type ModelServer } from "./model-server.ts";
 import { booksInArguments, defaultWindowState, isReaderPage, opensInBrowser, restoreWindowState, trayLook, type ServerState, type WindowState } from "./shell-rules.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -68,17 +69,26 @@ function showError(title: string, message: string) {
 
 /**
  * The model folder: the one chosen in Settings; else, running from the repository, its git-ignored translation-models
- * folder when it is there. READER_DESKTOP_MODELS replaces both (the tests point it at an empty folder).
+ * folder when it is there; else `translation-model` in the app's data folder. READER_DESKTOP_MODELS replaces all of
+ * them (the tests point it at nothing, so no model is found and nothing is offered).
  */
 function modelFolder(): string | null {
   if (process.env.READER_DESKTOP_MODELS !== undefined) return process.env.READER_DESKTOP_MODELS || null;
   if (settings.modelFolder) return settings.modelFolder;
   const repo = join(here, "../translation-models");
-  return !app.isPackaged && existsSync(repo) ? repo : null;
+  if (!app.isPackaged && existsSync(repo)) return repo;
+  return join(dataRoot, "translation-model");
 }
+
+/**
+ * Where llama.cpp's llama-server is when it is not in the model folder: the copy the installer ships (resources/runtime),
+ * or, running from the repository, the one `npm run runtime` fetches into runtime/.
+ */
+const runtimeDirs = [app.isPackaged ? join(process.resourcesPath, "runtime", "llama-vulkan") : join(here, "../runtime/llama-vulkan")];
 
 const model: ModelServer = createModelServer({
   folder: modelFolder(),
+  runtimeDirs,
   deps: {
     spawn(command, args) {
       mkdirSync(logsDir, { recursive: true });
@@ -140,6 +150,7 @@ function sendStatusSoon() {
   statusTimer ??= setTimeout(() => {
     statusTimer = undefined;
     sendStatus();
+    updateTray();
   }, 250);
 }
 
@@ -153,7 +164,9 @@ async function startDownload() {
     download = { state: "failed", message: "Choose the folder for the model first: it needs about 5 GB." };
     return sendStatus();
   }
-  if (process.platform !== "win32") {
+  // llama.cpp comes with the installed app; only a copy without it (or another system) needs the runtime too.
+  const needRuntime = !findRuntime(folder, runtimeDirs);
+  if (needRuntime && process.platform !== "win32") {
     download = { state: "failed", message: "The download is for Windows. On this system, put llama.cpp's llama-server and the model in the folder yourself (see docs/translation-setup.md)." };
     return sendStatus();
   }
@@ -161,7 +174,8 @@ async function startDownload() {
   const abort = (downloadAbort = new AbortController());
   let last: { name: string; received: number; total: number } = { name: "", received: 0, total: 0 };
   try {
-    for (const item of [translationDownloads.runtime, translationDownloads.model]) {
+    mkdirSync(folder, { recursive: true });
+    for (const item of needRuntime ? [translationDownloads.runtime, translationDownloads.model] : [translationDownloads.model]) {
       const dest = join(folder, item.name);
       if (existsSync(dest)) continue;
       await downloadFile(item, dest, {
@@ -173,11 +187,12 @@ async function startDownload() {
         },
       });
     }
-    if (!findModelFiles(folder)) await unzip(join(folder, translationDownloads.runtime.name), join(folder, "llama-vulkan"));
+    if (!findRuntime(folder, runtimeDirs)) await unzip(join(folder, translationDownloads.runtime.name), join(folder, "llama-vulkan"));
     download = { state: "done" };
     log(`translation model downloaded into ${folder}`);
     await model.setFolder(modelFolder());
-    if (settings.startTranslation && model.state() === "stopped") void model.start();
+    if (model.state() === "stopped") void model.start();
+    if (Notification.isSupported()) new Notification({ title: "Translation is ready", body: "Turn on Translate in an English Book to read it with Chinese." }).show();
   } catch (error) {
     download = abort.signal.aborted ? { state: "paused", ...last } : { state: "failed", message: (error as Error).message };
     log(`download ${download.state}: ${(error as Error).message}`);
@@ -189,6 +204,80 @@ async function startDownload() {
 
 function pauseDownload() {
   downloadAbort?.abort();
+}
+
+/**
+ * On the first start, offer the translation model once (the installer cannot hold it: 4.6 GB). Asked with the folder it
+ * will go to, which can be changed; the answer is remembered either way, and Settings can download it later.
+ */
+async function offerModel() {
+  if (settings.modelOffered || !modelFolder() || process.env.READER_DESKTOP_NO_DIALOGS) return;
+  if (model.state() !== "not-set-up" || !window) return;
+  settings = { ...settings, modelOffered: true };
+  saveDesktopSettings(settingsFile, settings);
+  for (;;) {
+    const folder = modelFolder()!;
+    const answer = await dialog.showMessageBox(window, {
+      type: "question",
+      title: "Translation",
+      message: "Download the translation model?",
+      detail:
+        `Reader translates English Books into Chinese with a model that runs on this PC: Tencent Hy-MT2 (4.6 GB). It downloads in the background, and translation turns on when it is done.\n\nIt will be saved in:\n${folder}`,
+      buttons: ["Download", "Choose another folder…", "Not now"],
+      defaultId: 0,
+      cancelId: 2,
+      noLink: true,
+    });
+    if (answer.response === 0) return void startDownload();
+    if (answer.response === 2) return;
+    const picked = await dialog.showOpenDialog(window, { title: "Choose the folder for the translation model", properties: ["openDirectory", "createDirectory"] });
+    if (!picked.canceled && picked.filePaths[0]) {
+      settings = { ...settings, modelFolder: picked.filePaths[0] };
+      saveDesktopSettings(settingsFile, settings);
+      await model.setFolder(modelFolder());
+      if (model.state() !== "not-set-up") return void model.start();
+    }
+  }
+}
+
+/**
+ * Deletes the model file (after asking), freeing its space: the model server stops, and if Reader was translating
+ * through it, translation goes back to "not set up". llama.cpp and any other file in the folder stay.
+ */
+async function deleteModel() {
+  const file = findModelFile(modelFolder());
+  if (!file || !window) return;
+  const answer = await dialog.showMessageBox(window, {
+    type: "warning",
+    message: "Delete the translation model?",
+    detail: `This deletes ${file} and turns translation off. You can download it again from Settings.`,
+    buttons: ["Delete", "Cancel"],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true,
+  });
+  if (answer.response !== 0) return;
+  pauseDownload();
+  await model.stop();
+  rmSync(file, { force: true });
+  rmSync(`${file}.part`, { force: true });
+  log(`translation model deleted: ${file}`);
+  download = { state: "idle" };
+  await model.setFolder(modelFolder());
+  await forgetModelAddress();
+  sendStatus();
+}
+
+/** Clears Reader's translation address when it is the app's own model server (so it reads "not set up", not "unreachable"). */
+async function forgetModelAddress() {
+  if (!server) return;
+  try {
+    const view = (await (await fetch(new URL("/api/settings", server.url))).json()) as { settings: { translateUrl: { value: unknown } } };
+    if (view.settings.translateUrl.value !== model.url) return;
+    await fetch(new URL("/api/settings", server.url), { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ translateUrl: null }) });
+  } catch (error) {
+    log(`could not clear the translation address: ${(error as Error).message}`);
+  }
 }
 
 // ---- the server --------------------------------------------------------------------------------------------------
@@ -275,7 +364,8 @@ function updateTray() {
   if (!tray) return;
   const look = trayLook(serverState, model.state());
   tray.setImage(nativeImage.createFromPath(join(here, "icons", look.icon)));
-  tray.setToolTip(look.tooltip);
+  const downloading = download.state === "downloading" ? `\nDownloading the model: ${Math.floor((download.received / download.total) * 100)}%` : "";
+  tray.setToolTip(look.tooltip + downloading);
   const translation = model.state();
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -461,7 +551,8 @@ function checkForUpdates() {
 // ---- the bridge to the Settings screen -----------------------------------------------------------------------------
 
 function status() {
-  return { settings: { ...settings, modelFolder: modelFolder() }, translation: { state: model.state(), problem: model.problem() }, download };
+  const modelFile = findModelFile(modelFolder());
+  return { settings: { ...settings, modelFolder: modelFolder() }, translation: { state: model.state(), problem: model.problem(), modelFile }, download };
 }
 
 function sendStatus() {
@@ -503,6 +594,11 @@ function registerBridge() {
     if (!fromReader(event)) return null;
     if (action === "start") void startDownload();
     else if (action === "pause") pauseDownload();
+    return status();
+  });
+  ipcMain.handle("desktop:delete-model", async (event) => {
+    if (!fromReader(event)) return null;
+    await deleteModel();
     return status();
   });
   ipcMain.handle("desktop:translation", (event, action: unknown) => {
@@ -549,6 +645,8 @@ if (!app.requestSingleInstanceLock()) {
     }
     if (!startedHidden) openWindow(server.url);
     if (settings.startTranslation && model.state() === "stopped") void model.start();
+    // Once the window is up, so the question sits over the app rather than alone on the desktop.
+    window?.once("ready-to-show", () => setTimeout(() => void offerModel(), 600));
     app.on("activate", showWindow);
     void addAndOpen([...waitingFiles.splice(0), ...booksInArguments(process.argv.slice(1))]);
     checkForUpdates();

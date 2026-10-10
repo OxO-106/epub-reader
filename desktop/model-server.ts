@@ -36,20 +36,43 @@ export interface ModelFiles {
 /** The model the benchmark chose; another .gguf in the folder is used when this one is not there. */
 export const preferredModel = "Hy-MT2-7B-Q4_K_M.gguf";
 
+const exe = process.platform === "win32" ? "llama-server.exe" : "llama-server";
+
 /**
- * Finds llama-server and a model file in the model folder: the runtime in the folder itself or one level down (the
- * unpacked llama.cpp zip, e.g. `llama-vulkan/`), the model as `preferredModel` or else the largest .gguf.
+ * The model file in the model folder: `preferredModel`, or else the largest .gguf (so any GGUF model the reader puts
+ * there is used). Null when there is none worth the name (an unfinished download is a .part, never a .gguf).
  */
-export function findModelFiles(folder: string | null): ModelFiles | null {
+export function findModelFile(folder: string | null): string | null {
   if (!folder || !existsSync(folder)) return null;
-  const exe = process.platform === "win32" ? "llama-server.exe" : "llama-server";
-  const entries = readdirSync(folder, { withFileTypes: true });
-  const candidates = [join(folder, exe), ...entries.filter((e) => e.isDirectory()).map((e) => join(folder, e.name, exe))];
-  const runtime = candidates.find((path) => existsSync(path));
-  const models = entries.filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".gguf")).map((e) => join(folder, e.name));
+  const models = readdirSync(folder, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".gguf"))
+    .map((e) => join(folder, e.name));
   const model = models.find((path) => path.endsWith(preferredModel)) ?? models.sort((a, b) => statSync(b).size - statSync(a).size)[0];
-  if (!runtime || !model || statSync(model).size < 1024 * 1024) return null;
-  return { runtime, model };
+  return model && statSync(model).size >= 1024 * 1024 ? model : null;
+}
+
+/**
+ * llama-server: in the model folder itself or one level down (the unpacked llama.cpp zip, e.g. `llama-vulkan/`), else in
+ * one of `runtimeDirs` (the copy the installer ships).
+ */
+export function findRuntime(folder: string | null, runtimeDirs: readonly string[] = []): string | null {
+  const candidates: string[] = [];
+  if (folder && existsSync(folder)) {
+    candidates.push(join(folder, exe), ...readdirSync(folder, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => join(folder, e.name, exe)));
+  }
+  candidates.push(...runtimeDirs.map((dir) => join(dir, exe)));
+  return candidates.find((path) => existsSync(path)) ?? null;
+}
+
+/** llama-server and a model file, when both are there. */
+export function findModelFiles(folder: string | null, runtimeDirs: readonly string[] = []): ModelFiles | null {
+  return findFiles(folder, runtimeDirs);
+}
+
+function findFiles(folder: string | null, runtimeDirs: readonly string[]): ModelFiles | null {
+  const model = findModelFile(folder);
+  const runtime = model ? findRuntime(folder, runtimeDirs) : null;
+  return runtime && model ? { runtime, model } : null;
 }
 
 /** The arguments llama-server gets: the benchmark's settings, listening on this PC only. */
@@ -70,8 +93,17 @@ export interface ModelServer {
   onState(listener: (state: ModelState) => void): () => void;
 }
 
-export function createModelServer(options: { folder: string | null; port?: number; startTimeoutMs?: number; pollMs?: number; deps: ModelServerDeps }): ModelServer {
-  const { deps, port = 8080, startTimeoutMs = 180_000, pollMs = 500 } = options;
+export function createModelServer(options: {
+  folder: string | null;
+  /** Where else llama-server may be (the installer's copy). */
+  runtimeDirs?: readonly string[];
+  port?: number;
+  startTimeoutMs?: number;
+  pollMs?: number;
+  deps: ModelServerDeps;
+}): ModelServer {
+  const { deps, runtimeDirs = [], port = 8080, startTimeoutMs = 180_000, pollMs = 500 } = options;
+  const findModelFiles = (dir: string | null) => findFiles(dir, runtimeDirs);
   const url = `http://127.0.0.1:${port}`;
   let folder = options.folder;
   let files = findModelFiles(folder);

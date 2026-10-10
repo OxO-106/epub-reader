@@ -8,6 +8,8 @@ Reader's desktop app is the same Reader (the same server, the same pages, the sa
 2. Run it. The installer is not signed yet, so Windows SmartScreen may say "Windows protected your PC". Choose **More info**, then **Run anyway**. (The installer is built by the release workflow on GitHub from the tagged source; its log is public.)
 3. Choose where to install it (your user account only; no administrator rights needed). Reader appears in the Start menu and on the desktop.
 
+On the first start Reader offers the translation model once: **Download** fetches Tencent Hy-MT2 (4.6 GB, from Hugging Face, checked against its published SHA-256) into `translation-model` in Reader's folder, or **Choose another folder…** first (a drive with room). It downloads in the background (the tray icon shows how far it is), and translation turns on by itself when it is done. llama.cpp, which runs the model, comes with the installer, so nothing else is needed. (The model cannot ship in the installer: it is larger than an installer or a release file may be.)
+
 Reader then updates itself: at start it looks for a newer release, downloads it in the background, and asks before restarting (choose **Later** and it installs when you next quit). EPUB, AZW3, MOBI and PDF files get **Open with, Reader**: opening one adds it to the Library and opens it, also while Reader is running. Uninstalling leaves your Library in place.
 
 ## Run it from the repository
@@ -40,7 +42,9 @@ A tray icon (the menu bar on macOS) shows two dots, like the PowerShell tray it 
 
 The app runs the translation model server for you: llama.cpp's `llama-server`, from the model folder chosen in **Settings, Desktop app** (running from the repository, its `translation-models` folder is used until you choose one), with the flags of `scripts/start-translation-server.ps1`, listening on this PC only (port 8080). When it answers, Reader translates through it, unless Settings already names a model server. If something already answers on that port (a model server you started yourself), the app uses it and leaves it alone.
 
-No model yet? In **Settings, Desktop app**, choose a folder (it needs about 5 GB; pick a drive with room), then **Download the model**: the app fetches llama.cpp (32 MB) and the model (4.6 GB) with a progress bar, checks both against their published SHA-256 (a file that does not match is deleted and the download says so), unpacks llama.cpp, and starts translation. **Pause** keeps what has arrived; **Resume download**, or quitting and starting again, carries on from there. The download is for Windows; on another system put `llama-server` and a `.gguf` model in the folder yourself ([translation setup](translation-setup.md)).
+No model yet, or said "Not now"? In **Settings, Desktop app**, choose a folder if you like (it needs about 5 GB), then **Download the model**: the app fetches llama.cpp (32 MB) and the model (4.6 GB) with a progress bar, checks both against their published SHA-256 (a file that does not match is deleted and the download says so), unpacks llama.cpp, and starts translation. **Pause** keeps what has arrived; **Resume download**, or quitting and starting again, carries on from there. The download is for Windows; on another system put `llama-server` and a `.gguf` model in the folder yourself ([translation setup](translation-setup.md)).
+
+**Delete the model…** there removes the model file (after asking) to free its space; translation then reads "not set up" until a model is back. **Another model:** put any GGUF file in the model folder (the largest is used), or set your own model server (Ollama, LM Studio, another PC) under **Settings, Translation**, which Reader then uses instead.
 
 **Settings, Desktop app** also chooses whether closing the window keeps Reader running in the tray (for your phone) or quits, and whether Reader starts when you sign in (in the tray, without a window; only for the installed app).
 

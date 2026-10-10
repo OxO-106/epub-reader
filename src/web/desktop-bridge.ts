@@ -11,7 +11,8 @@ export type DownloadStatus =
 
 export interface DesktopStatus {
   settings: { closeToTray: boolean; startWithSystem: boolean; modelFolder: string | null; startTranslation: boolean };
-  translation: { state: ModelState; problem: string | null };
+  /** `modelFile`: the model in the folder, when there is one (the one Delete removes). */
+  translation: { state: ModelState; problem: string | null; modelFile: string | null };
   download: DownloadStatus;
 }
 
@@ -21,6 +22,7 @@ export interface DesktopBridge {
   chooseModelFolder(): Promise<DesktopStatus | null>;
   translation(action: "start" | "stop"): Promise<DesktopStatus | null>;
   download(action: "start" | "pause"): Promise<DesktopStatus | null>;
+  deleteModel(): Promise<DesktopStatus | null>;
   onStatus(listener: (status: DesktopStatus) => void): () => void;
 }
 

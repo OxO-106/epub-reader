@@ -3,6 +3,7 @@
 // writes goes into a temporary folder (READER_DESKTOP_DATA).
 import { _electron as electron, expect, test, type ElectronApplication } from "@playwright/test";
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -105,7 +106,7 @@ test("shows Reader and translation in the tray, and can keep running there when 
 
   await page.goto(new URL("/#/settings", page.url()).href);
   const desktop = page.getByRole("region", { name: "Desktop app" });
-  await expect(desktop).toContainText("Not set up");
+  await expect(desktop).toContainText("No model yet.");
   // The model is downloaded only into a folder the reader chose.
   await expect(desktop.getByRole("button", { name: "Download the model" })).toBeDisabled();
   await desktop.getByRole("checkbox", { name: "Keep Reader running in the tray when the window is closed" }).check();
@@ -140,4 +141,55 @@ test("the packaged app starts and shows the Library", async () => {
   const page = await app.firstWindow();
   await expect(page.getByRole("heading", { name: "Your Library is empty" })).toBeVisible({ timeout: 30_000 });
   expect(await app.evaluate(({ app: electronApp }) => electronApp.isPackaged)).toBe(true);
+});
+
+test("Settings shows the model in use and deletes it, after asking", async () => {
+  const models = join(data, "models");
+  await import("node:fs/promises").then(async (fs) => {
+    await fs.mkdir(models, { recursive: true });
+    await fs.writeFile(join(models, "Hy-MT2-7B-Q4_K_M.gguf"), Buffer.alloc(2 * 1024 * 1024));
+    // Not started with the app: the stand-in model file would not load in a real llama-server.
+    await fs.writeFile(join(data, "desktop.json"), JSON.stringify({ startTranslation: false, modelOffered: true }));
+  });
+  port = String(20000 + Math.floor(Math.random() * 20000));
+  app = await electron.launch({ args: [root], cwd: root, env: { ...process.env, READER_DESKTOP_DATA: data, READER_DESKTOP_MODELS: models, READER_PORT: port } });
+  const page = await app.firstWindow();
+  await expect(page.getByRole("heading", { name: "Your Library is empty" })).toBeVisible({ timeout: 30_000 });
+  await page.goto(new URL("/#/settings", page.url()).href);
+  const desktop = page.getByRole("region", { name: "Desktop app" });
+  await expect(desktop).toContainText("Hy-MT2-7B-Q4_K_M.gguf");
+
+  // The app asks before deleting; here the answer is Delete.
+  await app.evaluate(({ dialog }) => {
+    dialog.showMessageBox = (async () => ({ response: 0, checkboxChecked: false })) as typeof dialog.showMessageBox;
+  });
+  await desktop.getByRole("button", { name: "Delete the model…" }).click();
+
+  await expect(desktop).toContainText("No model yet.");
+  await expect(desktop.getByRole("button", { name: "Delete the model…" })).toHaveCount(0);
+  await expect(desktop.getByRole("button", { name: "Download the model" })).toBeEnabled();
+  expect(existsSync(join(models, "Hy-MT2-7B-Q4_K_M.gguf"))).toBe(false);
+});
+
+test("the first start offers the translation model once, naming the folder it would go to", async () => {
+  const models = join(data, "translation-model");
+  port = String(20000 + Math.floor(Math.random() * 20000));
+  app = await electron.launch({ args: [root], cwd: root, env: { ...process.env, READER_DESKTOP_DATA: data, READER_DESKTOP_MODELS: models, READER_PORT: port } });
+  // Answer "Not now", and keep what was asked.
+  await app.evaluate(({ dialog }) => {
+    const asked: unknown[] = ((globalThis as { __asked?: unknown[] }).__asked = []);
+    dialog.showMessageBox = (async (...args: unknown[]) => {
+      asked.push(args.at(-1));
+      return { response: 2, checkboxChecked: false };
+    }) as typeof dialog.showMessageBox;
+  });
+  const page = await app.firstWindow();
+  await expect(page.getByRole("heading", { name: "Your Library is empty" })).toBeVisible({ timeout: 30_000 });
+
+  await expect.poll(() => app!.evaluate(() => ((globalThis as { __asked?: Array<{ message: string; detail: string }> }).__asked ?? []).length)).toBe(1);
+  const [question] = await app.evaluate(() => (globalThis as unknown as { __asked: Array<{ message: string; detail: string; buttons: string[] }> }).__asked);
+  expect(question!.message).toBe("Download the translation model?");
+  expect(question!.detail).toContain(models);
+  expect(question!.buttons).toEqual(["Download", "Choose another folder…", "Not now"]);
+  expect(JSON.parse(await readFile(join(data, "desktop.json"), "utf8")).modelOffered).toBe(true);
 });

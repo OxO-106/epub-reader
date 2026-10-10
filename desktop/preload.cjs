@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld("readerDesktop", {
   chooseModelFolder: () => ipcRenderer.invoke("desktop:choose-model-folder"),
   /** "start" (or resume) or "pause" downloading the model into the model folder. -> the new status */
   download: (action) => ipcRenderer.invoke("desktop:download", action),
+  /** Deletes the model file, after the app asks for confirmation. -> the new status */
+  deleteModel: () => ipcRenderer.invoke("desktop:delete-model"),
   /** "start" or "stop" the translation model server. -> the new status */
   translation: (action) => ipcRenderer.invoke("desktop:translation", action),
   /** Calls `listener` with the new status whenever it changes. Returns a function that stops listening. */

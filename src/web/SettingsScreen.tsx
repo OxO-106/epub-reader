@@ -638,7 +638,7 @@ function PhoneSection({ view }: { view: SettingsView }) {
 }
 
 const modelWords: Record<ModelState, string> = {
-  "not-set-up": "Not set up: choose the folder with llama-server and the model file.",
+  "not-set-up": "No model yet.",
   stopped: "Stopped.",
   starting: "Starting… (loading the model takes up to a minute)",
   running: "Running.",
@@ -681,6 +681,11 @@ function DesktopSection() {
         <p class="settings-hint">
           Folder: <code>{settings.modelFolder ?? "none chosen"}</code>
         </p>
+        {translation.modelFile && (
+          <p class="settings-hint">
+            Model: <code>{translation.modelFile}</code>
+          </p>
+        )}
         <p role="status" class="settings-hint">
           {modelWords[translation.state]}
           {translation.problem ? ` ${translation.problem}` : ""}
@@ -694,12 +699,21 @@ function DesktopSection() {
               {busy ? "Stop translation" : "Start translation"}
             </button>
           )}
+          {translation.modelFile && (
+            <button type="button" class="settings-button quiet" onClick={() => void bridge.deleteModel().then((next) => next && setStatus(next))}>
+              Delete the model…
+            </button>
+          )}
         </div>
+        <p class="settings-hint">
+          To use another model, put its GGUF file in this folder (the largest one is used), or choose a different folder. To use a model server of your own
+          (Ollama, LM Studio, another PC), set its address under Translation above: Reader then translates through it instead.
+        </p>
         {translation.state === "not-set-up" && (
           <div class="model-download">
             <p class="settings-hint">
-              Reader can download the translation model (Tencent Hy-MT2-7B, 4.6 GB) and llama.cpp (32 MB) into the folder above, checking both against their
-              published SHA-256. A download that stops carries on from where it was.
+              Reader can download the translation model (Tencent Hy-MT2-7B, 4.6 GB) into the folder above, checked against its published SHA-256. A
+              download that stops carries on from where it was. Translation turns on when it is done.
             </p>
             {(download.state === "downloading" || download.state === "verifying" || download.state === "paused") && (
               <div class="model-progress">

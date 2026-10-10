@@ -81,6 +81,7 @@ jobs:
       - name: Build the front end and the installer
         run: |
           npm run build
+          npm run runtime
           npx electron-builder --win --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"

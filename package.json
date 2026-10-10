@@ -34,7 +34,8 @@
     "screenshots": "node scripts/screenshots.ts",
     "desktop": "npm run build && electron .",
     "test:desktop": "npm run build && playwright test --config playwright.desktop.config.ts",
-    "desktop:build": "npm run build && electron-builder --win --publish never"
+    "desktop:build": "npm run build && npm run runtime && electron-builder --win --publish never",
+    "runtime": "node scripts/fetch-runtime.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",

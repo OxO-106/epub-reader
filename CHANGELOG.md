@@ -6,6 +6,11 @@ Add a line under **Unreleased** with every change a user would notice; `npm run 
 
 ## [Unreleased]
 
+### Added
+
+- The desktop app includes llama.cpp and, on its first start, offers to download the translation model (4.6 GB, too large for the installer) into a folder you can change; translation turns on by itself when it is done.
+- Settings can delete the translation model to free its space. Any GGUF model put in the model folder is used, and your own model server can still be set under Translation.
+
 ## [0.2.0] - 2026-10-10
 
 ### Added
