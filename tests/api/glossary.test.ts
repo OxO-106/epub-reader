@@ -35,6 +35,9 @@ const glossary = async (server: TestServer, bookId: string) => {
   return ((await response.json()) as { entries: Array<{ name: string; form: string; seen: number }> }).entries;
 };
 
+const put = (server: TestServer, bookId: string, body: unknown) =>
+  fetch(`${server.url}/api/books/${bookId}/glossary`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
 describe("the Glossary in translation", () => {
   it("asks for a new name's form once, saves it, and gives it with the paragraph", async () => {
     const { model, server, bookId } = await setup();
@@ -150,6 +153,54 @@ describe("the Glossary in translation", () => {
     await uploadFixture(server, "sample.epub");
 
     expect(await glossary(server, bookId)).toEqual([]);
+  });
+});
+
+describe("names of several words (issue #43)", () => {
+  it("keeps River Cartwright one name at the start of a sentence, and gives its parts their own entries", async () => {
+    const { model, server, bookId } = await setup({ forms: { "River Cartwright": "瑞弗·卡特怀特" } });
+
+    await translate(server, { text: "River Cartwright looked up.", bookId });
+
+    expect(nameRequests(model)[0]!.user).toMatch(/\n\nRiver Cartwright$/);
+    expect(paragraphRequests(model)[0]!.user).toContain("River Cartwright = 瑞弗·卡特怀特");
+    expect((await glossary(server, bookId)).map((entry) => `${entry.name}=${entry.form}`).sort()).toEqual([
+      "Cartwright=卡特怀特",
+      "River Cartwright=瑞弗·卡特怀特",
+      "River=瑞弗",
+    ]);
+  });
+
+  it("knows the Glossary's names at the start of a sentence", async () => {
+    const { model, server, bookId } = await setup({ forms: { "River Cartwright": "瑞弗·卡特怀特" } });
+    await translate(server, { text: "River Cartwright looked up.", bookId });
+
+    await translate(server, { text: "River laughed.", bookId });
+
+    expect(nameRequests(model)).toHaveLength(1);
+    expect(paragraphRequests(model)[1]!.user).toContain("River = 瑞弗");
+  });
+
+  it("tells the model the forms already used for the parts of a new name", async () => {
+    const { model, server, bookId } = await setup({ forms: { Cartwright: "卡特怀特" } });
+    await translate(server, { text: "They met Cartwright.", bookId });
+
+    await translate(server, { text: "They met River Cartwright.", bookId });
+
+    expect(nameRequests(model)[1]!.user).toContain("Keep the forms already used in this book for parts of these names: Cartwright = 卡特怀特.");
+  });
+
+  it("gives the parts of a name the reader sets their own entries, keeping the ones there", async () => {
+    const { server, bookId } = await setup();
+    await put(server, bookId, { name: "Cartwright", form: "卡莱特" });
+
+    expect((await put(server, bookId, { name: "River Cartwright", form: "瑞弗·卡特怀特" })).status).toBe(200);
+
+    expect((await glossary(server, bookId)).map((entry) => `${entry.name}=${entry.form}`).sort()).toEqual([
+      "Cartwright=卡莱特",
+      "River Cartwright=瑞弗·卡特怀特",
+      "River=瑞弗",
+    ]);
   });
 });
 

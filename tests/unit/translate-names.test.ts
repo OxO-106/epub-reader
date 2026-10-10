@@ -170,6 +170,30 @@ describe("names across the context and the paragraph", () => {
   });
 });
 
+describe("a first name at the start of a sentence (issue #43)", () => {
+  it("joins a sentence-initial word to the name right after it", () => {
+    expect(findNames("River Cartwright looked up. He saw River Cartwright.")).toEqual(["River Cartwright"]);
+    expect(findNames("“River Cartwright,” she said.")).toEqual(["River Cartwright"]);
+  });
+
+  it("does not join a stop-list word, an imperative or a word of address", () => {
+    expect(findNames("Then Cartwright left. Ask Jane. Help Darcy! Poor Bennet sighed.")).toEqual(["Cartwright", "Jane", "Darcy", "Bennet"]);
+  });
+
+  it("does not join across a comma or a line", () => {
+    expect(findNames("River, Cartwright said.\nRiver\nCartwright came.")).toEqual(["Cartwright"]);
+  });
+
+  it("finds a lone first name at a sentence start once the full name is known", () => {
+    expect(findNames("River smiled.", ["River Cartwright"])).toEqual(["River"]);
+  });
+
+  it("leaves out what the reader said is not a name, and shortens a joined name to the name after the word", () => {
+    const notNames = new Set(["hope", "dawn cartwright"]);
+    expect(findNames("Dawn Cartwright woke. They said Hope was gone.", [], notNames)).toEqual(["Cartwright"]);
+  });
+});
+
 describe("the benchmark passages", () => {
   const pride = [
     "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.",

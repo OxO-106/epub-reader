@@ -1,6 +1,6 @@
 import { Hono, type Context } from "hono";
 import type { Db, GlossaryRow } from "./db.ts";
-import { chineseForm, displayName, glossaryKey, maxFormLength } from "./glossary.ts";
+import { chineseForm, displayName, glossaryKey, maxFormLength, partsOf } from "./glossary.ts";
 import { addressedDirectly, fromOwnOrigin, isJson, readLimited } from "./request-guards.ts";
 
 /** Longest name accepted from the reader, as the translate endpoint's names. */
@@ -42,7 +42,8 @@ export function parseGlossaryEntry(value: unknown): { ok: true; name: string; ke
  * follow the rules of the other writes: from Reader's own page, addressed to Reader directly, as JSON.
  *
  * GET    /             -> {"entries": GlossaryEntry[]} most often met first
- * PUT    /             body {name, form} -> the entry: adds it, or changes its form; either way it is the reader's now
+ * PUT    /             body {name, form} -> the entry: adds it, or changes its form; either way it is the reader's now.
+ *                      A dotted form of a name of several words also gives its parts an entry, unless they have one
  * DELETE /:key         -> 204 (the key as listed, URL-encoded), or 404
  * GET    /export       -> {"format":"reader-glossary","version":1,"entries":[{name, form}]} as a download
  * POST   /import       body as the export -> {"added", "changed", "kept"}: entries the reader set keep their form,
@@ -80,7 +81,9 @@ export function glossaryRoutes(db: Db, findBook: (id: string) => { title: string
     if ("refusal" in read) return read.refusal;
     const entry = parseGlossaryEntry(read.body);
     if (!entry.ok) return refuse(400, entry.error);
-    return c.json(toEntry(db.setGlossaryEntry(read.id, entry)), 200, noStore);
+    const saved = db.setGlossaryEntry(read.id, entry);
+    db.addGlossaryEntries(read.id, partsOf(saved.name, saved.form)); // River Cartwright = 瑞弗·卡特怀特 gives River = 瑞弗
+    return c.json(toEntry(saved), 200, noStore);
   });
 
   routes.get("/export", (c) => {

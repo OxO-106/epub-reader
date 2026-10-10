@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { glossaryKey } from "./glossary.ts";
 
 // Finds the proper names in a paragraph, so the prompt can list them and the model puts each into Chinese by its sound
 // rather than by its meaning (ADR 0150; River is 瑞弗, not 河). Nothing here keeps state between calls.
@@ -174,12 +175,16 @@ function wordsOfCallerNames(names: readonly string[]): Set<string> {
 interface Span {
   start: number;
   end: number;
+  /** Where the name proper starts when a sentence-initial word was joined in front of it (River Cartwright). */
+  joinedAt?: number;
 }
 
 /**
  * The names in each text, as places in it. A name is a capitalised word that is not at the start of a sentence, or one
  * that is when it is known to be a name: the caller said so, or it appears in the middle of a sentence anywhere in
- * these texts. Capitalised words side by side make one name (Netherfield Park). Words on the stop-list are never names.
+ * these texts. Capitalised words side by side make one name (Netherfield Park), and a word at the start of a sentence
+ * right before a name is taken as its first part ("River Cartwright looked up": River Cartwright, not Cartwright and a
+ * river). Words on the stop-list are never names.
  */
 function spansOfNames(texts: readonly string[], callerNames: readonly string[]): Span[][] {
   const callerWords = wordsOfCallerNames(callerNames);
@@ -191,16 +196,20 @@ function spansOfNames(texts: readonly string[], callerNames: readonly string[]):
   return perText.map((candidates, index) => {
     const text = texts[index]!;
     const spans: Span[] = [];
+    const adjacent = (before: Candidate, after: Candidate) => after.start === before.end + 1 && isSpace(text[before.end]);
     let previous: Candidate | undefined;
+    let waiting: Candidate | undefined; // a sentence-initial word not known to be a name, joined if a name follows
     for (const candidate of candidates) {
       if (candidate.initial && !known.has(candidate.word)) {
         previous = undefined;
+        waiting = candidate;
         continue;
       }
-      const joins = previous && candidate.start === previous.end + 1 && isSpace(text[previous.end]);
-      if (joins) spans[spans.length - 1]!.end = candidate.end;
+      if (previous && adjacent(previous, candidate)) spans[spans.length - 1]!.end = candidate.end;
+      else if (waiting && adjacent(waiting, candidate)) spans.push({ start: waiting.start, end: candidate.end, joinedAt: candidate.start });
       else spans.push({ start: candidate.start, end: candidate.end });
       previous = candidate;
+      waiting = undefined;
     }
     return spans;
   });
@@ -209,12 +218,26 @@ function spansOfNames(texts: readonly string[], callerNames: readonly string[]):
 /**
  * The names in the texts, in order of first appearance. `text` is one text or several (the context
  * paragraph first). `callerNames` are names the caller already knows, so a name starting a sentence is caught.
+ * `notNames` are Glossary keys the reader said are not names: such a span is left out, or, when it was made by joining a
+ * sentence-initial word ("Poor Cartwright"), is shortened to the name after that word.
  */
-export function findNames(text: string | readonly string[], callerNames: readonly string[] = []): string[] {
+export function findNames(
+  text: string | readonly string[],
+  callerNames: readonly string[] = [],
+  notNames: ReadonlySet<string> = new Set(),
+): string[] {
   const texts = typeof text === "string" ? [text] : text;
   const names = new Set<string>();
   spansOfNames(texts, callerNames).forEach((spans, index) => {
-    for (const span of spans) names.add(texts[index]!.slice(span.start, span.end));
+    for (const span of spans) {
+      let name = texts[index]!.slice(span.start, span.end);
+      if (notNames.has(glossaryKey(name))) {
+        if (span.joinedAt === undefined) continue;
+        name = texts[index]!.slice(span.joinedAt, span.end);
+        if (notNames.has(glossaryKey(name))) continue;
+      }
+      names.add(name);
+    }
   });
   return [...names];
 }

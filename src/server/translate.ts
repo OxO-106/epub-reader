@@ -293,7 +293,7 @@ export function createTranslator(config: TranslateConfig): Translator {
     if (asked.length) {
       try {
         let answer = "";
-        for await (const text of streamFromBackend(url, namesRequest({ names: asked, model: config.model }), signal, alive)) answer += text;
+        for await (const text of streamFromBackend(url, namesRequest({ names: asked, parts: glossary.partForms(asked), model: config.model }), signal, alive)) answer += text;
         found = glossary.remember(parseNameForms(answer, asked), asked);
       } catch (error) {
         if (signal.aborted) throw error;
@@ -331,7 +331,9 @@ export function createTranslator(config: TranslateConfig): Translator {
       alive();
 
       // The names found here are listed in the prompt, so the model puts them into Chinese by sound (ADR 0150).
-      const names = findNames(input.context ? [input.context, input.text] : [input.text], input.names);
+      // The Book's Glossary names count as known, so "River said." is caught once River Cartwright is in it.
+      const callerNames = input.glossary ? [...(input.names ?? []), ...input.glossary.names()] : input.names;
+      const names = findNames(input.context ? [input.context, input.text] : [input.text], callerNames);
       // With the Book's Glossary, names met before are given their saved forms, and new ones are decided first (ADR 0170).
       const fixed = input.glossary && names.length ? await fixedForms(base, input.glossary, names, upstream.signal, alive) : [];
       const request = chatRequest({ passage: input.text, context: input.context, names, fixed, model: config.model });

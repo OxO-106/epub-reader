@@ -48,10 +48,16 @@ export function namesInstruction(names: readonly string[] = [], fixed: readonly 
  * The request for the Chinese forms of names met for the first time (ADR 0170): one line per name, `Name = 中文`, under
  * the same transliteration rule. Not streamed to anyone; the answer is checked by glossary.ts before it is kept.
  */
-export function namesRequest(input: { names: readonly string[]; model?: string }) {
+export function namesRequest(input: { names: readonly string[]; parts?: readonly FixedName[]; model?: string }) {
+  // The forms the Book already uses for parts of these names (Cartwright = 卡特怀特 for River Cartwright), so they agree.
+  const parts = input.parts?.length
+    ? `Keep the forms already used in this book for parts of these names: ${input.parts.map((part) => `${part.name} = ${part.form}`).join(", ")}. `
+    : "";
   const content =
     "Give the Simplified Chinese form of each of these names of people or places from an English book: transliterate it by its sound (音译), " +
-    "using its usual Chinese form if it is well known; never translate what a name means. " +
+    "using its usual Chinese form if it is well known; never translate what a name means, even when it is also an English word (River, Hope, Rose). " +
+    "Write a name of several words with the dot · between its parts (River Cartwright = 瑞弗·卡特怀特). " +
+    parts +
     "Answer with one line per name, in the form Name = 中文, in the same order, and nothing else.\n\n" +
     input.names.join("\n");
   return {

@@ -122,3 +122,21 @@ Summary Argument Story Tale Tales Poem Poems
 [directions and seasons]
 North South East West Northern Southern Eastern Western Northwest Northeast Southwest Southeast Spring Summer
 Autumn Fall Winter
+
+[verbs and words of address that start a sentence before a name]
+# "Help Darcy", "Brave Frodo": translate-names.ts joins a capitalised word at a sentence start to the name right after
+# it (so "River Cartwright" stays one name); these words must not be joined that way.
+Help Call Meet Kiss Find Get Bring Watch Hear Make Show Leave Send Follow Kill Save Trust Forgive Bless Promise Wake
+Fetch Hold Keep Hurry Pay Pass Put Hand Hug Touch Warn Answer Greet Visit Invite Introduce Fight Shoot Catch Grab
+Seize Push Pull Carry Hide Run Dearest Beloved Darling Brave Kind Lovely Wise Silly Stupid Foolish Clever Mad Crazy
+
+[adverbs that open a sentence]
+# "Later River slept": as the group above, kept from being joined to the name after them.
+Later Usually Eventually Somewhere Nowhere Everywhere Outside Inside Upstairs Downstairs Clearly Obviously Apparently
+Probably Possibly Naturally Fortunately Unfortunately Luckily Sadly Happily Quietly Softly Gently Carefully Instantly
+Shortly Recently Lately Earlier Early Late Overnight Together Alone Apart Away Back Home Abroad Forward Ahead Nearby
+Far Closer Bad Best Worst Better Worse Sure Fine True Real Throughout Honestly Seriously Frankly Briefly Silently
+Angrily Sharply Abruptly Secretly Privately Publicly Officially Normally Generally Typically
+Thankfully Hopefully Strangely Oddly Curiously Interestingly Surprisingly Ironically Admittedly Mercifully Wearily
+Swiftly Firmly Calmly Coldly Warmly Kindly Grimly Darkly Lightly Tightly Loosely Simply Merely Partly
+Largely Fully Entirely Completely Totally Absolutely Exactly Precisely Especially Particularly Specifically

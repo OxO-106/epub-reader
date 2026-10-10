@@ -69,6 +69,20 @@ export function parseNameForms(answer: string, names: readonly string[]): Map<st
   return forms;
 }
 
+/**
+ * The parts of a name of several words whose form gives each its own part (River Cartwright = 瑞弗·卡特怀特 gives
+ * River = 瑞弗 and Cartwright = 卡特怀特), so the first name met alone later is written the same way. Empty when the
+ * form has no dots or not one part per word.
+ */
+export function partsOf(name: string, form: string): Array<{ key: string; name: string; form: string }> {
+  const words = displayName(name).split(/\s+/u).filter(Boolean);
+  const pieces = form.split("·");
+  if (words.length < 2 || pieces.length !== words.length) return [];
+  return words
+    .map((word, index) => ({ key: glossaryKey(word), name: word, form: pieces[index]! }))
+    .filter((part) => part.key && !leadingTitles.has(part.key));
+}
+
 /** One name of a paragraph with its fixed Chinese form. */
 export interface FixedName {
   name: string;
@@ -77,6 +91,10 @@ export interface FixedName {
 
 /** What translation needs of a Book's Glossary. */
 export interface BookGlossary {
+  /** Every name in the Glossary, as known names for the detector (a first name at a sentence start is still a name). */
+  names(): string[];
+  /** The forms already decided for single words, to keep the parts of a new name of several words the same. */
+  partForms(names: readonly string[]): FixedName[];
   /** Splits the names of a paragraph into those with a form already and those still without. */
   lookup(names: readonly string[]): { known: FixedName[]; unknown: string[] };
   /** Saves forms the model gave (a name saved meanwhile keeps its form); returns the forms to use. */
@@ -99,6 +117,13 @@ export function bookGlossary(db: Db, hash: string): BookGlossary {
     rows.map((row) => ({ name: displayName(keyed.get(row.key) ?? row.name), form: row.form }));
 
   return {
+    names() {
+      return db.listGlossary(hash).map((row) => row.name);
+    },
+    partForms(names) {
+      const words = names.filter((name) => /\s/u.test(name.trim())).flatMap((name) => displayName(name).split(/\s+/u));
+      return toFixed(db.glossaryEntries(hash, [...byKey(words).keys()]), byKey(words));
+    },
     lookup(names) {
       const keyed = byKey(names);
       const rows = db.glossaryEntries(hash, [...keyed.keys()]);
@@ -110,7 +135,10 @@ export function bookGlossary(db: Db, hash: string): BookGlossary {
       const entries = [...forms]
         .filter(([key]) => keyed.has(key))
         .map(([key, form]) => ({ key, name: displayName(keyed.get(key)!), form }));
-      return toFixed(db.addGlossaryEntries(hash, entries), keyed);
+      const saved = toFixed(db.addGlossaryEntries(hash, entries), keyed);
+      // The parts of a new name of several words, for the parts that have no entry of their own yet.
+      db.addGlossaryEntries(hash, saved.flatMap((entry) => partsOf(entry.name, entry.form)));
+      return saved;
     },
     seen(names) {
       db.noteGlossarySeen(hash, [...byKey(names).keys()]);
