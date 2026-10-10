@@ -20,13 +20,39 @@ files:
   # The Chinese font's web pieces, when `npm run fonts:build` has made them (the release workflow does).
   - fonts/**/*
   - "!**/*.map"
+  # Every browser the app supports takes the .woff2 copies of the bundled fonts; the .woff fallbacks are never fetched.
+  - "!dist/web/assets/*.woff"
+  # The server opens PDFs with pdf.js's legacy build for Node (src/server/formats/pdf.ts); the Reader has its own copy,
+  # bundled by Vite. The package's browser build, viewer and minified or sandbox copies are not needed here.
+  - "!node_modules/pdfjs-dist/build/**"
+  - "!node_modules/pdfjs-dist/web/**"
+  - "!node_modules/pdfjs-dist/image_decoders/**"
+  - "!node_modules/pdfjs-dist/legacy/web/**"
+  - "!node_modules/pdfjs-dist/legacy/image_decoders/**"
+  - "!node_modules/pdfjs-dist/legacy/build/*.min.mjs"
+  - "!node_modules/pdfjs-dist/legacy/build/pdf.sandbox.mjs"
   - LICENSE
   - THIRD-PARTY-NOTICES.md
 # llama.cpp, the translation model's runtime (32 MB), fetched by `npm run runtime`: the installed app then needs only
 # the model, which it offers to download on first start (it is 4.6 GB, too large for an installer or a release file).
+# Only llama-server and the libraries it loads: the zip's other tools (llama-cli, the benchmarks, quantize …) are unused.
 extraResources:
   - from: runtime/llama-vulkan
     to: runtime/llama-vulkan
+    filter:
+      - llama-server.exe
+      - llama-server-impl.dll
+      - llama.dll
+      - llama-common.dll
+      - mtmd.dll
+      - ggml*.dll
+      - libomp.dll
+      - LICENSE*
+# Chromium's own strings (context menus, dialogs) only in the app's languages, not all 55 of Electron's locales.
+electronLanguages:
+  - en-US
+  - zh-CN
+  - zh-TW
 extraMetadata:
   main: desktop/main.ts
 fileAssociations:

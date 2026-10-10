@@ -6,6 +6,10 @@ Add a line under **Unreleased** with every change a user would notice; `npm run 
 
 ## [Unreleased]
 
+### Changed
+
+- The desktop installer is about 20 MB smaller (178 MB to 158 MB) and the installed app takes about 80 MB less disk space: it no longer carries copies of libraries already built into the app, Chromium's translations into languages Verso does not use, or llama.cpp tools other than its server.
+
 ### Fixed
 
 - The desktop app can add PDFs again: since 0.4.0 every PDF was refused with an error, while the browser app took them.
