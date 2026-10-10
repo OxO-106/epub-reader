@@ -164,7 +164,7 @@ export function Library() {
           <span class="wordmark-mark">
             <LogoIcon />
           </span>
-          <span class="wordmark-name">Reader</span>
+          <span class="wordmark-name">Verso</span>
         </div>
         <div class="library-tools">
           {!empty && (

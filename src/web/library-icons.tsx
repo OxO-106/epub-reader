@@ -20,10 +20,11 @@ function Icon({ size, width = 2, children }: { size: number; width?: number; chi
   );
 }
 
+/** Verso's mark: an open book whose left-hand page, the verso, is filled (the app icon, see scripts/make-icons.ts). */
 export const LogoIcon = () => (
   <Icon size={20} width={1.8}>
-    <path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2V5z" />
-    <path d="M8 7h6" />
+    <path d="M12 6.2C10.2 4.9 7.6 4.5 4.5 4.8V17.7c3.1-.3 5.7.1 7.5 1.4z" fill="currentColor" />
+    <path d="M12 6.2c1.8-1.3 4.4-1.7 7.5-1.4V17.7c-3.1-.3-5.7.1-7.5 1.4z" />
   </Icon>
 );
 
