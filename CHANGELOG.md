@@ -6,6 +6,10 @@ Add a line under **Unreleased** with every change a user would notice; `npm run 
 
 ## [Unreleased]
 
+### Fixed
+
+- The desktop app can add PDFs again: since 0.4.0 every PDF was refused with an error, while the browser app took them.
+
 ## [0.4.0] - 2026-10-10
 
 ### Added

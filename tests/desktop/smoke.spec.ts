@@ -77,6 +77,20 @@ test("starts the server, shows the Library, adds and opens a Book, and quits lea
   expect(await readdir(join(data, "data"))).toContain("reader.sqlite");
 });
 
+test("adds a PDF with its title and a cover drawn from its first page", async () => {
+  // The server runs in a utility process, where pdf.js does not take Electron for Node unless told (server-process.ts).
+  app = await launch();
+  const page = await app.firstWindow();
+  await expect(page.getByRole("heading", { name: "Your Library is empty" })).toBeVisible({ timeout: 30_000 });
+
+  await page.locator("input[type=file]").setInputFiles(fixture("sample.pdf"));
+  await expect(page.getByRole("link", { name: /Lamplight Papers/ })).toBeVisible();
+  const { books } = (await (await fetch(new URL("/api/books", page.url()))).json()) as { books: { id: string }[] };
+  const cover = await fetch(new URL(`/api/books/${books[0]!.id}/cover`, page.url()));
+  expect(cover.status).toBe(200);
+  expect(cover.headers.get("content-type")).toBe("image/jpeg");
+});
+
 test("a second copy hands over to the first and leaves", async () => {
   app = await launch();
   const page = await app.firstWindow();

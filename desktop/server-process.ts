@@ -13,6 +13,11 @@ interface ParentPort {
 }
 const parent = (process as unknown as { parentPort: ParentPort }).parentPort;
 
+// pdf.js decides whether it runs in Node by `process.type`, and takes Electron's "utility" for a browser page: it then
+// skips the canvas it uses in Node (@napi-rs/canvas, for DOMMatrix and the PDF covers) and every PDF import fails. This
+// process is plain Node, so it says so. pdf.js is loaded on the first PDF import, after this line has run.
+Object.defineProperty(process, "type", { value: undefined, configurable: true });
+
 let server: RunningServer | undefined;
 try {
   server = await startServer({ restart: () => parent.postMessage({ type: "restart" }) });
