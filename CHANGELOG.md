@@ -6,6 +6,8 @@ Add a line under **Unreleased** with every change a user would notice; `npm run 
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-10
+
 ### Added
 
 - The desktop app includes llama.cpp and, on its first start, offers to download the translation model (4.6 GB, too large for the installer) into a folder you can change; translation turns on by itself when it is done.
@@ -51,6 +53,7 @@ The first versioned release: everything Reader can do so far.
 - A Windows tray launcher that starts Reader and the translation model.
 - Continuous integration on Windows and Linux; contributor guide, security policy and code of conduct.
 
-[Unreleased]: https://github.com/OxO-106/epub-reader/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/OxO-106/epub-reader/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/OxO-106/epub-reader/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/OxO-106/epub-reader/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/OxO-106/epub-reader/releases/tag/v0.1.0
