@@ -1,6 +1,6 @@
 {
   "name": "reader",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A local-first reader for EPUB, Markdown and plain text, with live Chinese translation by a model on your own machine.",
   "license": "MIT",
   "author": "Zihan Chen",

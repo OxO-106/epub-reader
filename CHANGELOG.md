@@ -6,6 +6,8 @@ Add a line under **Unreleased** with every change a user would notice; `npm run 
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-10
+
 ### Added
 
 - In the desktop app, the translation model's download shows its progress wherever you are: a card over the Library, a Book or Settings with a progress bar, the amount, the percentage and the time left, Pause and Resume (also for a download stopped by closing the app), and "Translation is ready" when it is done; the taskbar button fills up as it downloads.
@@ -63,7 +65,8 @@ The first versioned release: everything Reader can do so far.
 - A Windows tray launcher that starts Reader and the translation model.
 - Continuous integration on Windows and Linux; contributor guide, security policy and code of conduct.
 
-[Unreleased]: https://github.com/OxO-106/epub-reader/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/OxO-106/epub-reader/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/OxO-106/epub-reader/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/OxO-106/epub-reader/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/OxO-106/epub-reader/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/OxO-106/epub-reader/releases/tag/v0.1.0
