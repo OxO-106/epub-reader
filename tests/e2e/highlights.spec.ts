@@ -285,7 +285,7 @@ test("the panel lists highlights in reading order under their chapters, and choo
   await expect(panel(page).getByRole("status")).toHaveText("2 highlights");
 
   await groups.nth(1).getByRole("button", { name: /second chapter/ }).click();
-  await expect(page.locator(".reader-chapter")).toHaveText("Chapter 2");
+  await expect(page.locator(".position-chapter")).toHaveText("Chapter 2 of 2");
 });
 
 test("a highlight can be recoloured and deleted from the panel, with Undo", async ({ page }) => {

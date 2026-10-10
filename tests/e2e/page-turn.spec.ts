@@ -163,16 +163,18 @@ test.describe("clicking the page edges", () => {
   test("turns pages in paginated mode, and the middle of the page does nothing", async ({ page }) => {
     await openLongBook(page);
     const start = "Chapter 1, paragraph 1.";
+    // The page, wherever the layout puts it (in the book look it is the open book in the middle of the desk).
+    const book = (await page.locator(".reader-view").boundingBox())!;
 
-    await page.mouse.click(1230, 300); // right edge
+    await page.mouse.click(book.x + book.width - 30, 300); // right edge
     const second = await settledAwayFrom(page, start);
     expect(paragraphOf(second)).toBeGreaterThan(1);
 
-    await page.mouse.click(640, 300); // middle
+    await page.mouse.click(book.x + book.width / 2, 300); // middle
     await page.waitForTimeout(500);
     expect(await firstVisible(page)).toBe(second);
 
-    await page.mouse.click(50, 300); // left edge
+    await page.mouse.click(book.x + 30, 300); // left edge
     await expect.poll(() => firstVisible(page)).toBe(start);
   });
 

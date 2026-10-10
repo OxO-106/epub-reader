@@ -60,8 +60,11 @@ export interface TranslateControl {
 
 interface TopBarProps {
   title: string;
-  /** The label of the table-of-contents entry the reader is in; null when there is none. */
-  chapter: string | null;
+  /**
+   * The line under the title: the chapter the reader is in (the table-of-contents label), or in the book look, where the
+   * chapter is the running head over the pages, the Book's author. Null for none.
+   */
+  subtitle: { kind: "chapter" | "author"; text: string } | null;
   open: Panel | null;
   /** Search needs an open Book. */
   searchReady: boolean;
@@ -82,7 +85,7 @@ interface TopBarProps {
  * or Retry). On a phone the pill shrinks to its dot (the words stay for screen readers), so the bar never wraps;
  * tests/e2e/phone-layouts.spec.ts and layout.spec.ts check it.
  */
-export function ReaderTopBar({ title, chapter, open, searchReady, highlightsReady, buttons, onToggle, translate }: TopBarProps) {
+export function ReaderTopBar({ title, subtitle, open, searchReady, highlightsReady, buttons, onToggle, translate }: TopBarProps) {
   return (
     <header class="reader-bar reader-top">
       <a class="bar-button bar-link" href="#/" title="Library">
@@ -91,7 +94,7 @@ export function ReaderTopBar({ title, chapter, open, searchReady, highlightsRead
       </a>
       <div class="reader-heading">
         <h1 class="reader-title">{title}</h1>
-        {chapter && <div class="reader-chapter">{chapter}</div>}
+        {subtitle && <div class={subtitle.kind === "chapter" ? "reader-chapter" : "reader-author"}>{subtitle.text}</div>}
       </div>
       <div class="reader-tools">
         <ToolButton label="Contents" icon={<ListIcon />} panel="contents" buttonRef={buttons.contents} open={open === "contents"} onToggle={() => onToggle("contents")} />

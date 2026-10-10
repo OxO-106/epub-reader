@@ -80,6 +80,9 @@ async function openLongBook(page: Page) {
 }
 
 test.describe("the bars", () => {
+  // The plain look (a narrower window), where the top bar's second line is the chapter; book-look.spec.ts has the book look.
+  test.use({ viewport: { width: 900, height: 800 } });
+
   test("the top bar names the Book and the chapter, and the bottom bar says where the reader is", async ({ page }) => {
     await openBook(page, "sample.epub", /Sample Book/);
 

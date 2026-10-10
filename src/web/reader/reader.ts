@@ -11,7 +11,7 @@
  * and Markdown and plain-text Books, which arrive as a `BookSource` of kind "custom" holding a
  * foliate-js book object built by an adapter and are passed to the same view (08, 09).
  */
-import type { DrawAnnotationDetail, FoliateBook, RelocateDetail, TocItem, View } from "../vendor/foliate-js/view.js";
+import type { Contributor, DrawAnnotationDetail, FoliateBook, RelocateDetail, TocItem, View } from "../vendor/foliate-js/view.js";
 import { compare as compareCfi } from "../vendor/foliate-js/epubcfi.js";
 import { makeCustomBook, type CustomBook } from "./custom-book.ts";
 import { marginSizes, themes, type DisplaySettings } from "../display-settings.ts";
@@ -51,6 +51,8 @@ export interface TocEntry {
 
 export interface OpenedBook {
   title: string;
+  /** Who wrote it, as the Book names them (several joined with commas); empty when it does not say. */
+  author: string;
   toc: TocEntry[];
 }
 
@@ -64,6 +66,8 @@ export interface ReaderLocation {
   chapterId: number | null;
   /** Estimated minutes of reading left in the current section of the Book (usually a chapter); null when not known. */
   minutesLeftInSection: number | null;
+  /** How many pages are shown side by side: 2 for an open book's spread, 1 for a single page or a scrolled Book. */
+  pagesShown: number;
 }
 
 /** One hit in the Book: the matched text with the words around it. */
@@ -234,6 +238,13 @@ export interface Reader {
    * `onTap`). Returns a function that stops listening.
    */
   onHighlightTap(listener: (tap: { id: string; rect: ScreenRect }) => void): () => void;
+  /**
+   * Draws the open Book as the pages of a printed book (the Reader screen's book look): a running head over each page (the
+   * Book's title over the left-hand page of a spread, the chapter over the right-hand one, or the chapter alone over a
+   * single page) and a folio under it (the page's number within the chapter). Off, the margins stay empty. Not for a
+   * fixed-layout Book. Applies to the open Book and every Book opened after.
+   */
+  setBookLook(on: boolean): void;
   /** Removes the Book and everything the Reader added to its container. */
   close(): void;
 }
@@ -250,6 +261,30 @@ export function createReader(container: HTMLElement): Reader {
   let zoom: Zoom = "fit-page";
   let display: DisplaySettings | null = null;
   let fontFaces = "";
+
+  // ---- the book look: running heads and folios in the page margins -------------------------------------------------
+  let bookLook = false;
+  let bookTitle = "";
+  /** The chapter the reader is in, for the running head of a right-hand page. */
+  let chapterLabel = "";
+  /** Fills (or empties) the margins above and below each page shown. They are made again whenever the pages are laid out. */
+  const decoratePages = () => {
+    const renderer = view?.renderer;
+    if (!renderer || fixed) return;
+    const heads = renderer.heads ?? [];
+    const feet = renderer.feet ?? [];
+    const shown = heads.length;
+    const first = ((renderer.page ?? 1) - 1) * shown; // pages before the first one shown, in this chapter
+    const textPages = Math.max(0, ((renderer.pages ?? 2) - 2) * shown);
+    heads.forEach((head, i) => {
+      const text = !bookLook ? "" : shown > 1 && i === 0 ? bookTitle : chapterLabel || bookTitle;
+      setMarginal(head, text, "head");
+    });
+    feet.forEach((foot, i) => {
+      const number = first + i + 1;
+      setMarginal(foot, bookLook && number >= 1 && number <= textPages ? String(number) : "", "foot");
+    });
+  };
 
   // ---- highlights -----------------------------------------------------------------------------------------------------
   /** Drawn highlights by CFI (foliate-js keys annotations by their value, which is the CFI). */
@@ -596,7 +631,10 @@ export function createReader(container: HTMLElement): Reader {
           fraction: detail.fraction ?? 0,
           chapterId: detail.tocItem?.id ?? null,
           minutesLeftInSection: typeof detail.time?.section === "number" ? detail.time.section : null,
+          pagesShown: next.renderer.heads?.length || 1,
         };
+        chapterLabel = (detail.tocItem?.label ?? "").trim();
+        decoratePages();
         for (const listener of listeners) listener(location);
         translation.refresh(); // a jump or a page turn moves the window
       });
@@ -647,6 +685,8 @@ export function createReader(container: HTMLElement): Reader {
       });
 
       rtl = book.dir === "rtl";
+      bookTitle = titleOf(book);
+      chapterLabel = "";
       // Key and click events inside the Book's iframes do not reach this page, so listen inside each one too.
       next.addEventListener("load", (event) => {
         const { doc } = (event as CustomEvent<{ doc: Document }>).detail;
@@ -693,7 +733,8 @@ export function createReader(container: HTMLElement): Reader {
       drawnTheme = null;
       paintHighlights(); // the first page was shown before the Book was ready to draw on
       toc = flattenToc(book.toc ?? []);
-      return { title: titleOf(book), toc };
+      decoratePages();
+      return { title: bookTitle, author: authorOf(book), toc };
     },
     async goTo(target) {
       requireView();
@@ -859,6 +900,10 @@ export function createReader(container: HTMLElement): Reader {
       highlightTapListeners.add(listener);
       return () => highlightTapListeners.delete(listener);
     },
+    setBookLook(on) {
+      bookLook = on;
+      decoratePages();
+    },
     close() {
       closeBook();
       translation.dispose();
@@ -918,6 +963,38 @@ function titleOf(book: FoliateBook): string {
   const title = book.metadata?.title;
   if (typeof title === "string") return title;
   return title ? (Object.values(title)[0] ?? "") : "";
+}
+
+/** The Book's author or authors, as one line. */
+function authorOf(book: FoliateBook): string {
+  const one = (who: Contributor): string => {
+    const name: unknown = typeof who === "object" && "name" in who ? who.name : who;
+    if (typeof name === "string") return name;
+    return name && typeof name === "object" ? String(Object.values(name)[0] ?? "") : "";
+  };
+  const author = book.metadata?.author;
+  const all = Array.isArray(author) ? author : author ? [author] : [];
+  return all
+    .map((who) => one(who).trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+/**
+ * Writes a running head or a folio into one of foliate-js's page margins, set like a printed book's: small capitals in
+ * the Book's serif for a head, plain figures for a folio, in the text colour at a quiet strength.
+ */
+function setMarginal(element: HTMLElement, text: string, kind: "head" | "foot"): void {
+  if (element.textContent !== text) element.textContent = text;
+  Object.assign(element.style, {
+    fontFamily: "var(--font-serif)",
+    fontSize: kind === "head" ? "11px" : "13px",
+    letterSpacing: kind === "head" ? "0.18em" : "0.02em",
+    textTransform: kind === "head" ? "uppercase" : "none",
+    fontVariantNumeric: "oldstyle-nums",
+    color: "var(--book-marginal, currentColor)",
+    opacity: "1",
+  });
 }
 
 function flattenToc(items: TocItem[], depth = 0): TocEntry[] {

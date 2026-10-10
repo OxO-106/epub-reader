@@ -24,6 +24,8 @@ const tapMiddle = async (page: Page) => {
 };
 
 test("the bars are shown when the Book opens, and rest after a page is turned from the keyboard", async ({ page }) => {
+  // The plain look's running head and foot; the book look has its own on the pages (book-look.spec.ts).
+  await page.setViewportSize({ width: 900, height: 800 });
   await openLongBook(page);
   expect(await chrome(page)).toBe("shown");
 
@@ -115,7 +117,7 @@ test("the scrubber has a tick for each chapter after the first and moves through
   for (let step = 0; step < 40; step++) await scrubber.press("ArrowRight");
 
   await expect.poll(percent).toBeGreaterThan(start + 20);
-  await expect(page.locator(".reader-chapter")).not.toHaveText("Chapter 1");
+  await expect(page.locator(".position-chapter")).not.toHaveText("Chapter 1 of 3");
 });
 
 test("the bottom bar says how long is left in the chapter", async ({ page }) => {

@@ -1719,3 +1719,225 @@
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+
+/* ---- The book look (issue #40): a paginated Book in a wide window, drawn as an open book on a desk ----
+ *
+ * Set by ReaderScreen (`data-look="book"`, from 60rem wide in the paginated layout; `data-spread="two"` when two pages
+ * are side by side). The screen becomes a grid: the top bar across the whole window (so the title sits at its exact
+ * middle), the book under it, one slim row of progress under the book, and a docked side panel to the right. The
+ * bottom bar's own box goes (`display: contents`): Previous and Next sit on the desk either side of the book, and the
+ * scrubber is the row under it, as wide as the book. Resting, every control fades out completely and keeps its room,
+ * so the book never moves. Design: docs/design/verso (Main, ReaderResting, ReaderContents, ReaderNight).
+ */
+
+.reader-screen[data-look="book"] {
+  /* Room either side of the book for Previous and Next. */
+  --book-side: 76px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  background: radial-gradient(ellipse 75% 65% at 50% 45%, var(--desk-glow), var(--desk));
+}
+
+.reader-screen[data-look="book"] .reader-main {
+  display: contents;
+}
+
+.reader-screen[data-look="book"] .reader-top {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  /* The same at both ends, so the middle column is the middle of the window. */
+  padding-inline: max(12px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-right, 0px));
+  background: transparent;
+  border-bottom-color: transparent;
+}
+
+.reader-screen[data-look="book"] .bar-link {
+  justify-self: start;
+}
+
+.reader-screen[data-look="book"] .reader-heading {
+  min-width: 0;
+  max-width: min(36rem, 40vw);
+}
+
+.reader-screen[data-look="book"] .reader-tools {
+  justify-self: end;
+}
+
+.reader-screen .reader-author {
+  font-size: 12px;
+  color: var(--desk-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reader-screen[data-look="book"] .reader-main > .connection-notice {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.reader-screen[data-look="book"] .reader-body {
+  grid-column: 1;
+  grid-row: 3;
+  justify-content: center;
+  padding: 4px var(--book-side) 14px;
+}
+
+/* The book: the paper is the Book's own page; under it a few page edges, and its shadow on the desk. */
+.reader-screen[data-look="book"] .reader-view {
+  position: relative;
+  flex: 0 1 var(--book-max, 1500px);
+  border-radius: 3px 3px 4px 4px;
+  box-shadow:
+    0 1px 0 var(--page-edge),
+    0 3px 0 -1px var(--page-leaf),
+    0 4px 0 -1px var(--page-edge),
+    0 6px 0 -2px var(--page-leaf),
+    0 7px 0 -2px var(--page-edge),
+    var(--book-shadow);
+}
+
+/* Shading over the paper: the outer edges, and for a spread the fold of the spine down the middle. Over the text, but
+   only where there is none (the margins and the gap between the pages), and it lets every click through. */
+.reader-screen[data-look="book"] .reader-view::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--page-shade) 0, transparent 1.4%, transparent 98.6%, var(--page-shade) 100%);
+}
+
+.reader-screen[data-look="book"][data-spread="two"] .reader-view::after {
+  background: linear-gradient(
+    90deg,
+    var(--page-shade) 0,
+    transparent 1.4%,
+    transparent 46.5%,
+    color-mix(in srgb, var(--page-shade) 40%, transparent) 48.7%,
+    var(--page-shade) 50%,
+    color-mix(in srgb, var(--page-shade) 40%, transparent) 51.3%,
+    transparent 53.5%,
+    transparent 98.6%,
+    var(--page-shade) 100%
+  );
+}
+
+/* No bottom bar of its own: its controls are placed on the screen's grid. */
+.reader-screen[data-look="book"] .reader-bottom,
+.reader-screen[data-look="book"] .reader-nav {
+  display: contents;
+}
+
+/* Previous and Next: round buttons on the desk either side of the book, half-way down. Above the Contents drawer's scrim,
+   as the bottom bar was: pages can be turned with Contents open. */
+.reader-screen[data-look="book"] .nav-button {
+  grid-column: 1;
+  grid-row: 3;
+  align-self: center;
+  justify-self: start;
+  z-index: 5;
+  margin-inline: 16px;
+  margin-bottom: 14px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+  color: var(--fg);
+}
+
+.reader-screen[data-look="book"] .nav-next {
+  justify-self: end;
+}
+
+/* The progress row: under the book and as wide as it. Chapter · the line · the percentage and the time left. */
+.reader-screen[data-look="book"] .reader-scrub {
+  grid-column: 1;
+  grid-row: 4;
+  justify-self: center;
+  box-sizing: border-box;
+  width: min(100% - 2 * var(--book-side), var(--book-max, 1500px));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 16px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  font-size: 12px;
+  color: var(--desk-ink);
+  transition: var(--fade);
+}
+
+.reader-screen[data-look="book"] :is(.reader-meta, .reader-position) {
+  display: contents;
+}
+
+.reader-screen[data-look="book"] .reader-track {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+/* The line's unread part, drawn in the desk's ink so it shows on every desk. */
+.reader-screen[data-look="book"] .reader-progress {
+  background: color-mix(in srgb, var(--desk-ink) 24%, transparent);
+}
+
+.reader-screen[data-look="book"] .position-chapter {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.reader-screen[data-look="book"] .position-sep {
+  display: none;
+}
+
+.reader-screen[data-look="book"] .reading-fraction {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.reader-screen[data-look="book"] .reader-time {
+  grid-column: 4;
+  grid-row: 1;
+  margin-inline-start: -10px;
+  color: var(--desk-ink);
+}
+
+.reader-screen[data-look="book"] .reader-time::before {
+  content: "· ";
+}
+
+/* Side panels (Search, Highlights, Glossary): a card docked to the right of the book, under the top bar. */
+.reader-screen[data-look="book"] :is(.reader-search, .reader-highlights, .reader-glossary) {
+  grid-column: 2;
+  grid-row: 3 / 5;
+  width: 360px;
+  margin: 4px 16px 16px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+}
+
+/* Contents: the drawer is a card over the left of the book, clear of the Previous button. */
+.reader-screen[data-look="book"] .contents-drawer {
+  inset-block: 4px 14px;
+  inset-inline-start: var(--book-side);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.reader-screen[data-look="book"] .scrim {
+  background: color-mix(in srgb, var(--scrim) 55%, transparent);
+}
+
+/* Resting: everything goes, the progress row and the buttons on the desk too; only the book stays. */
+.reader-screen[data-look="book"] :is(.reader-heading, .reader-scrub) {
+  transition: var(--fade);
+}
+
+.reader-screen[data-look="book"][data-chrome="resting"] :is(.reader-heading, .reader-scrub, .nav-button) {
+  opacity: 0;
+}

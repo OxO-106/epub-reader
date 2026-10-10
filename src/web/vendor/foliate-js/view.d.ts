@@ -1,5 +1,7 @@
 // Types for the parts of view.js that Reader uses. Written for this project, not part of foliate-js.
 
+export type Contributor = string | Record<string, string> | { name?: string | Record<string, string> };
+
 export interface TocItem {
   /** Assigned by foliate-js when a Book is opened. */
   id?: number;
@@ -10,7 +12,12 @@ export interface TocItem {
 
 /** foliate-js's "book" interface: what an EPUB, or our own Markdown and text adapter, looks like to the View. */
 export interface FoliateBook {
-  metadata?: { title?: string | Record<string, string>; language?: string | string[] };
+  metadata?: {
+    title?: string | Record<string, string>;
+    language?: string | string[];
+    /** One contributor or several: a name, a name per language, or `{ name }` (EPUB and MOBI differ). */
+    author?: Contributor | Contributor[];
+  };
   toc?: TocItem[];
   sections: unknown[];
   [key: string]: unknown;
@@ -33,6 +40,15 @@ export interface Renderer extends HTMLElement {
   scrolled?: boolean;
   /** The Book documents on screen, each with its section index and the layer annotations are drawn on. */
   getContents(): Array<{ doc: Document; index: number; overlayer?: Overlayer }>;
+  /**
+   * Paginated only: one element per page shown side by side, in the margin above and below each page, for a running head
+   * and a folio. Made again each time the pages are laid out; null while scrolled.
+   */
+  heads?: HTMLElement[] | null;
+  feet?: HTMLElement[] | null;
+  /** Paginated only: the screenful shown (counted from 0, which is a blank one before the text) and how many there are. */
+  page?: number;
+  pages?: number;
 }
 
 /** The SVG layer over a Book document that annotations and search outlines are drawn on (overlayer.js). */

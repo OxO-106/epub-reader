@@ -7,7 +7,7 @@ import { chapterProgress } from "./chapter-progress.ts";
 import { checkConnection, heartbeatMs } from "./connection.ts";
 import { ConnectionNotice } from "./ConnectionNotice.tsx";
 import { ContentsDrawer } from "./ContentsDrawer.tsx";
-import { applyTheme, loadDisplay, saveDisplay, type DisplaySettings } from "./display-settings.ts";
+import { applyTheme, loadDisplay, marginSizes, saveDisplay, type DisplaySettings } from "./display-settings.ts";
 import { DisplaySettingsPanel } from "./DisplaySettingsPanel.tsx";
 import { fontFaceCss } from "./fonts.ts";
 import type { Highlight, HighlightColor } from "./api.ts";
@@ -28,10 +28,26 @@ import "./reader-chrome.css";
 type State =
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; title: string; toc: TocEntry[] };
+  | { kind: "ready"; title: string; author: string; toc: TocEntry[] };
 
 /** The Search panel is docked beside the text from this width up, and covers the text below it (see reader-chrome.css). */
 const searchOverlays = () => !window.matchMedia("(min-width: 60rem)").matches;
+
+/** From this width up, a paginated Book is drawn as an open book on a desk (the book look, reader-chrome.css). */
+const bookLookQuery = "(min-width: 60rem)";
+
+/** Whether the window is wide enough for the book look, kept up to date as it is resized. */
+function useWideWindow(): boolean {
+  const [wide, setWide] = useState(() => window.matchMedia(bookLookQuery).matches);
+  useEffect(() => {
+    const query = window.matchMedia(bookLookQuery);
+    const change = () => setWide(query.matches);
+    query.addEventListener("change", change);
+    change();
+    return () => query.removeEventListener("change", change);
+  }, []);
+  return wide;
+}
 
 /** How long the bars stay after the Book opens, or after the pointer leaves them, before they fade to let the page be read. */
 const chromeRestMs = 2500;
@@ -83,6 +99,9 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const [fraction, setFraction] = useState<number | null>(null);
   const [minutesLeft, setMinutesLeft] = useState<number | null>(null);
   const [chapterStarts, setChapterStarts] = useState<number[]>([]);
+  // How many pages are side by side (2 for a spread), for the spine drawn down the middle of the book look.
+  const [pagesShown, setPagesShown] = useState(1);
+  const wide = useWideWindow();
   const [display, setDisplay] = useState(loadDisplay);
   // The open Book has fixed pages (a PDF): the Display panel offers zoom instead of the text settings.
   const [fixed, setFixed] = useState(false);
@@ -168,6 +187,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       setChapterId(location.chapterId);
       setFraction(location.fraction);
       setMinutesLeft(location.minutesLeftInSection);
+      setPagesShown(location.pagesShown);
       // A Book that declares no language is judged from its text, which may take a few pages (a title page has too little).
       setEnglish(instance.isEnglish());
       // A page turned from the keyboard or on the page itself: put the bars away, unless they are being used.
@@ -205,11 +225,11 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         if (saved.fraction !== null) setFraction(saved.fraction);
         stopTracking = trackReadingPosition(bookId, instance, saved.position);
         return instance.open(source, { position: saved.position ?? undefined, bookId }).then(
-          ({ title, toc }) => {
+          ({ title, author, toc }) => {
             if (cancelled) return;
             setEnglish(instance.isEnglish());
             setFixed(instance.isFixedLayout());
-            setState({ kind: "ready", title, toc });
+            setState({ kind: "ready", title, author, toc });
             setChapterStarts(instance.chapterStarts());
             opened = true;
             restSoon();
@@ -321,6 +341,12 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  // The book look: a paginated Book in a wide window is drawn as an open book on a desk (see reader-chrome.css).
+  const look = wide && display.flow === "paginated" ? "book" : "plain";
+  useEffect(() => {
+    reader.current?.setBookLook(look === "book");
+  }, [look, bookId, attempt]);
 
   const toc = state.kind === "ready" ? state.toc : [];
   const ready = state.kind === "ready";
@@ -468,12 +494,24 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   }
 
   return (
-    <div class="reader-screen" data-chrome={chromeResting ? "resting" : "shown"}>
+    <div class="reader-screen" data-chrome={chromeResting ? "resting" : "shown"} data-look={look} data-spread={look === "book" && pagesShown > 1 ? "two" : "one"}
+      // The widest the book grows: two lines of the Display setting's measure, with the page margins around them.
+      style={{ "--book-max": `${Math.round(2.3 * marginSizes[display.margins].maxLine)}px` }}
+    >
       <div class="reader-main">
         <div class="reader-bar-zone" {...barEvents}>
           <ReaderTopBar
             title={ready ? state.title : ""}
-            chapter={chapter?.label || null}
+            // In the book look the chapter is the running head over the pages, so the bar names the author instead.
+            subtitle={
+              look === "book"
+                ? ready && state.author
+                  ? { kind: "author", text: state.author }
+                  : null
+                : chapter?.label
+                  ? { kind: "chapter", text: chapter.label }
+                  : null
+            }
             open={panel}
             searchReady={ready}
             highlightsReady={ready && !fixed}

@@ -6,6 +6,10 @@ Add a line under **Unreleased** with every change a user would notice; `npm run 
 
 ## [Unreleased]
 
+### Added
+
+- On a computer screen the Reader shows the Book as an open two-page book on a desk, with a running head and a page number on each page, the title in the middle of the window, the progress line under the book and Previous and Next beside it. While you read, all of it fades away and only the book stays; phones and the scrolling layout keep the plain look.
+
 ### Changed
 
 - The app is now called Verso, with a new icon: an open book whose left-hand page, the verso, is filled in. Your Library, Reading positions, highlights and settings stay where they were (the desktop app keeps its `%APPDATA%\Reader` folder), and the desktop app updates over the old one.

@@ -17,6 +17,10 @@
  *   --alert-soft  the tint behind --danger text that is a warning rather than a button (a failed translation)
  *   --gloss-ink, --gloss-bg, --gloss-bar   the Chinese translation under an English paragraph: its text (7:1 or more on
  *                 its tint), the tint, and the bars of the skeleton that stands in for a paragraph still waiting
+ *   --desk        the ground around the open book of the Reader's book look (--desk-glow its lit middle); --desk-ink
+ *                 text on it (4.5:1); --book-marginal the running heads and folios on the page (4.5:1 on --bg);
+ *                 --page-edge and --page-leaf the edges of the pages under the book, and the back of a turning page;
+ *                 --page-shade the shadow down the spine and at the page edges; --book-shadow the book's drop shadow
  */
 :root {
   /* The interface is set in IBM Plex Sans (bundled, see fonts.ts); Chinese falls to the system sans fonts. */
@@ -56,6 +60,14 @@
   --scrim: rgb(31 29 26 / 0.42);
   --shadow-card: 0 1px 2px rgb(40 30 20 / 0.05), 0 10px 30px rgb(40 30 20 / 0.07);
   --shadow-panel: 0 1px 2px rgb(40 30 20 / 0.08), 0 18px 48px rgb(40 30 20 / 0.16);
+  --desk: #e4ddcf;
+  --desk-glow: #eee8dc;
+  --desk-ink: #57524a;
+  --book-marginal: #746d62;
+  --page-edge: #d6cebd;
+  --page-leaf: #f6f2ea;
+  --page-shade: rgb(70 50 25 / 0.2);
+  --book-shadow: 0 30px 60px -10px rgb(70 50 25 / 0.32), 0 12px 24px -12px rgb(70 50 25 / 0.28);
 }
 
 /* Night: a warm charcoal, never pure black, with a softer accent. */
@@ -82,6 +94,14 @@
   --scrim: rgb(0 0 0 / 0.55);
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.25), 0 10px 30px rgb(0 0 0 / 0.3);
   --shadow-panel: 0 18px 48px rgb(0 0 0 / 0.45);
+  --desk: #0c0b0a;
+  --desk-glow: #151413;
+  --desk-ink: #a39d93;
+  --book-marginal: #8c867c;
+  --page-edge: #050404;
+  --page-leaf: #24221f;
+  --page-shade: rgb(0 0 0 / 0.45);
+  --book-shadow: 0 30px 60px -10px rgb(0 0 0 / 0.7), 0 12px 24px -12px rgb(0 0 0 / 0.6);
 }
 
 /* Sepia: aged paper. */
@@ -108,6 +128,14 @@
   --scrim: rgb(60 40 10 / 0.42);
   --shadow-card: 0 2px 4px rgb(60 40 10 / 0.06), 0 10px 30px rgb(60 40 10 / 0.1);
   --shadow-panel: 0 2px 4px rgb(60 40 10 / 0.06), 0 18px 48px rgb(60 40 10 / 0.2);
+  --desk: #ddd0b0;
+  --desk-glow: #e7dcc0;
+  --desk-ink: #54472f;
+  --book-marginal: #6f6148;
+  --page-edge: #cdbd96;
+  --page-leaf: #efe5cc;
+  --page-shade: rgb(80 55 20 / 0.22);
+  --book-shadow: 0 30px 60px -10px rgb(80 55 20 / 0.32), 0 12px 24px -12px rgb(80 55 20 / 0.28);
 }
 
 /* Black: true black for OLED phones and reading in the dark; dimmer ink than Night. */
@@ -134,6 +162,14 @@
   --scrim: rgb(0 0 0 / 0.65);
   --shadow-card: none;
   --shadow-panel: 0 0 0 1px #2a2928, 0 18px 48px rgb(0 0 0 / 0.6);
+  --desk: #000000;
+  --desk-glow: #000000;
+  --desk-ink: #9a958d;
+  --book-marginal: #8a857e;
+  --page-edge: #1e1d1c;
+  --page-leaf: #0b0b0b;
+  --page-shade: rgb(255 255 255 / 0.07);
+  --book-shadow: 0 0 0 1px #262524;
 }
 
 body {
