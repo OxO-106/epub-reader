@@ -18,6 +18,7 @@ import { marginSizes, themes, type DisplaySettings } from "../display-settings.t
 import type { HighlightColor } from "../../shared/highlight-colors.ts";
 import { bookStyles } from "./book-styles.ts";
 import { normalizeFontSizes } from "./font-scale.ts";
+import { applyParagraphs, effectiveParagraphs, markParagraphs } from "./paragraphs.ts";
 import { clickMayTurnPage, createTurnQueue, directionForKey, edgeAt, keyMayTurnPage, type Direction } from "./page-turn.ts";
 import { sha1 } from "./sha1.ts";
 import { resolveLanguage } from "./chinese.ts";
@@ -361,7 +362,35 @@ export function createReader(container: HTMLElement): Reader {
     return { id: highlight.id, rect };
   }
 
+  /** Translation is on (it changes how paragraphs are set, see paragraphs.ts). */
+  let translating = false;
+  const paragraphMode = () => effectiveParagraphs(display?.paragraphs ?? "book", translating);
+  /** Sets the paragraph mode on every Book page shown now (pages loaded later get it as they load). */
+  /** The page translation is watching: its `keepStill` holds the text on screen in place across a change of layout. */
+  let currentSurface: Surface | null = null;
+  const applyParagraphMode = () => {
+    if (fixed) return;
+    const mode = paragraphMode();
+    for (const { doc } of view?.renderer.getContents?.() ?? []) {
+      if (doc.documentElement.getAttribute("data-reader-paragraphs") === (mode === "book" ? null : mode)) continue;
+      const change = () => applyParagraphs(doc, mode);
+      // Spacing changes move every paragraph: in a scrolled Book the first one on screen is kept where it is (a
+      // paginated Book keeps its place by itself, as when the text size changes).
+      const surface = currentSurface?.doc === doc ? currentSurface : null;
+      if (!surface?.scrolled) {
+        change();
+        continue;
+      }
+      const shown = surface.viewport();
+      const anchor = shown
+        ? [...doc.body.querySelectorAll<HTMLElement>("p, h1, h2, h3, h4, h5, h6, li")].find((el) => el.getBoundingClientRect().bottom > shown.start)
+        : undefined;
+      surface.keepStill(change, anchor ?? null);
+    }
+  };
+
   const applyDisplay = () => {
+    applyParagraphMode();
     const renderer = view?.renderer;
     if (renderer && fixed) renderer.setAttribute("zoom", String(zoom));
     if (renderer && display) paintHighlights();
@@ -485,6 +514,7 @@ export function createReader(container: HTMLElement): Reader {
       stopWatching = null;
     };
     translation.attach(surface);
+    currentSurface = surface;
   }
 
   const requireView = () => {
@@ -621,7 +651,12 @@ export function createReader(container: HTMLElement): Reader {
       next.addEventListener("load", (event) => {
         const { doc } = (event as CustomEvent<{ doc: Document }>).detail;
         // Reflowable pages only (a fixed layout has no display styles): see font-scale.ts.
-        if (next.renderer?.setStyles) normalizeFontSizes(doc);
+        if (next.renderer?.setStyles) {
+          normalizeFontSizes(doc);
+          // Read the paragraphs as the Book sets them, then set them as the Display setting says.
+          markParagraphs(doc);
+          applyParagraphs(doc, paragraphMode());
+        }
         setChineseLanguage(doc);
         english ??= looksEnglish((doc.body?.textContent ?? "").slice(0, 8000));
         if (!fixed) {
@@ -729,7 +764,12 @@ export function createReader(container: HTMLElement): Reader {
       zoom = next;
       view?.renderer.setAttribute("zoom", String(next));
     },
-    setTranslation: (enabled) => translation.setEnabled(enabled),
+    setTranslation(enabled) {
+      translation.setEnabled(enabled);
+      if (translating === enabled) return;
+      translating = enabled;
+      applyParagraphMode();
+    },
     translationStatus: () => translation.status(),
     onTranslationStatus: (listener) => translation.onStatus(listener),
     retryTranslation: (blockId) => translation.retry(blockId),

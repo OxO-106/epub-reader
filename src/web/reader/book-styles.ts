@@ -1,4 +1,5 @@
 import { chineseDefaultStacks, fontFamilies, themes, type DisplaySettings } from "../display-settings.ts";
+import { paragraphStyles } from "./paragraphs.ts";
 
 /** Text containers whose colours are replaced, so dark and sepia stay legible whatever the Book's own styles say. */
 const textBlocks =
@@ -56,6 +57,7 @@ html, body, body *${notCode} {
   overflow-wrap: anywhere !important;
 }
 html { text-autospace: normal; }
+${paragraphStyles(palette.glossInk)}
 @supports (hanging-punctuation: allow-end) {
   :lang(zh) { hanging-punctuation: allow-end; }
 }

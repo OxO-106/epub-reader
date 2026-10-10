@@ -19,7 +19,17 @@ export interface DisplaySettings {
   margins: Margins;
   theme: Theme;
   flow: Flow;
+  /** How paragraphs are set: as the Book does (spaced while translating), indented, or spaced. See reader/paragraphs.ts. */
+  paragraphs: Paragraphs;
 }
+
+export type Paragraphs = "book" | "indented" | "spaced";
+
+export const paragraphChoices: Array<{ value: Paragraphs; label: string }> = [
+  { value: "book", label: "Book" },
+  { value: "indented", label: "Indented" },
+  { value: "spaced", label: "Spaced" },
+];
 
 export const fontSizeRange = { min: 12, max: 36, step: 1 };
 export const lineSpacingRange = { min: 1.1, max: 2.2, step: 0.1 };
@@ -199,6 +209,7 @@ export function defaultDisplay(): DisplaySettings {
     margins: "medium",
     theme: prefersDark ? "dark" : "light",
     flow: "paginated",
+    paragraphs: "book",
   };
 }
 
@@ -219,6 +230,7 @@ export function normalizeDisplay(input: unknown): DisplaySettings {
     margins: oneOf(saved.margins, Object.keys(marginSizes) as Margins[], fallback.margins),
     theme: oneOf(saved.theme, Object.keys(themes) as Theme[], fallback.theme),
     flow: oneOf(saved.flow, ["paginated", "scrolled"] as const, fallback.flow),
+    paragraphs: oneOf(saved.paragraphs, ["book", "indented", "spaced"] as const, fallback.paragraphs),
   };
 }
 

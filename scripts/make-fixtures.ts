@@ -18,7 +18,7 @@ const fixedTime = new Date(Date.UTC(2026, 0, 1)); // keeps regenerated files byt
 
 const chapter = (n: number, body: string, title = `Chapter ${n}`) =>
   `${xml}<html xmlns="http://www.w3.org/1999/xhtml"><head><title>${title}</title></head>` +
-  `<body><h1>${title}</h1>${body.startsWith("<p>") ? body : `<p>${body}</p>`}</body></html>`;
+  `<body><h1>${title}</h1>${/^<p[\s>]/.test(body) ? body : `<p>${body}</p>`}</body></html>`;
 
 /** A solid-colour PNG, built by hand so the fixtures need no image library. */
 function png(width: number, height: number, [r, g, b]: [number, number, number]): Uint8Array {
@@ -516,6 +516,34 @@ writeFileSync(join(out, "no-heading.md"), "Just a few words, with no heading any
     }),
   );
 }
+
+// A novel set the print way (as InDesign exports it): the chapter opens flush with bold first words, the paragraphs after
+// it are indented, a scene starts after extra space (flush, bold first words again), an epigraph is centred, and one
+// scene break is an ornament paragraph. For the Display setting "Paragraphs" (paragraphs.ts).
+writeFileSync(
+  join(out, "paragraphs.epub"),
+  epub({
+    metadata: `<dc:identifier id="id">urn:uuid:00000000-0000-4000-8000-000000000012</dc:identifier><dc:title>Paragraph Book</dc:title><dc:creator>Test Author</dc:creator><dc:language>en</dc:language>${modified}`,
+    chapters: [
+      {
+        title: "Chapter 1",
+        body:
+          '<p class="EPI">A centred epigraph, as books open with.</p>' +
+          '<p class="CO" id="opening"><span class="lead">This is how River </span>slipped off the fast track and joined the slow horses.</p>' +
+          '<p class="TX" id="second">The second paragraph is indented, as print sets every paragraph after the first.</p>' +
+          '<p class="TX" id="third">The third paragraph is indented too, and runs on long enough to wrap onto another line in a narrow column.</p>' +
+          '<p class="TNI" id="scene"><span class="lead">Eight twenty </span>Tuesday morning: a new scene, set apart by space alone.</p>' +
+          '<p class="TX" id="after-scene">After the scene break the paragraphs are indented again.</p>' +
+          '<p class="ORN">* * *</p>' +
+          '<p class="TX" id="after-ornament">A paragraph after an ornament that marks the break itself.</p>',
+      },
+      { title: "Chapter 2", body: "A second chapter, so there is a table of contents." },
+    ],
+    style:
+      "p { margin: 0; font-size: 0.875em; } .CO, .TNI { text-indent: 0; } .TX, .ORN { text-indent: 12px; } .TNI { margin-top: 13px; }\n" +
+      ".EPI { text-align: center; font-style: italic; margin-bottom: 1em; } .ORN { text-align: center; } .lead { font-weight: bold; }\n",
+  }),
+);
 
 // ---- Kindle files (MOBI 6 and KF8/AZW3), written by kindle-writer.ts ----
 {

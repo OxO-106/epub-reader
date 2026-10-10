@@ -8,6 +8,7 @@ import {
   fontSizeRange,
   lineSpacingRange,
   marginSizes,
+  paragraphChoices,
   themes,
   type DisplaySettings,
   type Flow,
@@ -155,6 +156,26 @@ export function DisplaySettingsPanel({ settings, onChange, onClose, fixed }: Pro
               </button>
             ))}
           </div>
+        </div>
+
+        <div class="setting">
+          <div class="setting-name" id="display-paragraphs">
+            Paragraphs
+          </div>
+          <div class="segments" role="group" aria-labelledby="display-paragraphs" aria-describedby="display-paragraphs-note">
+            {paragraphChoices.map(({ value, label }) => (
+              <button key={value} type="button" aria-pressed={settings.paragraphs === value} onClick={() => set({ paragraphs: value })}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <p class="setting-note" id="display-paragraphs-note">
+            {settings.paragraphs === "book"
+              ? "As the Book sets them. With Translate on, paragraphs are spaced, since each is followed by its Chinese."
+              : settings.paragraphs === "indented"
+                ? "Every paragraph indented, except the first of a chapter or scene."
+                : "Space between paragraphs, no indents. A break between scenes is marked with ⁂."}
+          </p>
         </div>
 
         <div class="setting">

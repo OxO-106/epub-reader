@@ -417,9 +417,9 @@ test.describe("the layout around a Translation", () => {
       return frame.locator("p").last().evaluate((p) => {
         const style = getComputedStyle(p);
         const after = getComputedStyle(p, "::after");
+        // Not its margins: paragraph spacing is the Display setting's (with Translate on, "Book" spaces paragraphs).
         return {
           height: p.getBoundingClientRect().height,
-          margin: style.margin,
           padding: style.padding,
           size: style.fontSize,
           attribute: p.hasAttribute("data-reader-tx"),
