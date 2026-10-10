@@ -103,7 +103,8 @@ async function toStart(page: Page) {
 
 /** Brings the resting bars back, as pointing at them does. */
 async function wakeBars(page: Page) {
-  await page.locator("footer.reader-bar").hover();
+  // The progress row: in the book look the bottom bar has no box of its own, and its row is all that is under the book.
+  await page.locator(".reader-scrub").hover();
   await page.waitForTimeout(300);
 }
 
