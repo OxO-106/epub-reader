@@ -1,16 +1,16 @@
 # The desktop app
 
-Reader's desktop app is the same Reader (the same server, the same pages, the same data format) in a window of its own, built with [Electron](https://www.electronjs.org/). It starts the Reader server for you on this PC and stops it when you quit; phones on your Tailscale network reach it as they reach `npm start` (see [Reader on your phone](phone.md)).
+Verso's desktop app is the same Verso (the same server, the same pages, the same data format) in a window of its own, built with [Electron](https://www.electronjs.org/). It starts the server for you on this PC and stops it when you quit; phones on your Tailscale network reach it as they reach `npm start` (see [Verso on your phone](phone.md)).
 
 ## Install it (Windows)
 
-1. Download `Reader-Setup-<version>.exe` from the [Releases page](https://github.com/OxO-106/epub-reader/releases).
+1. Download `Verso-Setup-<version>.exe` from the [Releases page](https://github.com/OxO-106/epub-reader/releases).
 2. Run it. The installer is not signed yet, so Windows SmartScreen may say "Windows protected your PC". Choose **More info**, then **Run anyway**. (The installer is built by the release workflow on GitHub from the tagged source; its log is public.)
-3. Choose where to install it (your user account only; no administrator rights needed). Reader appears in the Start menu and on the desktop.
+3. Choose where to install it (your user account only; no administrator rights needed). Verso appears in the Start menu and on the desktop.
 
-On the first start Reader offers the translation model once: **Download** fetches Tencent Hy-MT2 (4.6 GB, from Hugging Face, checked against its published SHA-256) into `translation-model` in Reader's folder, or **Choose another folder…** first (a drive with room). It downloads in the background (the tray icon shows how far it is), and translation turns on by itself when it is done. llama.cpp, which runs the model, comes with the installer, so nothing else is needed. (The model cannot ship in the installer: it is larger than an installer or a release file may be.)
+On the first start Verso offers the translation model once: **Download** fetches Tencent Hy-MT2 (4.6 GB, from Hugging Face, checked against its published SHA-256) into `translation-model` in Verso's folder, or **Choose another folder…** first (a drive with room). It downloads in the background (the tray icon shows how far it is), and translation turns on by itself when it is done. llama.cpp, which runs the model, comes with the installer, so nothing else is needed. (The model cannot ship in the installer: it is larger than an installer or a release file may be.)
 
-Reader then updates itself: at start it looks for a newer release, downloads it in the background, and asks before restarting (choose **Later** and it installs when you next quit). EPUB, AZW3, MOBI and PDF files get **Open with, Reader**: opening one adds it to the Library and opens it, also while Reader is running. Uninstalling leaves your Library in place.
+Verso then updates itself: at start it looks for a newer release, downloads it in the background, and asks before restarting (choose **Later** and it installs when you next quit). EPUB, AZW3, MOBI and PDF files get **Open with, Verso**: opening one adds it to the Library and opens it, also while Verso is running. Uninstalling leaves your Library in place.
 
 ## Run it from the repository
 
@@ -30,7 +30,7 @@ The second command downloads Electron's program once (about 100 MB, into Electro
 
 ## Where it keeps things
 
-- **Data** (the Library's database, the stored Books, covers, settings): the app's folder, `%APPDATA%\Reader` on Windows and `~/Library/Application Support/Reader` on macOS, in a `data` folder. The library folder Reader watches is `library` beside it unless you choose another in Settings.
+- **Data** (the Library's database, the stored Books, covers, settings): the app's folder, `%APPDATA%\Reader` (the name the app had before it was Verso) on Windows and `~/Library/Application Support/Reader` on macOS, in a `data` folder. The library folder Verso watches is `library` beside it unless you choose another in Settings.
 - **Logs:** `logs/reader.log` in the same folder; **File, Open Logs** opens it.
 - **Window:** the size and place you left it in, in `window-state.json`.
 
@@ -38,21 +38,21 @@ Set `READER_DESKTOP_DATA` to use another folder (the tests do, with a temporary 
 
 ## The tray and translation
 
-A tray icon (the menu bar on macOS) shows two dots, like the PowerShell tray it replaces: Reader and Translation, green running, amber starting, red stopped, grey not set up. Its menu opens Reader, starts or stops translation, and opens the data folder and the logs.
+A tray icon (the menu bar on macOS) shows two dots, like the PowerShell tray it replaces: Verso and Translation, green running, amber starting, red stopped, grey not set up. Its menu opens Verso, starts or stops translation, and opens the data folder and the logs.
 
-The app runs the translation model server for you: llama.cpp's `llama-server`, from the model folder chosen in **Settings, Desktop app** (running from the repository, its `translation-models` folder is used until you choose one), with the flags of `scripts/start-translation-server.ps1`, listening on this PC only (port 8080). When it answers, Reader translates through it, unless Settings already names a model server. If something already answers on that port (a model server you started yourself), the app uses it and leaves it alone.
+The app runs the translation model server for you: llama.cpp's `llama-server`, from the model folder chosen in **Settings, Desktop app** (running from the repository, its `translation-models` folder is used until you choose one), with the flags of `scripts/start-translation-server.ps1`, listening on this PC only (port 8080). When it answers, Verso translates through it, unless Settings already names a model server. If something already answers on that port (a model server you started yourself), the app uses it and leaves it alone.
 
 No model yet, or said "Not now"? In **Settings, Desktop app**, choose a folder if you like (it needs about 5 GB), then **Download the model**: the app fetches llama.cpp (32 MB) and the model (4.6 GB) with a progress bar, checks both against their published SHA-256 (a file that does not match is deleted and the download says so), unpacks llama.cpp, and starts translation. **Pause** keeps what has arrived; **Resume download**, or quitting and starting again, carries on from there. The download is for Windows; on another system put `llama-server` and a `.gguf` model in the folder yourself ([translation setup](translation-setup.md)).
 
-**Delete the model…** there removes the model file (after asking) to free its space; translation then reads "not set up" until a model is back. **Another model:** put any GGUF file in the model folder (the largest is used), or set your own model server (Ollama, LM Studio, another PC) under **Settings, Translation**, which Reader then uses instead.
+**Delete the model…** there removes the model file (after asking) to free its space; translation then reads "not set up" until a model is back. **Another model:** put any GGUF file in the model folder (the largest is used), or set your own model server (Ollama, LM Studio, another PC) under **Settings, Translation**, which Verso then uses instead.
 
-**Settings, Desktop app** also chooses whether closing the window keeps Reader running in the tray (for your phone) or quits, and whether Reader starts when you sign in (in the tray, without a window; only for the installed app).
+**Settings, Desktop app** also chooses whether closing the window keeps Verso running in the tray (for your phone) or quits, and whether Verso starts when you sign in (in the tray, without a window; only for the installed app).
 
 ## How it works
 
 - `desktop/main.ts` (the Electron main process) holds the single-instance lock, starts `desktop/server-process.ts` in a utility process with that folder as its working directory, waits for the server to say it is ready, and opens a window on it. Starting the app again brings the open window forward.
-- The server runs unchanged on the Node that Electron bundles (Electron 44 has Node 24.21, which runs the TypeScript and `node:sqlite` as `npm start` does). The port is Reader's usual one (5174, or the one in Settings): a fixed port keeps the browser storage of the pages (Display settings, Books kept offline) from one run to the next. If it is taken, the app says so and quits.
-- The window is the web app only: no Node, context isolation, the sandbox, and the server's Content-Security-Policy. Links to other sites open in your browser; the window never leaves Reader.
+- The server runs unchanged on the Node that Electron bundles (Electron 44 has Node 24.21, which runs the TypeScript and `node:sqlite` as `npm start` does). The port is Verso's usual one (5174, or the one in Settings): a fixed port keeps the browser storage of the pages (Display settings, Books kept offline) from one run to the next. If it is taken, the app says so and quits.
+- The window is the web app only: no Node, context isolation, the sandbox, and the server's Content-Security-Policy. Links to other sites open in your browser; the window never leaves Verso.
 - Quitting stops the server process (and kills it if it does not stop within five seconds) and the model server it started.
 - The page reaches the app only through `desktop/preload.cjs`: the Desktop app settings and the model server's start, stop and state, and only from Reader's own page. The app's own settings are in `desktop.json`.
 

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Verso Reader, Contents sidebar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libertinus+Serif:ital,wght@0,400;0,600;1,400&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a4492a}a:hover{color:#8f3d21}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: radial-gradient(ellipse 70% 60% at 60% 45%, #efe9dd 0%, #e4ddcf 100%); color: #1f1d1a; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="height: 56px; flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; padding: 0 16px 0 12px">
+    <a href="Brand.dc.html" aria-label="Library" style="justify-self: start; height: 44px; padding: 0 12px 0 6px; display: flex; align-items: center; gap: 4px; border-radius: 10px; color: #1f1d1a; text-decoration: none; font-size: 14px; font-weight: 500">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      <span>Library</span>
+    </a>
+    <div style="text-align: center; line-height: 1.3">
+      <div style="font-family: 'Libertinus Serif', Georgia, serif; font-size: 16px; font-weight: 600">Middlemarch</div>
+      <div style="font-size: 12px; color: #69645b">George Eliot</div>
+    </div>
+    <div style="justify-self: end; display: flex; gap: 2px">
+      <button type="button" aria-label="Contents" aria-expanded="true" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: #f6e8e0; color: #8f3d21; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg></button>
+      <button type="button" aria-label="Search" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #1f1d1a; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg></button>
+      <button type="button" aria-label="Highlights" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #1f1d1a; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l-6 6v3h9l3-3M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"></path></svg></button>
+      <button type="button" aria-label="Translate" aria-pressed="false" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #1f1d1a; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h9M8.5 3v2M6 5c.5 3 2.5 5.5 5.5 7M12 5c-.6 3.2-3 6-7 7.5M13 21l4-10 4 10M14.5 17.5h5"></path></svg></button>
+      <button type="button" aria-label="Display" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #1f1d1a; font-family: 'Libertinus Serif', Georgia, serif; font-size: 18px; font-weight: 600">Aa</button>
+    </div>
+  </header>
+
+  <div style="flex: 1; min-height: 0; display: flex; gap: 12px; padding: 0 16px 8px">
+    <nav aria-label="Contents" style="width: 340px; flex: none; box-sizing: border-box; background: #ffffff; border-radius: 14px; box-shadow: 0 1px 2px rgb(40 30 20 / 0.08), 0 18px 48px rgb(40 30 20 / 0.16); display: flex; flex-direction: column; overflow: hidden">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 12px 8px 20px">
+        <h2 style="margin: 0; font-family: 'Libertinus Serif', Georgia, serif; font-size: 20px; font-weight: 600">Contents</h2>
+        <button type="button" aria-label="Close Contents" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #69645b; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
+      </div>
+      <div style="display: flex; gap: 8px; padding: 0 20px 14px; flex-wrap: wrap">
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #ddd7ca; border-radius: 999px; background: #ffffff; color: #1f1d1a; font: 500 12px 'IBM Plex Sans', system-ui, sans-serif">Kept on this device ✓</button>
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #ddd7ca; border-radius: 999px; background: #ffffff; color: #1f1d1a; font: 500 12px 'IBM Plex Sans', system-ui, sans-serif">Highlights · 7</button>
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #ddd7ca; border-radius: 999px; background: #ffffff; color: #1f1d1a; font: 500 12px 'IBM Plex Sans', system-ui, sans-serif">Glossary</button>
+      </div>
+      <div style="height: 1px; background: #ebe6dc"></div>
+      <ol style="list-style: none; margin: 0; padding: 8px; flex: 1; overflow: hidden; font-size: 14px; line-height: 1.35">
+        <li><a href="#" style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #1f1d1a; text-decoration: none"><span style="width: 40px; color: #8a8377">XIX</span><span>Rome</span></a></li>
+        <li><a href="#" style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #1f1d1a; text-decoration: none"><span style="width: 40px; color: #8a8377">XX</span><span>Two Hours of Weeping</span></a></li>
+        <li><a href="#" style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #1f1d1a; text-decoration: none"><span style="width: 40px; color: #8a8377">XXI</span><span>A Visitor at the Vatican</span></a></li>
+        <li><a href="#" style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #1f1d1a; text-decoration: none"><span style="width: 40px; color: #8a8377">XXII</span><span>Mr. Casaubon’s Key</span></a></li>
+        <li><a href="#" aria-current="true" style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; background: #f6e8e0; color: #8f3d21; text-decoration: none; font-weight: 600"><span style="width: 40px">XXIII</span><span>Old and Young</span></a></li>
+        <li><a href="#" style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #1f1d1a; text-decoration: none"><span style="width: 40px; color: #8a8377">XXIV</span><span>Fred and the Horse</span></a></li>
+        <li><a href="#" style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #1f1d1a; text-decoration: none"><span style="width: 40px; color: #8a8377">XXV</span><span>A Letter from Lowick</span></a></li>
+        <li><a href="#" style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #1f1d1a; text-decoration: none"><span style="width: 40px; color: #8a8377">XXVI</span><span>The Doctor’s Round</span></a></li>
+        <li><a href="#" style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #1f1d1a; text-decoration: none"><span style="width: 40px; color: #8a8377">XXVII</span><span>Rosamond’s Romance</span></a></li>
+        <li><a href="#" style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #1f1d1a; text-decoration: none"><span style="width: 40px; color: #8a8377">XXVIII</span><span>Home Again</span></a></li>
+        <li><a href="#" style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #1f1d1a; text-decoration: none"><span style="width: 40px; color: #8a8377">XXIX</span><span>Mr. Casaubon’s Sight</span></a></li>
+        <li><a href="#" style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #1f1d1a; text-decoration: none"><span style="width: 40px; color: #8a8377">XXX</span><span>A Visit to Stone Court</span></a></li>
+        <li><a href="#" style="display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #1f1d1a; text-decoration: none"><span style="width: 40px; color: #8a8377">XXXI</span><span>Lydgate’s Errand</span></a></li>
+      </ol>
+    </nav>
+
+    <main style="flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 12px">
+      <button type="button" aria-label="Previous page" style="width: 44px; height: 44px; flex: none; border: 0; border-radius: 50%; background: rgb(255 255 255 / 0.45); color: #3d3933; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button>
+      <div style="width: 920px; display: flex; flex-direction: column; gap: 14px">
+        <div style="position: relative; width: 920px; height: 784px; display: flex; border-radius: 3px 3px 4px 4px; box-shadow: 0 1px 0 #d6cebd, 0 3px 0 -1px #f6f2ea, 0 4px 0 -1px #d6cebd, 0 6px 0 -2px #f3efe6, 0 7px 0 -2px #cfc6b4, 0 30px 60px -10px rgb(70 50 25 / 0.32), 0 12px 24px -12px rgb(70 50 25 / 0.28)">
+          <section aria-label="Left page" style="width: 460px; height: 784px; box-sizing: border-box; padding: 40px 48px 30px 56px; display: flex; flex-direction: column; background: linear-gradient(90deg, #f6f3ec 0%, #fbf9f4 12%, #fbf9f4 82%, #efe9de 94%, #ddd5c6 100%); border-radius: 3px 0 0 4px; font-family: 'Libertinus Serif', Georgia, serif; color: #2a2724">
+            <div style="flex: none; height: 24px; text-align: center; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #8a8377">Middlemarch</div>
+            <div style="flex: 1; padding-top: 48px">
+              <div style="text-align: center; font-size: 14px; letter-spacing: 0.1em; color: #69645b">XXIII</div>
+              <h2 style="margin: 6px 0 4px; text-align: center; font-size: 19px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase">Old and Young</h2>
+              <div aria-hidden="true" style="text-align: center; color: #a4492a; font-size: 15px; margin-bottom: 30px">❦</div>
+              <p style="margin: 0; font-size: 17.5px; line-height: 1.6; text-align: justify; hyphens: auto"><span style="float: left; font-size: 58px; line-height: 0.82; padding: 6px 8px 0 0; color: #1f1d1a">T</span>he road out of town ran low between the hedges, and by the second milestone the morning had settled into that pale, considering light which makes every field look newly ploughed. She had meant to think of nothing in particular.</p>
+              <p style="margin: 0; text-indent: 1.5em; font-size: 17.5px; line-height: 1.6; text-align: justify; hyphens: auto">It was a habit she had tried, as one tries a borrowed coat, and found that it hung badly on her; for the mind, once it has been taught to ask, keeps asking long after the questions have been answered.</p>
+            </div>
+            <div style="flex: none; height: 24px; text-align: center; font-size: 13px; color: #8a8377">1</div>
+          </section>
+          <section aria-label="Right page" style="width: 460px; height: 784px; box-sizing: border-box; padding: 40px 56px 30px 48px; display: flex; flex-direction: column; background: linear-gradient(90deg, #d9d1c1 0%, #ebe5d9 5%, #f8f5ef 16%, #fcfaf6 40%, #fcfaf6 90%, #f6f2ea 100%); border-radius: 0 3px 4px 0; font-family: 'Libertinus Serif', Georgia, serif; color: #2a2724">
+            <div style="flex: none; height: 24px; text-align: center; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #8a8377">Old and Young</div>
+            <div style="flex: 1; padding-top: 8px">
+              <p style="margin: 0; text-indent: 1.5em; font-size: 17.5px; line-height: 1.6; text-align: justify; hyphens: auto">At the bridge a carter had stopped to let his horse drink, and he lifted his hat to her with the slow courtesy of a man who has nowhere he must be by noon. She returned it, and walked on, and was a little ashamed to find that she envied him.</p>
+              <p style="margin: 0; text-indent: 1.5em; font-size: 17.5px; line-height: 1.6; text-align: justify; hyphens: auto">There is a kind of patience that belongs only to people who expect very little, and another kind, rarer and more costly, that belongs to those who expect a great deal and have resolved to wait for it. She did not yet know which kind was hers.</p>
+              <p style="margin: 0; text-indent: 1.5em; font-size: 17.5px; line-height: 1.6; text-align: justify; hyphens: auto">The church clock struck the half hour behind her, and the sound came over the water thin and clear, as though it had been rinsed.</p>
+            </div>
+            <div style="flex: none; height: 24px; text-align: center; font-size: 13px; color: #8a8377">2</div>
+          </section>
+          <div aria-hidden="true" style="position: absolute; left: 447px; top: 0; width: 26px; height: 784px; background: linear-gradient(90deg, rgb(60 45 25 / 0) 0%, rgb(60 45 25 / 0.14) 48%, rgb(60 45 25 / 0.2) 50%, rgb(60 45 25 / 0.12) 53%, rgb(60 45 25 / 0) 100%)"></div>
+        </div>
+        <div style="height: 28px; display: flex; align-items: center; gap: 16px; font-size: 12px; color: #5f5a51">
+          <span style="flex: none">Chapter 23 of 86</span>
+          <div style="position: relative; flex: 1; height: 28px">
+            <div style="position: absolute; left: 0; right: 0; top: 12px; height: 4px; border-radius: 2px; background: #d3cbbb"></div>
+            <div style="position: absolute; left: 0; width: 41%; top: 12px; height: 4px; border-radius: 2px; background: #a4492a"></div>
+            <span style="position: absolute; left: calc(41% - 7px); top: 7px; width: 14px; height: 14px; box-sizing: border-box; border: 2px solid #ece6da; border-radius: 50%; background: #a4492a"></span>
+          </div>
+          <span style="flex: none"><strong style="color: #1f1d1a; font-weight: 600">41%</strong> · 16 min left</span>
+        </div>
+      </div>
+      <button type="button" aria-label="Next page" style="width: 44px; height: 44px; flex: none; border: 0; border-radius: 50%; background: rgb(255 255 255 / 0.45); color: #3d3933; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

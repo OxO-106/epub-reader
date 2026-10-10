@@ -1,4 +1,4 @@
-# Contributing to Reader
+# Contributing to Verso
 
 Thank you for helping. This guide covers setting up, testing, and getting a change merged.
 
@@ -66,7 +66,7 @@ Match the code around you. TypeScript runs directly on Node (no compile step for
 
 ## Releasing (maintainer)
 
-Reader follows [Semantic Versioning](https://semver.org/). Every change a user would notice adds a line under `Unreleased` in [CHANGELOG.md](CHANGELOG.md); a release turns that section into a version.
+Verso follows [Semantic Versioning](https://semver.org/). Every change a user would notice adds a line under `Unreleased` in [CHANGELOG.md](CHANGELOG.md); a release turns that section into a version.
 
 1. On an up-to-date, clean `main` with green CI, run `npm run release -- patch` (or `minor`, `major`, or an exact `x.y.z`). It bumps the version in `package.json` and `package-lock.json`, moves the `Unreleased` entries under the new version with today's date, updates the comparison links, commits `Release vX.Y.Z` and tags `vX.Y.Z`. It refuses to run with uncommitted changes, off `main`, or with an empty `Unreleased` section.
 2. Push the commit and the tag: `git push origin main vX.Y.Z`.

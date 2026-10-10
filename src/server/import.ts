@@ -64,7 +64,7 @@ export async function importBook({ db, storage }: ImportContext, input: ImportIn
     const format = received.tooLarge ? detectFormatByName(filename) : await detectFormat(filename, temp);
     if (!format) {
       const supported = formats.map((f) => f.label).join(", ");
-      return rejected("unsupported", `${quoted} is not a supported file type. Reader can import: ${supported}.`);
+      return rejected("unsupported", `${quoted} is not a supported file type. Verso can import: ${supported}.`);
     }
     if (received.tooLarge) {
       return rejected("too-large", `${quoted} is larger than the ${maxBookBytes / (1024 * 1024)} MB limit, so it was not added.`);
@@ -96,8 +96,8 @@ export async function importBook({ db, storage }: ImportContext, input: ImportIn
           return rejected(
             "protected",
             error.lock === "password"
-              ? `${quoted} needs a password to open, so Reader cannot read it and it was not added.`
-              : `${quoted} is protected by DRM, so Reader cannot open it and it was not added. Only DRM-free Books can be read.`,
+              ? `${quoted} needs a password to open, so Verso cannot read it and it was not added.`
+              : `${quoted} is protected by DRM, so Verso cannot open it and it was not added. Only DRM-free Books can be read.`,
           );
         }
         if (!(error instanceof CorruptBookError)) throw error;

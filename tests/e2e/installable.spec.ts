@@ -11,7 +11,7 @@ test("the manifest describes an installable app, and every icon it names is a re
   const response = await request.get(href!);
   expect(response.headers()["content-type"]).toContain("application/manifest+json");
   const manifest = await response.json();
-  expect(manifest).toMatchObject({ name: "Reader", short_name: "Reader", display: "standalone", start_url: "/" });
+  expect(manifest).toMatchObject({ name: "Verso", short_name: "Verso", display: "standalone", start_url: "/" });
   expect(manifest.icons.some((icon: { purpose: string }) => icon.purpose === "maskable")).toBe(true);
 
   for (const icon of manifest.icons as Array<{ src: string; sizes: string; type: string }>) {

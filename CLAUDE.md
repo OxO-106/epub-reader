@@ -1,3 +1,5 @@
+The app is called **Verso** (it was "Reader" until 0.4; issue #39). Only names people see say Verso: the repository, package, `READER_*` environment variables, storage keys, `Start Reader.cmd`, and the data folders (`%APPDATA%\Reader` for the desktop app, set explicitly in `desktop/main.ts`; `%LOCALAPPDATA%\Reader` for the tray) keep the old name. In the GLOSSARY, **Reader** is still the screen where one Book is read.
+
 ## Commands
 
 Node 24+ and npm; TypeScript runs directly on Node (no compile step for the server). Run from the repo root.

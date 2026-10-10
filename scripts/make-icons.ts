@@ -1,7 +1,8 @@
-// Draws Reader's app icon (an open book in the paper colour on the terracotta accent) at every size the web app manifest
-// and the iPhone Home Screen need, from one drawing, into src/web/public/icons; and the desktop app's tray icons (two
-// status dots, Reader and Translation, in every pair of colours) into desktop/icons. Run `npm run icons` after changing
-// it; the results are committed. Uses @napi-rs/canvas, which comes with pdfjs-dist.
+// Draws Verso's app icon (an open book on the terracotta accent: the left-hand page, the verso, filled in the paper
+// colour with lines of text, the right-hand page drawn as an outline) at every size the web app manifest and the iPhone
+// Home Screen need, from one drawing, into src/web/public/icons; and the desktop app's tray icons (two status dots,
+// Verso and Translation, in every pair of colours) into desktop/icons. Run `npm run icons` after changing it; the
+// results are committed. Uses @napi-rs/canvas, which comes with pdfjs-dist.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
@@ -16,20 +17,13 @@ mkdirSync(out, { recursive: true });
 
 const accent = "#a4492a";
 const paper = "#faf8f3";
-/** The two pages of the book, on a 512 × 512 grid, with a gap for the spine. */
-const pages = [
-  "M248 170C206 140 152 132 104 142V366C152 356 206 364 248 394Z",
-  "M264 170C306 140 360 132 408 142V366C360 356 306 364 264 394Z",
-];
-/** Lines of text on the pages, drawn in the accent. */
-const lines = [
-  "M136 196C168 192 198 196 222 208",
-  "M136 236C168 232 198 236 222 248",
-  "M136 276C168 272 198 276 222 288",
-  "M290 208C314 196 344 192 376 196",
-  "M290 248C314 236 344 232 376 236",
-  "M290 288C314 276 344 272 376 276",
-];
+/** The verso (left-hand page), filled, on a 512 × 512 grid. */
+const verso = "M256 150C218 124 164 116 108 122V358C164 352 218 360 256 386Z";
+/** The recto (right-hand page), an outline of this width. */
+const recto = "M256 150C294 124 348 116 404 122V358C348 352 294 360 256 386Z";
+const rectoStroke = 20;
+/** Lines of text on the verso, drawn in the accent. */
+const lines = ["M140 172C172 168 202 174 226 186", "M140 216C172 212 202 218 226 230", "M140 260C172 256 202 262 226 274"];
 
 /** The SVG, for the favicon; `inset` shrinks the book toward the middle (maskable icons keep to the inner 80%). */
 function svg(inset = 1): string {
@@ -38,8 +32,9 @@ function svg(inset = 1): string {
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">`,
     `<rect width="512" height="512" rx="0" fill="${accent}"/>`,
     `<g transform="translate(${t} ${t}) scale(${inset})">`,
-    ...pages.map((d) => `<path d="${d}" fill="${paper}"/>`),
-    ...lines.map((d) => `<path d="${d}" fill="none" stroke="${accent}" stroke-width="10" stroke-linecap="round" opacity="0.55"/>`),
+    `<path d="${verso}" fill="${paper}"/>`,
+    `<path d="${recto}" fill="none" stroke="${paper}" stroke-width="${rectoStroke}" stroke-linejoin="round"/>`,
+    ...lines.map((d) => `<path d="${d}" fill="none" stroke="${accent}" stroke-width="12" stroke-linecap="round" opacity="0.6"/>`),
     `</g></svg>`,
   ].join("");
 }
@@ -53,10 +48,14 @@ function png(size: number, inset = 1): Buffer {
   ctx.translate(256 * (1 - inset), 256 * (1 - inset));
   ctx.scale(inset, inset);
   ctx.fillStyle = paper;
-  for (const d of pages) ctx.fill(new Path2D(d));
+  ctx.fill(new Path2D(verso));
+  ctx.strokeStyle = paper;
+  ctx.lineWidth = rectoStroke;
+  ctx.lineJoin = "round";
+  ctx.stroke(new Path2D(recto));
   ctx.strokeStyle = accent;
-  ctx.globalAlpha = 0.55;
-  ctx.lineWidth = 10;
+  ctx.globalAlpha = 0.6;
+  ctx.lineWidth = 12;
   ctx.lineCap = "round";
   for (const d of lines) ctx.stroke(new Path2D(d));
   return canvas.toBuffer("image/png");

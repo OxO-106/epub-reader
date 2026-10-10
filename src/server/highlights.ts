@@ -61,7 +61,7 @@ const refuse = (status: 400 | 403 | 404 | 413 | 415, error: string) => Response.
 /** The checks every write passes: from Reader's own page, addressed to Reader directly (see request-guards.ts). */
 function refusal(c: Context): Response | undefined {
   if (!fromOwnOrigin(c.req.header("origin"), c.req.header("host")) || !addressedDirectly(c.req.header("host"))) {
-    return refuse(403, "Highlights can only be changed from Reader itself.");
+    return refuse(403, "Highlights can only be changed from Verso itself.");
   }
   return undefined;
 }

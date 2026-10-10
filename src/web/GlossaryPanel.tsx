@@ -38,7 +38,7 @@ export function GlossaryPanel({ bookId, onChanged, onClose }: { bookId: string; 
       onChanged();
       return true;
     } catch (error) {
-      setMessage({ text: error instanceof GlossaryRefusal ? error.message : "The change could not be saved. Check that Reader is running.", alert: true });
+      setMessage({ text: error instanceof GlossaryRefusal ? error.message : "The change could not be saved. Check that Verso is running.", alert: true });
       return false;
     }
   }
@@ -48,7 +48,7 @@ export function GlossaryPanel({ bookId, onChanged, onClose }: { bookId: string; 
     try {
       parsed = JSON.parse(await file.text());
     } catch {
-      setMessage({ text: `“${file.name}” is not a Glossary exported from Reader.`, alert: true });
+      setMessage({ text: `“${file.name}” is not a Glossary exported from Verso.`, alert: true });
       return;
     }
     try {
@@ -102,7 +102,7 @@ export function GlossaryPanel({ bookId, onChanged, onClose }: { bookId: string; 
 
       <div class="panel-scroll glossary-list">
         {load.kind === "loading" && <p class="glossary-empty">Loading…</p>}
-        {load.kind === "failed" && <p class="glossary-empty">The Glossary could not be loaded. Check that Reader is running.</p>}
+        {load.kind === "failed" && <p class="glossary-empty">The Glossary could not be loaded. Check that Verso is running.</p>}
         {load.kind === "ready" && entries.length === 0 && (
           <p class="glossary-empty">No names yet. They are added as the Book is translated, or you can add one below.</p>
         )}

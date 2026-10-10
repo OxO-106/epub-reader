@@ -84,7 +84,7 @@ test.describe("a plain-text Book", () => {
     await expect.poll(() => bookText(page)).toContain("Still readable.");
     expect(await bookText(page)).toContain('<script>document.title = "pwned"</script>');
     await page.waitForTimeout(300);
-    expect(await page.title()).toBe("Reader");
+    expect(await page.title()).toBe("Verso");
     const counts = await Promise.all(
       page
         .frames()

@@ -1,10 +1,14 @@
 # Changelog
 
-All notable changes to Reader are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Reader uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to Verso (called Reader before 0.4) are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Verso uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Add a line under **Unreleased** with every change a user would notice; `npm run release` moves them into the new version.
 
 ## [Unreleased]
+
+### Changed
+
+- The app is now called Verso, with a new icon: an open book whose left-hand page, the verso, is filled in. Your Library, Reading positions, highlights and settings stay where they were (the desktop app keeps its `%APPDATA%\Reader` folder), and the desktop app updates over the old one.
 
 ## [0.3.0] - 2026-10-10
 

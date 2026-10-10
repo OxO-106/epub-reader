@@ -133,7 +133,7 @@ jobs:
           npx playwright test --config playwright.desktop.config.ts -g "packaged app"
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          READER_DESKTOP_EXE: ${{ github.workspace }}/release/win-unpacked/Reader.exe
+          READER_DESKTOP_EXE: ${{ github.workspace }}/release/win-unpacked/Verso.exe
 
       - name: Upload the report
         if: failure()

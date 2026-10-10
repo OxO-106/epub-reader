@@ -13,7 +13,7 @@ const server = await startServer().catch((error: unknown) => {
   throw error;
 });
 const urlOn = (address: string) => `http://${address.includes(":") ? `[${address}]` : address}:${server.config.port}`;
-console.log(`Reader is running at ${server.addresses.map(urlOn).join(" and ")}`);
+console.log(`Verso is running at ${server.addresses.map(urlOn).join(" and ")}`);
 console.log(`  data folder:    ${server.config.dataDir}`);
 console.log(`  library folder: ${server.config.libraryDir}`);
 console.log(`  translation:    ${server.config.translate.url ?? "not set up (READER_TRANSLATE_URL)"}`);

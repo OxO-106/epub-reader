@@ -275,7 +275,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       setKept("yes");
     } catch (error) {
       setKept("no");
-      setKeepProblem(error instanceof DeviceFullError ? error.message : "The Book could not be kept on this device. Check that Reader is running.");
+      setKeepProblem(error instanceof DeviceFullError ? error.message : "The Book could not be kept on this device. Check that Verso is running.");
     }
   }
 

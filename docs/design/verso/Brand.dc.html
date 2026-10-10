@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Verso name and icon</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libertinus+Serif:ital,wght@0,400;0,600;1,400&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a4492a}a:hover{color:#8f3d21}
+</style>
+</helmet>
+<div style="width: 880px; height: 560px; box-sizing: border-box; background: #faf8f3; color: #1f1d1a; font-family: 'IBM Plex Sans', system-ui, sans-serif; padding: 64px 72px; display: flex; flex-direction: column; gap: 48px">
+  <div style="display: flex; align-items: center; gap: 36px">
+    <svg width="148" height="148" viewBox="0 0 512 512" role="img" aria-label="Verso app icon">
+      <rect width="512" height="512" rx="112" fill="#a4492a"></rect>
+      <path d="M256 150c-38-26-92-34-148-28v236c56-6 110 2 148 28z" fill="#faf8f3"></path>
+      <path d="M256 150c38-26 92-34 148-28v236c-56-6-110 2-148 28z" fill="none" stroke="#faf8f3" stroke-width="18" stroke-linejoin="round"></path>
+      <path d="M144 188c30-2 58 3 82 14M144 234c30-2 58 3 82 14M144 280c30-2 58 3 82 14" stroke="#a4492a" stroke-width="12" stroke-linecap="round" fill="none"></path>
+    </svg>
+    <div>
+      <div style="font-family: 'Libertinus Serif', Georgia, serif; font-size: 104px; line-height: 0.9; letter-spacing: -0.01em">Verso</div>
+      <p style="margin: 18px 0 0; max-width: 460px; font-size: 16px; line-height: 1.5; color: #69645b">A reader for EPUB, Kindle, PDF, Markdown and plain text, with live Chinese translation by a model on your own machine.</p>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 28px">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 18px 12px 12px; background: #ffffff; border: 1px solid #ebe6dc; border-radius: 14px">
+      <svg width="40" height="40" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#a4492a"></rect><path d="M256 150c-38-26-92-34-148-28v236c56-6 110 2 148 28z" fill="#faf8f3"></path><path d="M256 150c38-26 92-34 148-28v236c-56-6-110 2-148 28z" fill="none" stroke="#faf8f3" stroke-width="22" stroke-linejoin="round"></path></svg>
+      <span style="font-family: 'Libertinus Serif', Georgia, serif; font-size: 26px">Verso</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 18px 12px 12px; background: #171615; border-radius: 14px">
+      <svg width="40" height="40" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#e8956b"></rect><path d="M256 150c-38-26-92-34-148-28v236c56-6 110 2 148 28z" fill="#23140c"></path><path d="M256 150c38-26 92-34 148-28v236c-56-6-110 2-148 28z" fill="none" stroke="#23140c" stroke-width="22" stroke-linejoin="round"></path></svg>
+      <span style="font-family: 'Libertinus Serif', Georgia, serif; font-size: 26px; color: #ece8e1">Verso</span>
+    </div>
+    <div style="font-size: 13px; line-height: 1.5; color: #69645b; max-width: 260px">The filled left-hand page is the verso. Window title, tray, installer and Home Screen name all read “Verso”.</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":880,"height":560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -55,7 +55,7 @@ export function glossaryRoutes(db: Db, findBook: (id: string) => { title: string
   /** The Book's id when the request may change its Glossary, or the refusal. */
   async function readWrite(c: Context): Promise<{ id: string; body: unknown } | { refusal: Response }> {
     if (!fromOwnOrigin(c.req.header("origin"), c.req.header("host")) || !addressedDirectly(c.req.header("host"))) {
-      return { refusal: refuse(403, "The Glossary can only be changed from Reader itself.") };
+      return { refusal: refuse(403, "The Glossary can only be changed from Verso itself.") };
     }
     const id = c.req.param("id")!;
     if (!findBook(id)) return { refusal: refuse(404, "Not found") };
@@ -101,7 +101,7 @@ export function glossaryRoutes(db: Db, findBook: (id: string) => { title: string
     if ("refusal" in read) return read.refusal;
     const { entries } = (read.body && typeof read.body === "object" ? read.body : {}) as Record<string, unknown>;
     if (!Array.isArray(entries) || entries.length > maxImportEntries) {
-      return refuse(400, `Send a Glossary exported from Reader: {"entries": [{"name", "form"}]}, at most ${maxImportEntries} entries.`);
+      return refuse(400, `Send a Glossary exported from Verso: {"entries": [{"name", "form"}]}, at most ${maxImportEntries} entries.`);
     }
     const parsed = entries.map(parseGlossaryEntry);
     if (parsed.some((entry) => !entry.ok)) return refuse(400, "Every entry needs a name and a Chinese form.");
@@ -124,7 +124,7 @@ export function glossaryRoutes(db: Db, findBook: (id: string) => { title: string
 
   routes.delete("/:key", (c) => {
     if (!fromOwnOrigin(c.req.header("origin"), c.req.header("host")) || !addressedDirectly(c.req.header("host"))) {
-      return refuse(403, "The Glossary can only be changed from Reader itself.");
+      return refuse(403, "The Glossary can only be changed from Verso itself.");
     }
     const id = c.req.param("id")!;
     if (!findBook(id) || !db.deleteGlossaryEntry(id, c.req.param("key"))) return refuse(404, "Not found");

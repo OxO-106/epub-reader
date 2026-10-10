@@ -90,7 +90,7 @@ jobs:
       - name: Start the packaged app once
         run: npx playwright test --config playwright.desktop.config.ts -g "packaged app"
         env:
-          READER_DESKTOP_EXE: ${{ github.workspace }}/release/win-unpacked/Reader.exe
+          READER_DESKTOP_EXE: ${{ github.workspace }}/release/win-unpacked/Verso.exe
 
       # The release already exists (the job above made it): the installer, its block map and latest.yml (which installed
       # apps read to update themselves) are added to it.
@@ -98,4 +98,4 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.ref_name }}" release/Reader-Setup-*.exe release/Reader-Setup-*.exe.blockmap release/latest.yml --clobber
+        run: gh release upload "${{ github.ref_name }}" release/Verso-Setup-*.exe release/Verso-Setup-*.exe.blockmap release/latest.yml --clobber

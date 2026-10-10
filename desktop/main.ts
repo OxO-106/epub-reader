@@ -34,8 +34,10 @@ import { createModelServer, findModelFile, findRuntime, type ModelServer } from 
 import { booksInArguments, defaultWindowState, isReaderPage, opensInBrowser, restoreWindowState, trayLook, type ServerState, type WindowState } from "./shell-rules.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
-app.setName("Reader");
-if (process.env.READER_DESKTOP_DATA) app.setPath("userData", process.env.READER_DESKTOP_DATA);
+app.setName("Verso");
+// The app was called Reader before it was Verso: its data folder keeps that name, so an update finds the Library,
+// settings and logs where they were.
+app.setPath("userData", process.env.READER_DESKTOP_DATA || join(app.getPath("appData"), "Reader"));
 const dataRoot = app.getPath("userData");
 const logsDir = join(dataRoot, "logs");
 const stateFile = join(dataRoot, "window-state.json");
@@ -222,7 +224,7 @@ async function offerModel() {
       title: "Translation",
       message: "Download the translation model?",
       detail:
-        `Reader translates English Books into Chinese with a model that runs on this PC: Tencent Hy-MT2 (4.6 GB). It downloads in the background, and translation turns on when it is done.\n\nIt will be saved in:\n${folder}`,
+        `Verso translates English Books into Chinese with a model that runs on this PC: Tencent Hy-MT2 (4.6 GB). It downloads in the background, and translation turns on when it is done.\n\nIt will be saved in:\n${folder}`,
       buttons: ["Download", "Choose another folder…", "Not now"],
       defaultId: 0,
       cancelId: 2,
@@ -288,7 +290,7 @@ function startServerProcess(): Promise<{ process: UtilityProcess; url: string }>
   updateTray();
   const child = utilityProcess.fork(join(here, "server-process.ts"), [], {
     cwd: dataRoot,
-    serviceName: "Reader server",
+    serviceName: "Verso server",
     stdio: "pipe",
     env: {
       ...process.env,
@@ -300,7 +302,7 @@ function startServerProcess(): Promise<{ process: UtilityProcess; url: string }>
   child.stdout?.on("data", (chunk: Buffer) => log(`server: ${chunk.toString().trimEnd()}`));
   child.stderr?.on("data", (chunk: Buffer) => log(`server error: ${chunk.toString().trimEnd()}`));
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("The Reader server did not start within 30 seconds. See the log in the data folder.")), 30_000);
+    const timer = setTimeout(() => reject(new Error("The Verso server did not start within 30 seconds. See the log in the data folder.")), 30_000);
     child.on("message", (message: { type?: string; url?: string; message?: string }) => {
       if (message?.type === "ready" && message.url) {
         clearTimeout(timer);
@@ -309,7 +311,7 @@ function startServerProcess(): Promise<{ process: UtilityProcess; url: string }>
         resolve({ process: child, url: message.url });
       } else if (message?.type === "failed") {
         clearTimeout(timer);
-        reject(new Error(message.message ?? "The Reader server could not start."));
+        reject(new Error(message.message ?? "The Verso server could not start."));
       } else if (message?.type === "restart") {
         void restartServer();
       }
@@ -322,7 +324,7 @@ function startServerProcess(): Promise<{ process: UtilityProcess; url: string }>
       }
       serverState = "stopped";
       updateTray();
-      reject(new Error(`The Reader server stopped while starting (exit code ${code}). See the log in the data folder.`));
+      reject(new Error(`The Verso server stopped while starting (exit code ${code}). See the log in the data folder.`));
     });
   });
 }
@@ -353,7 +355,7 @@ async function restartServer() {
     server = await startServerProcess();
     window?.loadURL(server.url);
   } catch (error) {
-    showError("Reader could not restart", (error as Error).message);
+    showError("Verso could not restart", (error as Error).message);
     app.quit();
   }
 }
@@ -369,7 +371,7 @@ function updateTray() {
   const translation = model.state();
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: "Open Reader", click: showWindow },
+      { label: "Open Verso", click: showWindow },
       { type: "separator" },
       translation === "running" || translation === "starting"
         ? { label: "Stop translation", click: () => void model.stop() }
@@ -378,7 +380,7 @@ function updateTray() {
       { label: "Open data folder", click: () => void shell.openPath(dataRoot) },
       { label: "Open logs", click: () => void shell.openPath(logsDir) },
       { type: "separator" },
-      { label: "Quit Reader", click: () => app.quit() },
+      { label: "Quit Verso", click: () => app.quit() },
     ]),
   );
 }
@@ -426,7 +428,7 @@ function openWindow(url: string) {
     minWidth: 360,
     minHeight: 400,
     show: false,
-    title: "Reader",
+    title: "Verso",
     icon: join(here, "icons", "app.png"),
     backgroundColor: "#faf8f3",
     autoHideMenuBar: process.platform !== "darwin",
@@ -480,7 +482,7 @@ function buildMenu() {
     { role: "windowMenu" },
     {
       role: "help",
-      submenu: [{ label: "Reader on GitHub", click: () => void shell.openExternal("https://github.com/OxO-106/epub-reader") }],
+      submenu: [{ label: "Verso on GitHub", click: () => void shell.openExternal("https://github.com/OxO-106/epub-reader") }],
     },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
@@ -540,8 +542,8 @@ function checkForUpdates() {
       buttons: ["Restart now", "Later"],
       defaultId: 0,
       cancelId: 1,
-      message: `Reader ${info.version} is ready to install`,
-      detail: "Restart Reader to use it. Your Library, Reading positions, highlights and settings stay as they are.",
+      message: `Verso ${info.version} is ready to install`,
+      detail: "Restart Verso to use it. Your Library, Reading positions, highlights and settings stay as they are.",
     });
     if (answer.response === 0) autoUpdater.quitAndInstall();
   });
@@ -639,7 +641,7 @@ if (!app.requestSingleInstanceLock()) {
     try {
       server = await startServerProcess();
     } catch (error) {
-      showError("Reader could not start", `${(error as Error).message}\n\nThe data folder is ${dataRoot}.`);
+      showError("Verso could not start", `${(error as Error).message}\n\nThe data folder is ${dataRoot}.`);
       app.exit(1);
       return;
     }

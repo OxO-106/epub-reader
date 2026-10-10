@@ -131,7 +131,7 @@ test.describe("an EPUB that carries scripts", () => {
     // Give any script that was going to run time to do so, then check that nothing changed.
     await page.waitForTimeout(500);
     expect(await bookText(page)).not.toContain("The script ran.");
-    expect(await page.title()).toBe("Reader");
+    expect(await page.title()).toBe("Verso");
     // The browser reports each script it refused: the inline ones and the one loaded from the EPUB.
     expect(refusals.length).toBeGreaterThanOrEqual(2);
   });

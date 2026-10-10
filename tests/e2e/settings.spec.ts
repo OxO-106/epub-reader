@@ -91,7 +91,7 @@ test.describe("when the app is started with a model server", () => {
 
     await expect(address(page)).toHaveValue(model.url);
     await expect(address(page)).toHaveAttribute("readonly", "");
-    await expect(translation(page)).toContainText("Set by the app running Reader, so it cannot be changed here.");
+    await expect(translation(page)).toContainText("Set by the app running Verso, so it cannot be changed here.");
   });
 });
 
@@ -104,10 +104,10 @@ test("choosing who can connect is saved for the next start, and the screen says 
   await network.getByRole("radio", { name: /my Tailscale network/ }).check();
   await network.getByRole("button", { name: "Save" }).click();
 
-  await expect(network.getByRole("status")).toHaveText("Saved. It takes effect when Reader restarts.");
+  await expect(network.getByRole("status")).toHaveText("Saved. It takes effect when Verso restarts.");
   const notice = page.locator(".settings-restart");
-  await expect(notice).toContainText("Restart Reader to apply your changes to who can connect.");
-  await expect(notice).toContainText("Stop Reader");
+  await expect(notice).toContainText("Restart Verso to apply your changes to who can connect.");
+  await expect(notice).toContainText("Stop Verso");
   await expect(notice.getByRole("button", { name: "Restart now" })).toHaveCount(0); // plain npm start cannot restart itself
 
   // It is still saved after a reload; choosing this PC only again clears the notice.
@@ -136,7 +136,7 @@ test("a setting the app fixed (here the library folder and the port) is shown wi
   const library = page.getByRole("region", { name: "Library folder" });
   await expect(library.getByLabel("Folder")).toHaveValue(server.libraryDir);
   await expect(library.getByLabel("Folder")).toHaveAttribute("readonly", "");
-  await expect(library).toContainText("Set by the app running Reader");
+  await expect(library).toContainText("Set by the app running Verso");
   const about = page.getByRole("region", { name: "About" });
   await expect(about).toContainText(/Version\s*\d+\.\d+\.\d+/);
   await expect(about).toContainText(server.dataDir);

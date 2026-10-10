@@ -1,4 +1,4 @@
-# Reaching Reader from other devices
+# Reaching Verso from other devices
 
 By default the server accepts connections from this PC only. There is no login, so only open it to a network you trust. To also reach it from your other devices over [Tailscale](https://tailscale.com):
 

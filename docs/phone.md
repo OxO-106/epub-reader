@@ -1,23 +1,23 @@
-# Reader on your phone
+# Verso on your phone
 
-Reader runs on your PC; a phone reads from it over your own private network. On an iPhone (or Android) Reader can be added to the Home Screen, where it opens full screen like an app, and Books can be kept on the phone for reading without a connection.
+Verso runs on your PC; a phone reads from it over your own private network. On an iPhone (or Android) Verso can be added to the Home Screen, where it opens full screen like an app, and Books can be kept on the phone for reading without a connection.
 
 ## Why HTTPS, and why Tailscale
 
-An iPhone only installs a web app, and keeps its files and Books, for a site served over HTTPS. Reader does not handle certificates itself. [Tailscale](https://tailscale.com) does: it puts your PC and phone on a private network (a *tailnet*) and can give your PC a real certificate for its tailnet name, such as `https://my-pc.tail1234.ts.net`. Nobody outside your tailnet can reach that address.
+An iPhone only installs a web app, and keeps its files and Books, for a site served over HTTPS. Verso does not handle certificates itself. [Tailscale](https://tailscale.com) does: it puts your PC and phone on a private network (a *tailnet*) and can give your PC a real certificate for its tailnet name, such as `https://my-pc.tail1234.ts.net`. Nobody outside your tailnet can reach that address.
 
 ## Set it up (once)
 
 1. Install Tailscale on the PC and on the phone, and sign in to both with the same account.
 2. In the [Tailscale admin console](https://login.tailscale.com/admin/dns), under **DNS**, turn on **MagicDNS** and **HTTPS Certificates**.
-3. On the PC, in a terminal, run (with Reader's port, 5174 unless you changed it in Settings):
+3. On the PC, in a terminal, run (with Verso's port, 5174 unless you changed it in Settings):
 
    ```bash
    tailscale serve --bg 5174
    ```
 
-   Tailscale now answers `https://<your-pc>.<your-tailnet>.ts.net` and passes the requests to Reader on the PC. Reader keeps listening on the PC only (`127.0.0.1`); you do not need to change who can connect in Settings. `tailscale serve status` shows it; `tailscale serve --https=443 off` undoes it.
-4. In Reader's **Settings**, the section **Use Reader on your phone** shows the address and a QR code of it.
+   Tailscale now answers `https://<your-pc>.<your-tailnet>.ts.net` and passes the requests to Verso on the PC. Verso keeps listening on the PC only (`127.0.0.1`); you do not need to change who can connect in Settings. `tailscale serve status` shows it; `tailscale serve --https=443 off` undoes it.
+4. In Verso's **Settings**, the section **Use Verso on your phone** shows the address and a QR code of it.
 
 ## Install it on the phone
 
@@ -25,7 +25,7 @@ An iPhone only installs a web app, and keeps its files and Books, for a site ser
 - **Android:** open the address in Chrome, then **Install app** in the menu.
 - **A PC browser:** Chrome and Edge offer **Install** in the address bar.
 
-Installed, Reader opens full screen in your theme's colours. It updates itself to the PC's version the next time it starts while the PC is reachable.
+Installed, Verso opens full screen in your theme's colours. It updates itself to the PC's version the next time it starts while the PC is reachable.
 
 ## Reading without a connection
 
@@ -36,7 +36,7 @@ Installed, Reader opens full screen in your theme's colours. It updates itself t
 
 ## When something does not work
 
-- **The address does not open:** check that Tailscale is connected on both devices, that Reader is running on the PC, and that `tailscale serve status` lists Reader's port.
+- **The address does not open:** check that Tailscale is connected on both devices, that Verso is running on the PC, and that `tailscale serve status` lists Verso's port.
 - **Settings says HTTPS Certificates are not on:** turn them on in the admin console (step 2), then wait a minute.
 - **No Add to Home Screen on iPhone:** the page must be opened in Safari, and over `https://`.
 - **The phone is full:** remove Books from **Settings, On this device**.

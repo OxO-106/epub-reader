@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Verso Reader, translation on</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libertinus+Serif:ital,wght@0,400;0,600;1,400&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a4492a}a:hover{color:#8f3d21}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: radial-gradient(ellipse 70% 60% at 50% 45%, #efe9dd 0%, #e4ddcf 100%); color: #1f1d1a; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="height: 56px; flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; padding: 0 16px 0 12px">
+    <a href="Main.dc.html" aria-label="Library" style="justify-self: start; height: 44px; padding: 0 12px 0 6px; display: flex; align-items: center; gap: 4px; border-radius: 10px; color: #1f1d1a; text-decoration: none; font-size: 14px; font-weight: 500">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      <span>Library</span>
+    </a>
+    <div style="text-align: center; line-height: 1.3">
+      <div style="font-family: 'Libertinus Serif', Georgia, serif; font-size: 16px; font-weight: 600">Middlemarch</div>
+      <div style="font-size: 12px; color: #69645b">George Eliot</div>
+    </div>
+    <div style="justify-self: end; display: flex; gap: 2px; align-items: center">
+      <button type="button" aria-label="Contents" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #1f1d1a; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg></button>
+      <button type="button" aria-label="Search" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #1f1d1a; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg></button>
+      <button type="button" aria-label="Highlights" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #1f1d1a; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l-6 6v3h9l3-3M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"></path></svg></button>
+      <button type="button" aria-label="Translate" aria-pressed="true" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: #f6e8e0; color: #8f3d21; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h9M8.5 3v2M6 5c.5 3 2.5 5.5 5.5 7M12 5c-.6 3.2-3 6-7 7.5M13 21l4-10 4 10M14.5 17.5h5"></path></svg></button>
+      <div role="status" style="height: 30px; padding: 0 12px; margin: 0 4px; display: flex; align-items: center; gap: 8px; border-radius: 999px; background: #f8f5ee; border: 1px solid #ddd7ca; font-size: 12px; color: #4a4640"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: #a4492a"></span>Translating…</div>
+      <button type="button" aria-label="Glossary" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #1f1d1a; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5zM9 8h7M9 12h5"></path></svg></button>
+      <button type="button" aria-label="Display" style="width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #1f1d1a; font-family: 'Libertinus Serif', Georgia, serif; font-size: 18px; font-weight: 600">Aa</button>
+    </div>
+  </header>
+
+  <main style="flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 16px; padding-bottom: 8px">
+    <button type="button" aria-label="Previous page" style="width: 44px; height: 44px; flex: none; border: 0; border-radius: 50%; background: rgb(255 255 255 / 0.45); color: #3d3933; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button>
+    <div style="width: 1240px; display: flex; flex-direction: column; gap: 14px">
+      <div style="position: relative; width: 1240px; height: 784px; display: flex; border-radius: 3px 3px 4px 4px; box-shadow: 0 1px 0 #d6cebd, 0 3px 0 -1px #f6f2ea, 0 4px 0 -1px #d6cebd, 0 6px 0 -2px #f3efe6, 0 7px 0 -2px #cfc6b4, 0 30px 60px -10px rgb(70 50 25 / 0.32), 0 12px 24px -12px rgb(70 50 25 / 0.28)">
+        <section aria-label="Left page" style="width: 620px; height: 784px; box-sizing: border-box; padding: 40px 72px 30px 80px; display: flex; flex-direction: column; background: linear-gradient(90deg, #f6f3ec 0%, #fbf9f4 12%, #fbf9f4 82%, #efe9de 94%, #ddd5c6 100%); border-radius: 3px 0 0 4px; font-family: 'Libertinus Serif', Georgia, serif; color: #2a2724">
+          <div style="flex: none; height: 24px; text-align: center; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #8a8377">Middlemarch</div>
+          <div style="flex: 1; padding-top: 8px">
+            <p style="margin: 0; font-size: 18.5px; line-height: 1.6">The road out of town ran low between the hedges, and by the second milestone the morning had settled into that pale, considering light which makes every field look newly ploughed.</p>
+            <p lang="zh-Hans" style="margin: 7px 0 18px; padding: 8px 14px; border-radius: 8px; background: #f1ede4; color: #4a4640; font-family: 'KingHwa_OldSong', 'Noto Serif SC', 'Songti SC', serif; font-size: 16px; line-height: 1.85">出城的路低低地穿过树篱之间。走到第二块里程碑时，清晨已沉入一种淡淡的、若有所思的光里，这种光让每一块田地都像是刚刚翻耕过。</p>
+            <p style="margin: 0; font-size: 18.5px; line-height: 1.6">She had meant to think of nothing in particular. It was a habit she had tried, as one tries a borrowed coat, and found that it hung badly on her.</p>
+            <p lang="zh-Hans" style="margin: 7px 0 18px; padding: 8px 14px; border-radius: 8px; background: #f1ede4; color: #4a4640; font-family: 'KingHwa_OldSong', 'Noto Serif SC', 'Songti SC', serif; font-size: 16px; line-height: 1.85">她本想什么也不去想。这是她试过的一个习惯，就像试穿一件借来的外套，却发现它穿在身上很不合身。</p>
+            <p style="margin: 0; font-size: 18.5px; line-height: 1.6">At the bridge a carter had stopped to let his horse drink, and he lifted his hat to her with the slow courtesy of a man who has nowhere he must be by noon.</p>
+            <p lang="zh-Hans" style="margin: 7px 0 0; padding: 8px 14px; border-radius: 8px; background: #f1ede4; color: #4a4640; font-family: 'KingHwa_OldSong', 'Noto Serif SC', 'Songti SC', serif; font-size: 16px; line-height: 1.85">桥边，一个赶车人停下来让马饮水。他向她举了举帽子，那份从容的礼貌，属于一个中午之前哪儿也不必赶去的人。</p>
+          </div>
+          <div style="flex: none; height: 24px; text-align: center; font-size: 13px; color: #8a8377">3</div>
+        </section>
+        <section aria-label="Right page" style="width: 620px; height: 784px; box-sizing: border-box; padding: 40px 80px 30px 72px; display: flex; flex-direction: column; background: linear-gradient(90deg, #d9d1c1 0%, #ebe5d9 5%, #f8f5ef 16%, #fcfaf6 40%, #fcfaf6 90%, #f6f2ea 100%); border-radius: 0 3px 4px 0; font-family: 'Libertinus Serif', Georgia, serif; color: #2a2724">
+          <div style="flex: none; height: 24px; text-align: center; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #8a8377">Old and Young</div>
+          <div style="flex: 1; padding-top: 8px">
+            <p style="margin: 0; font-size: 18.5px; line-height: 1.6">She returned it, and walked on, and was a little ashamed to find that she envied him.</p>
+            <p lang="zh-Hans" style="margin: 7px 0 18px; padding: 8px 14px; border-radius: 8px; background: #f1ede4; color: #4a4640; font-family: 'KingHwa_OldSong', 'Noto Serif SC', 'Songti SC', serif; font-size: 16px; line-height: 1.85">她回了礼，继续往前走，发现自己竟有些羡慕他，不禁微微感到羞愧。</p>
+            <p style="margin: 0; font-size: 18.5px; line-height: 1.6">There is a kind of patience that belongs only to people who expect very little, and another kind, rarer and more costly, that belongs to those who expect a great deal and have resolved to wait for it.</p>
+            <p lang="zh-Hans" style="margin: 7px 0 18px; padding: 8px 14px; border-radius: 8px; background: #f1ede4; color: #4a4640; font-family: 'KingHwa_OldSong', 'Noto Serif SC', 'Songti SC', serif; font-size: 16px; line-height: 1.85">有一种耐心只属于期望甚少的人；另一种更为少见、代价也更高的耐心，则属于那些期望甚多、并已下定决心等待的人。她还不知道<span style="color: #a4492a">|</span></p>
+            <p style="margin: 0; font-size: 18.5px; line-height: 1.6">The church clock struck the half hour behind her, and the sound came over the water thin and clear, as though it had been rinsed.</p>
+            <div aria-label="Translation waiting" style="margin: 7px 0 0; height: 52px; border-radius: 8px; background: #f1ede4; position: relative">
+              <span style="position: absolute; left: 14px; top: 14px; width: 78%; height: 9px; border-radius: 3px; background: #e2dccf"></span>
+              <span style="position: absolute; left: 14px; top: 30px; width: 46%; height: 9px; border-radius: 3px; background: #e2dccf"></span>
+            </div>
+          </div>
+          <div style="flex: none; height: 24px; text-align: center; font-size: 13px; color: #8a8377">4</div>
+        </section>
+        <div aria-hidden="true" style="position: absolute; left: 607px; top: 0; width: 26px; height: 784px; background: linear-gradient(90deg, rgb(60 45 25 / 0) 0%, rgb(60 45 25 / 0.14) 48%, rgb(60 45 25 / 0.2) 50%, rgb(60 45 25 / 0.12) 53%, rgb(60 45 25 / 0) 100%)"></div>
+      </div>
+      <div style="height: 28px; display: flex; align-items: center; gap: 16px; font-size: 12px; color: #5f5a51">
+        <span style="flex: none">Chapter 23 of 86</span>
+        <div style="position: relative; flex: 1; height: 28px">
+          <div style="position: absolute; left: 0; right: 0; top: 12px; height: 4px; border-radius: 2px; background: #d3cbbb"></div>
+          <div style="position: absolute; left: 0; width: 42%; top: 12px; height: 4px; border-radius: 2px; background: #a4492a"></div>
+          <span style="position: absolute; left: calc(42% - 7px); top: 7px; width: 14px; height: 14px; box-sizing: border-box; border: 2px solid #ece6da; border-radius: 50%; background: #a4492a"></span>
+        </div>
+        <span style="flex: none"><strong style="color: #1f1d1a; font-weight: 600">42%</strong> · 21 min left in chapter</span>
+      </div>
+    </div>
+    <button type="button" aria-label="Next page" style="width: 44px; height: 44px; flex: none; border: 0; border-radius: 50%; background: rgb(255 255 255 / 0.45); color: #3d3933; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

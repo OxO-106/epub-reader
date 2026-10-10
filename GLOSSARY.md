@@ -1,4 +1,4 @@
-# Reader
+# Verso
 
 A personal, local-first ebook and Markdown reader, used from a desktop browser and later from a phone over a private network.
 
@@ -25,7 +25,7 @@ The Chinese rendering of one paragraph of an English Book, produced on demand by
 _Avoid_: Subtitle, gloss file, cache
 
 **Settings**:
-How Reader runs (the translation model server, the library folder, who can connect, the port) and the reading preferences shared by all devices; changed on the Settings screen and kept by the server.
+How Verso runs (the translation model server, the library folder, who can connect, the port) and the reading preferences shared by all devices; changed on the Settings screen and kept by the server.
 _Avoid_: Preferences, options, config (for the screen); Display settings is the Reader's own panel for how a Book looks
 
 **Highlight**:

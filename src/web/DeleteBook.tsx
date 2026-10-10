@@ -47,7 +47,7 @@ export function DeleteBook({ book, onDeleted }: { book: BookSummary; onDeleted: 
           </p>
           {failed && (
             <p role="alert" class="error">
-              The Book could not be deleted. Check that Reader is still running, then try again.
+              The Book could not be deleted. Check that Verso is still running, then try again.
             </p>
           )}
           <div class="actions">

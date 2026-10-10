@@ -100,7 +100,7 @@ export function TranslationPanel({
       {view.kind === "not-set-up" && (
         <>
           <h3>Translation is not set up</h3>
-          <p>Reader can show a Chinese translation under each English paragraph, but it needs a model server to write it. Until then the English reads as usual.</p>
+          <p>Verso can show a Chinese translation under each English paragraph, but it needs a model server to write it. Until then the English reads as usual.</p>
           <p>
             Tell the app where the model server is by setting <code>READER_TRANSLATE_URL</code> to its address (for example <code>http://127.0.0.1:8080</code>)
             and, if that server holds more than one model, <code>READER_TRANSLATE_MODEL</code> to the one to use. Then restart Reader.
@@ -117,7 +117,7 @@ export function TranslationPanel({
           <p>
             Reading is not affected. Start the model server with <code>npm run translate:server</code> (<code>docs/translation-setup.md</code> has the whole guide).
           </p>
-          <p>Reader asks again every few seconds and carries on by itself once the server is back. Retry asks right now.</p>
+          <p>Verso asks again every few seconds and carries on by itself once the server is back. Retry asks right now.</p>
         </>
       )}
 
@@ -125,7 +125,7 @@ export function TranslationPanel({
         <>
           <h3>The model server keeps failing</h3>
           <p>
-            It answers, but with errors, so Reader has paused translating. Reading is not affected. Look at the model server&rsquo;s window or log
+            It answers, but with errors, so Verso has paused translating. Reading is not affected. Look at the model server&rsquo;s window or log
             (<code>docs/translation-setup.md</code>, Troubleshooting), then press Retry.
           </p>
         </>

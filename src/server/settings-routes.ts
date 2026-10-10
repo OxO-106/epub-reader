@@ -18,7 +18,7 @@ const errorResponse = (status: 400 | 403 | 404 | 409 | 413 | 415, code: string, 
  */
 async function readWrite(c: Context): Promise<{ body: unknown } | { refusal: Response }> {
   if (!fromOwnOrigin(c.req.header("origin"), c.req.header("host")) || !addressedDirectly(c.req.header("host"))) {
-    return { refusal: errorResponse(403, "forbidden-origin", "Settings can only be changed from Reader itself.") };
+    return { refusal: errorResponse(403, "forbidden-origin", "Settings can only be changed from Verso itself.") };
   }
   if (!isJson(c.req.header("content-type"))) {
     return { refusal: errorResponse(415, "unsupported-media-type", "The request must be sent as application/json.") };
@@ -92,7 +92,7 @@ export function settingsRoutes(store: SettingsStore, phoneAddress: () => Promise
   routes.post("/restart", async (c) => {
     const read = await readWrite(c);
     if ("refusal" in read) return read.refusal;
-    if (!store.restart()) return errorResponse(409, "cannot-restart", "Reader cannot restart itself here. Stop it and start it again.");
+    if (!store.restart()) return errorResponse(409, "cannot-restart", "Verso cannot restart itself here. Stop it and start it again.");
     return c.body(null, 202);
   });
 

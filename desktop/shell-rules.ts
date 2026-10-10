@@ -90,6 +90,6 @@ const translationWords: Record<TranslationDot, string> = {
 export function trayLook(server: ServerState, translation: TranslationDot): { icon: string; tooltip: string } {
   return {
     icon: `tray-${serverColour[server]}-${translationColour[translation]}.png`,
-    tooltip: `Reader: ${serverWords[server]}\nTranslation: ${translationWords[translation]}`,
+    tooltip: `Verso: ${serverWords[server]}\nTranslation: ${translationWords[translation]}`,
   };
 }

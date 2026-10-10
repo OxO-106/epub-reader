@@ -17,17 +17,17 @@ let server: RunningServer | undefined;
 try {
   server = await startServer({ restart: () => parent.postMessage({ type: "restart" }) });
   parent.postMessage({ type: "ready", url: server.url });
-  console.log(`Reader is running at ${server.url} (data folder ${server.config.dataDir})`);
+  console.log(`Verso is running at ${server.url} (data folder ${server.config.dataDir})`);
 } catch (error) {
   // A port in use, a folder that cannot be created, a bad saved setting: the shell shows the message in a dialog.
   const known = error instanceof ListenError || error instanceof ConfigError;
   const text = (error as Error)?.message ?? String(error);
   const port = /EADDRINUSE.*:(\d+)\s*$/.exec(text)?.[1];
   const message = port
-    ? `Port ${port} is already in use, perhaps by another copy of Reader started with npm start. Close it, or choose another port in Settings, then start Reader again.`
+    ? `Port ${port} is already in use, perhaps by another copy of Verso started with npm start. Close it, or choose another port in Settings, then start Verso again.`
     : known
       ? text
-      : `Reader could not start: ${text}`;
+      : `Verso could not start: ${text}`;
   console.error(message);
   parent.postMessage({ type: "failed", message });
   process.exit(1);

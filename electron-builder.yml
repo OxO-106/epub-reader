@@ -2,7 +2,7 @@
 # is the same code as `npm start`: the server's TypeScript runs on the Node that Electron bundles, so the files are
 # shipped as they are (no asar archive, which Node's type stripping cannot read from), with the built web front end.
 appId: io.github.oxo106.reader
-productName: Reader
+productName: Verso
 copyright: Copyright © 2026 Zihan Chen
 directories:
   output: release
@@ -55,7 +55,7 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: Reader
-  artifactName: Reader-Setup-${version}.${ext}
+  artifactName: Verso-Setup-${version}.${ext}
   deleteAppDataOnUninstall: false
 mac:
   target: dmg

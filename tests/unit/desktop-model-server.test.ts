@@ -152,7 +152,7 @@ describe("supervising the model server", () => {
 
 describe("the tray and the app's settings", () => {
   it("shows the two states as two coloured dots and says them in the tooltip", () => {
-    expect(trayLook("running", "not-set-up")).toEqual({ icon: "tray-green-grey.png", tooltip: "Reader: running\nTranslation: not set up" });
+    expect(trayLook("running", "not-set-up")).toEqual({ icon: "tray-green-grey.png", tooltip: "Verso: running\nTranslation: not set up" });
     expect(trayLook("starting", "failed").icon).toBe("tray-amber-red.png");
   });
 

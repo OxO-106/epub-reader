@@ -167,7 +167,7 @@ test.describe("a Markdown Book", () => {
     await expect(frame.getByText("Back to Field Notes")).toBeVisible();
     await page.waitForTimeout(500);
 
-    expect(await page.title()).toBe("Reader");
+    expect(await page.title()).toBe("Verso");
     expect(await frame.locator("script, [onerror], [onload], iframe, object, embed").count()).toBe(0);
     expect(await frame.locator('a[href^="javascript:" i]').count()).toBe(0);
     await expect(frame.getByText("Dangerous link")).toBeVisible();

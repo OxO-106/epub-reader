@@ -7,7 +7,7 @@
   The tray icon is two dots: the left one is the Reader, the right one is Translation.
     green  = running and answering        amber = starting (the model takes a few seconds to load)
     red    = stopped or not answering     grey  = not set up / switched off
-  Hover over the icon for the words ("Reader: running | Translation: running"). Double-click opens the Reader in the
+  Hover over the icon for the words ("Verso: running | Translation: running"). Double-click opens the Reader in the
   browser. Right-click for: Open Reader, restart either server, open the logs folder, Quit (stops both servers).
 
   What it starts, both hidden:
@@ -136,7 +136,7 @@ if ($IconPreview) {
 if ($Stop) {
   $quit = $null
   if (-not [System.Threading.EventWaitHandle]::TryOpenExisting($quitEventName, [ref]$quit)) {
-    Write-Host "The Reader tray is not running."
+    Write-Host "The Verso tray is not running."
     exit 0
   }
   $null = $quit.Set()
@@ -182,7 +182,7 @@ function New-Service([string]$name, [string]$healthUrl, [int]$graceSec) {
 }
 
 $script:TranslationEnabled = -not $NoTranslation
-$script:Reader = New-Service "Reader" "$readerUrl/api/books" 90
+$script:Reader = New-Service "Verso" "$readerUrl/api/books" 90
 $script:Translation = New-Service "Translation" "http://127.0.0.1:$LlamaPort/health" 180
 if (-not $script:TranslationEnabled) { $script:Translation.State = "off"; $script:Translation.Detail = "switched off (-NoTranslation)" }
 
@@ -330,13 +330,13 @@ $notify = New-Object System.Windows.Forms.NotifyIcon
 $notify.Visible = $true
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
 
-$itemOpen = New-Object System.Windows.Forms.ToolStripMenuItem "Open Reader"
+$itemOpen = New-Object System.Windows.Forms.ToolStripMenuItem "Open Verso"
 $itemOpen.Font = New-Object System.Drawing.Font($itemOpen.Font, [System.Drawing.FontStyle]::Bold)
-$itemReader = New-Object System.Windows.Forms.ToolStripMenuItem "Reader"
+$itemReader = New-Object System.Windows.Forms.ToolStripMenuItem "Verso"
 $itemReader.Enabled = $false
 $itemTranslation = New-Object System.Windows.Forms.ToolStripMenuItem "Translation"
 $itemTranslation.Enabled = $false
-$itemRestartReader = New-Object System.Windows.Forms.ToolStripMenuItem "Restart Reader"
+$itemRestartReader = New-Object System.Windows.Forms.ToolStripMenuItem "Restart Verso"
 $itemRestartTranslation = New-Object System.Windows.Forms.ToolStripMenuItem "Restart Translation"
 $itemLogs = New-Object System.Windows.Forms.ToolStripMenuItem "Open logs folder"
 $itemQuit = New-Object System.Windows.Forms.ToolStripMenuItem "Quit (stop both)"
@@ -372,7 +372,7 @@ function Update-Tray {
   $r = $script:Reader; $t = $script:Translation
 
   $notify.Icon = Get-StatusIcon $r.State $t.State
-  $tip = "Reader: $(Get-Word $r.State) | Translation: $(Get-Word $t.State)"
+  $tip = "Verso: $(Get-Word $r.State) | Translation: $(Get-Word $t.State)"
   $notify.Text = $(if ($tip.Length -gt 63) { $tip.Substring(0, 63) } else { $tip })
   $itemReader.Text = Format-Line $r
   $itemTranslation.Text = Format-Line $t
@@ -380,13 +380,13 @@ function Update-Tray {
   $bothUp = ($r.State -eq "running") -and (($t.State -eq "running") -or -not $script:TranslationEnabled)
   if ($bothUp -and -not $script:AnnouncedBoth) {
     $script:AnnouncedBoth = $true
-    $what = $(if ($script:TranslationEnabled) { "Reader and Translation are running." } else { "Reader is running." })
-    Show-Balloon "Reader" "$what Double-click the icon to open it." ([System.Windows.Forms.ToolTipIcon]::Info)
+    $what = $(if ($script:TranslationEnabled) { "Verso and Translation are running." } else { "Verso is running." })
+    Show-Balloon "Verso" "$what Double-click the icon to open it." ([System.Windows.Forms.ToolTipIcon]::Info)
   }
   foreach ($s in @($r, $t)) {
     if ($s.Prev -ne $s.State) {
       if (($s.State -eq "stopped" -or $s.State -eq "error") -and $s.Prev -ne "off") {
-        Show-Balloon "Reader" (Format-Line $s) ([System.Windows.Forms.ToolTipIcon]::Warning)
+        Show-Balloon "Verso" (Format-Line $s) ([System.Windows.Forms.ToolTipIcon]::Warning)
         $script:AnnouncedBoth = $false
       }
       Write-TrayLog (Format-Line $s)

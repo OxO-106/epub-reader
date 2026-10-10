@@ -18,7 +18,7 @@ export function KeepBook({ book, kept, disabled, onProblem }: { book: BookSummar
       if (kept) await forgetBook(book.id);
       else await keepBook(book);
     } catch (error) {
-      onProblem(error instanceof DeviceFullError ? error.message : `“${book.title}” could not be kept on this device. Check that Reader is running.`);
+      onProblem(error instanceof DeviceFullError ? error.message : `“${book.title}” could not be kept on this device. Check that Verso is running.`);
     } finally {
       setBusy(false);
     }

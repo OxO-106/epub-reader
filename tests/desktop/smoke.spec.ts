@@ -57,6 +57,9 @@ test("starts the server, shows the Library, adds and opens a Book, and quits lea
   const page = await app.firstWindow();
   await expect(page.getByRole("heading", { name: "Your Library is empty" })).toBeVisible({ timeout: 30_000 });
   const url = page.url();
+  // The app is called Verso (issue #39), in the window as in the taskbar.
+  expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getTitle())).toBe("Verso");
+  expect(await app.evaluate(({ app }) => app.getName())).toBe("Verso");
 
   await page.locator("input[type=file]").setInputFiles(fixture("sample.epub"));
   await page.getByRole("link", { name: /Sample Book/ }).click();
@@ -91,25 +94,25 @@ test("a port already in use ends in a message, not a blank window", async () => 
   const taken = String((blocker.address() as { port: number }).port);
   try {
     expect(await runToExit({ READER_DESKTOP_DATA: data, READER_PORT: taken, READER_DESKTOP_NO_DIALOGS: "1" })).toBe(1);
-    expect(await readFile(join(data, "logs/reader.log"), "utf8")).toMatch(new RegExp(`Reader could not start: Port ${taken} is already in use`));
+    expect(await readFile(join(data, "logs/reader.log"), "utf8")).toMatch(new RegExp(`Verso could not start: Port ${taken} is already in use`));
   } finally {
     blocker.close();
   }
 });
 
-test("shows Reader and translation in the tray, and can keep running there when the window is closed", async () => {
+test("shows Verso and translation in the tray, and can keep running there when the window is closed", async () => {
   app = await launch();
   const page = await app.firstWindow();
   await expect(page.getByRole("heading", { name: "Your Library is empty" })).toBeVisible({ timeout: 30_000 });
   const tray = () => app!.evaluate(() => (globalThis as unknown as { __readerShell: { tray(): { tooltip: string; present: boolean } } }).__readerShell.tray());
-  await expect.poll(tray).toEqual({ tooltip: "Reader: running\nTranslation: not set up", present: true });
+  await expect.poll(tray).toEqual({ tooltip: "Verso: running\nTranslation: not set up", present: true });
 
   await page.goto(new URL("/#/settings", page.url()).href);
   const desktop = page.getByRole("region", { name: "Desktop app" });
   await expect(desktop).toContainText("No model yet.");
   // The model is downloaded only into a folder the reader chose.
   await expect(desktop.getByRole("button", { name: "Download the model" })).toBeDisabled();
-  await desktop.getByRole("checkbox", { name: "Keep Reader running in the tray when the window is closed" }).check();
+  await desktop.getByRole("checkbox", { name: "Keep Verso running in the tray when the window is closed" }).check();
   await expect.poll(async () => JSON.parse(await readFile(join(data, "desktop.json"), "utf8")).closeToTray).toBe(true);
 
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.close());
@@ -128,10 +131,10 @@ test("a Book file given to the app is added to the Library and opened", async ()
   expect(page.url()).toMatch(/#\/read\/[0-9a-f]{64}$/);
 });
 
-// The packaged app (electron-builder's unpacked output), when READER_DESKTOP_EXE names its Reader.exe: the same code,
+// The packaged app (electron-builder's unpacked output), when READER_DESKTOP_EXE names its Verso.exe: the same code,
 // shipped without an asar archive, must still start its server and show the Library.
 test("the packaged app starts and shows the Library", async () => {
-  test.skip(!process.env.READER_DESKTOP_EXE, "set READER_DESKTOP_EXE to the packaged Reader.exe (npx electron-builder --win --dir)");
+  test.skip(!process.env.READER_DESKTOP_EXE, "set READER_DESKTOP_EXE to the packaged Verso.exe (npx electron-builder --win --dir)");
   port = String(20000 + Math.floor(Math.random() * 20000));
   app = await electron.launch({
     executablePath: process.env.READER_DESKTOP_EXE,

@@ -35,7 +35,7 @@ const envNames: Record<SettingKey, string> = {
 
 function fixedNote(key: SettingKey, info: SettingInfo): string | null {
   if (info.source === "environment") return `Set by the ${envNames[key]} environment variable, so it cannot be changed here.`;
-  if (info.source === "app") return "Set by the app running Reader, so it cannot be changed here.";
+  if (info.source === "app") return "Set by the app running Verso, so it cannot be changed here.";
   return null;
 }
 
@@ -73,7 +73,7 @@ export function SettingsScreen() {
         </>
       ) : failed ? (
         <p role="alert" class="settings-message">
-          The settings could not be loaded. Check that Reader is still running, then reload this page.
+          The settings could not be loaded. Check that Verso is still running, then reload this page.
         </p>
       ) : (
         <p role="status" class="settings-message">
@@ -183,7 +183,7 @@ function TranslationSection({ view, onSaved }: { view: SettingsView; onSaved(vie
   function refusal(error: unknown) {
     if (error instanceof SettingsRefusal && error.key) setErrors({ [error.key]: error.message });
     else if (error instanceof SettingsRefusal) setOutcome({ kind: "problem", text: error.message });
-    else setOutcome({ kind: "problem", text: "Reader could not be reached. Check that it is still running." });
+    else setOutcome({ kind: "problem", text: "Verso could not be reached. Check that it is still running." });
   }
 
   async function test() {
@@ -240,7 +240,7 @@ function TranslationSection({ view, onSaved }: { view: SettingsView; onSaved(vie
       title="Translation"
       description={
         <>
-          Reader can show a Chinese translation under each English paragraph, written by a model server you run yourself (llama.cpp,
+          Verso can show a Chinese translation under each English paragraph, written by a model server you run yourself (llama.cpp,
           Ollama, LM Studio or vLLM). Changes apply at once. The <a href="https://github.com/OxO-106/epub-reader/blob/main/docs/translation-setup.md">set-up guide</a> explains
           how to run one.
         </>
@@ -376,9 +376,9 @@ function RestartNotice({ view }: { view: SettingsView }) {
   return (
     <div class="settings-restart" role="status">
       <p>
-        Restart Reader to apply your changes to {waiting.join(" and ")}.{" "}
-        {!view.canRestart && "Stop Reader (Ctrl+C in its window, or Quit in the tray icon’s menu) and start it again."}
-        {state === "failed" && " Reader did not come back by itself; start it again by hand."}
+        Restart Verso to apply your changes to {waiting.join(" and ")}.{" "}
+        {!view.canRestart && "Stop Verso (Ctrl+C in its window, or Quit in the tray icon’s menu) and start it again."}
+        {state === "failed" && " Verso did not come back by itself; start it again by hand."}
       </p>
       {view.canRestart && (
         <button type="button" class="settings-button primary" onClick={restart} disabled={state === "restarting"}>
@@ -404,7 +404,7 @@ function useSave(onSaved: (view: SettingsView) => void) {
       setOutcome({ kind: "ok", text: done(next) });
     } catch (error) {
       if (error instanceof SettingsRefusal && error.key) setErrors({ [error.key]: error.message });
-      else setOutcome({ kind: "problem", text: error instanceof SettingsRefusal ? error.message : "Reader could not be reached. Check that it is still running." });
+      else setOutcome({ kind: "problem", text: error instanceof SettingsRefusal ? error.message : "Verso could not be reached. Check that it is still running." });
     } finally {
       setBusy(false);
     }
@@ -416,7 +416,7 @@ function useSave(onSaved: (view: SettingsView) => void) {
   return { errors, busy, outcome, save, clear };
 }
 
-const savedNeedsRestart = (next: SettingsView) => (next.restartNeeded ? "Saved. It takes effect when Reader restarts." : "Saved.");
+const savedNeedsRestart = (next: SettingsView) => (next.restartNeeded ? "Saved. It takes effect when Verso restarts." : "Saved.");
 
 function SaveRow({ busy, outcome }: { busy: boolean; outcome: Outcome }) {
   return (
@@ -440,7 +440,7 @@ function LibrarySection({ view, onSaved }: { view: SettingsView; onSaved(view: S
   return (
     <Section
       title="Library folder"
-      description="Books copied into this folder are added to your Library by themselves. Reader makes the folder if it does not exist yet."
+      description="Books copied into this folder are added to your Library by themselves. Verso makes the folder if it does not exist yet."
     >
       <form
         class="settings-form"
@@ -502,7 +502,7 @@ function NetworkSection({ view, onSaved }: { view: SettingsView; onSaved(view: S
       description={
         <>
           Who can reach Reader. There is no login: anyone who can reach it can read and change your Library, so only open it to networks you
-          trust. See <a href="https://github.com/OxO-106/epub-reader/blob/main/docs/network-access.md">reaching Reader from other devices</a>.
+          trust. See <a href="https://github.com/OxO-106/epub-reader/blob/main/docs/network-access.md">reaching Verso from other devices</a>.
         </>
       }
     >
@@ -565,7 +565,7 @@ function NetworkSection({ view, onSaved }: { view: SettingsView; onSaved(view: S
 
 function AboutSection({ view }: { view: SettingsView }) {
   return (
-    <Section title="About" description="Reader is free software for reading your own books on your own machines.">
+    <Section title="About" description="Verso is free software for reading your own books on your own machines.">
       <dl class="settings-about">
         <dt>Version</dt>
         <dd>{view.about.version}</dd>
@@ -599,8 +599,8 @@ function PhoneSection({ view }: { view: SettingsView }) {
 
   return (
     <Section
-      title="Use Reader on your phone"
-      description="An iPhone can add Reader to its Home Screen and keep Books offline only from a secure (https) address. Tailscale gives this PC one, on your own private network."
+      title="Use Verso on your phone"
+      description="An iPhone can add Verso to its Home Screen and keep Books offline only from a secure (https) address. Tailscale gives this PC one, on your own private network."
     >
       <ol class="phone-steps">
         <li>
@@ -612,7 +612,7 @@ function PhoneSection({ view }: { view: SettingsView }) {
           {found && !found.httpsEnabled && <strong class="phone-warning"> HTTPS Certificates are not on yet for this PC.</strong>}
         </li>
         <li>
-          On this PC, run <code class="phone-command">{command}</code> in a terminal once. Reader keeps listening on this PC only; Tailscale passes the phone’s
+          On this PC, run <code class="phone-command">{command}</code> in a terminal once. Verso keeps listening on this PC only; Tailscale passes the phone’s
           requests to it.
         </li>
         <li>On the phone, open the address below in Safari, tap Share, then Add to Home Screen.</li>
@@ -665,14 +665,14 @@ function DesktopSection() {
         <label class="settings-choice settings-toggle">
           <input type="checkbox" checked={settings.closeToTray} onChange={(event) => change({ closeToTray: event.currentTarget.checked })} />
           <span>
-            <span class="settings-choice-label">Keep Reader running in the tray when the window is closed</span>
+            <span class="settings-choice-label">Keep Verso running in the tray when the window is closed</span>
             <span class="settings-hint">So your phone can still reach it. Quit from the tray icon’s menu.</span>
           </span>
         </label>
         <label class="settings-choice settings-toggle">
           <input type="checkbox" checked={settings.startWithSystem} onChange={(event) => change({ startWithSystem: event.currentTarget.checked })} />
           <span>
-            <span class="settings-choice-label">Start Reader when I sign in to this computer</span>
+            <span class="settings-choice-label">Start Verso when I sign in to this computer</span>
             <span class="settings-hint">It starts in the tray, without a window.</span>
           </span>
         </label>
@@ -712,7 +712,7 @@ function DesktopSection() {
         {translation.state === "not-set-up" && (
           <div class="model-download">
             <p class="settings-hint">
-              Reader can download the translation model (Tencent Hy-MT2-7B, 4.6 GB) into the folder above, checked against its published SHA-256. A
+              Verso can download the translation model (Tencent Hy-MT2-7B, 4.6 GB) into the folder above, checked against its published SHA-256. A
               download that stops carries on from where it was. Translation turns on when it is done.
             </p>
             {(download.state === "downloading" || download.state === "verifying" || download.state === "paused") && (
@@ -811,7 +811,7 @@ function DeviceSection() {
             </ul>
             <p class="settings-hint" role="status">
               {books.length} {books.length === 1 ? "Book" : "Books"}, {formatBytes(total)}
-              {estimate ? ` · ${formatBytes(estimate.usage)} of the ${formatBytes(estimate.quota)} this browser allows Reader is in use.` : "."}
+              {estimate ? ` · ${formatBytes(estimate.usage)} of the ${formatBytes(estimate.quota)} this browser allows Verso is in use.` : "."}
             </p>
             <div class="settings-actions">
               <button type="button" class="settings-button quiet" onClick={() => void forgetAllBooks()}>

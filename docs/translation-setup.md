@@ -260,10 +260,10 @@ tailscale ip -4                          # for example 100.101.73.76; this comma
 Start Tailscale before the model server, because the address does not exist otherwise. Then, in a PowerShell opened as administrator, allow the port only from the Tailscale address range (the command was only checked with `-WhatIf` on the laptop, since a rule there would be pointless):
 
 ```powershell
-New-NetFirewallRule -DisplayName "Reader translation model (Tailscale only)" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080 -RemoteAddress 100.64.0.0/10
+New-NetFirewallRule -DisplayName "Verso translation model (Tailscale only)" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080 -RemoteAddress 100.64.0.0/10
 ```
 
-Do not create a rule for any address, and do not forward the port on a router. The address is plain `http`, but inside the tailnet the traffic is encrypted by Tailscale (acceptable here; elsewhere use `https` or a network you trust, because the Book's text and the key travel in every request). Prefer `$env:LLAMA_API_KEY` to `-ApiKey` where other people can see this PC's process list. To remove the rule later: `Remove-NetFirewallRule -DisplayName "Reader translation model (Tailscale only)"`.
+Do not create a rule for any address, and do not forward the port on a router. The address is plain `http`, but inside the tailnet the traffic is encrypted by Tailscale (acceptable here; elsewhere use `https` or a network you trust, because the Book's text and the key travel in every request). Prefer `$env:LLAMA_API_KEY` to `-ApiKey` where other people can see this PC's process list. To remove the rule later: `Remove-NetFirewallRule -DisplayName "Verso translation model (Tailscale only)"`.
 
 ### Point the app at it
 

@@ -2,7 +2,7 @@
 // and shows this PC's address and its QR code when Tailscale knows it.
 import { expect, test } from "./fixtures.ts";
 
-const section = (page: import("@playwright/test").Page) => page.getByRole("region", { name: "Use Reader on your phone" });
+const section = (page: import("@playwright/test").Page) => page.getByRole("region", { name: "Use Verso on your phone" });
 
 test("shows the steps, this PC's https address and a QR code of it", async ({ page }) => {
   await page.route("**/api/settings/phone", (route) =>

@@ -1,6 +1,6 @@
-# Running Reader
+# Running Verso
 
-How to install and start Reader, where it keeps your files, and the settings it reads from environment variables. For the overview see the [README](../README.md); for translation see [translation.md](translation.md); for reaching Reader from your phone or other devices see [network-access.md](network-access.md).
+How to install and start Verso, where it keeps your files, and the settings it reads from environment variables. For the overview see the [README](../README.md); for translation see [translation.md](translation.md); for reaching Verso from your phone or other devices see [network-access.md](network-access.md).
 
 ## What it reads
 
@@ -36,11 +36,11 @@ Double-click **`Start Reader.cmd`**. It starts the Reader server and the transla
 | red | stopped or not answering |
 | grey | not set up (model or llama.cpp missing, see [docs/translation-setup.md](translation-setup.md)) or switched off |
 
-Hover over the icon for the words ("Reader: running | Translation: running"). Double-click it to open the Reader in the browser. Right-click for Open Reader, Restart Reader, Restart Translation, Open logs folder and **Quit (stop both)**. A balloon tells you when both are up and when one stops unexpectedly. Windows may tuck a new tray icon into the "^" overflow: drag it onto the taskbar once to keep it visible.
+Hover over the icon for the words ("Verso: running | Translation: running"). Double-click it to open the Reader in the browser. Right-click for Open Verso, Restart Verso, Restart Translation, Open logs folder and **Quit (stop both)**. A balloon tells you when both are up and when one stops unexpectedly. Windows may tuck a new tray icon into the "^" overflow: drag it onto the taskbar once to keep it visible.
 
 - **Stop everything:** use Quit in the icon's menu, or double-click **`Stop Reader.cmd`**.
 - **Already running?** Double-clicking `Start Reader.cmd` again just opens the Reader. A server that was already running on its port is used as it is and is left running when you quit; the tray only stops what it started.
-- **Reader only:** `Start Reader.cmd -NoTranslation`. Another model location: `-ModelPath` and `-RuntimeDir`, or the `READER_MODEL_PATH` and `READER_LLAMA_DIR` variables (default: the repository's `translation-models` folder when the model is there, else `%USERPROFILE%\translation-models`).
+- **Verso only:** `Start Reader.cmd -NoTranslation`. Another model location: `-ModelPath` and `-RuntimeDir`, or the `READER_MODEL_PATH` and `READER_LLAMA_DIR` variables (default: the repository's `translation-models` folder when the model is there, else `%USERPROFILE%\translation-models`).
 - **Logs and status:** `%LOCALAPPDATA%\Reader\logs` (overwritten at each start; server messages, never Book text) and `%LOCALAPPDATA%\Reader\status.json`.
 - The tray is `scripts/reader-tray.ps1` (Windows PowerShell 5.1, nothing to install). It needs `npm` on the PATH, as `npm start` does.
 
@@ -64,7 +64,7 @@ If the original of a deleted Book is still in the library folder, what happens d
 
 ### Settings and environment variables
 
-Most settings below can be changed in two places: on the **Settings** screen (the gear in the Library), which saves them in `settings.json` in the data folder, or with an environment variable. An environment variable always wins, and the Settings screen shows such a setting as fixed. Translation settings changed on the screen apply at once; the library folder, address and port when Reader restarts. The data folder itself is only set with `READER_DATA_DIR`, since the saved settings live in it.
+Most settings below can be changed in two places: on the **Settings** screen (the gear in the Library), which saves them in `settings.json` in the data folder, or with an environment variable. An environment variable always wins, and the Settings screen shows such a setting as fixed. Translation settings changed on the screen apply at once; the library folder, address and port when Verso restarts. The data folder itself is only set with `READER_DATA_DIR`, since the saved settings live in it.
 
 Other settings, all optional:
 

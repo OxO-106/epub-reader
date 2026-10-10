@@ -92,7 +92,7 @@ export function useHighlights(bookId: string, active: boolean): Highlights {
         return;
       }
       setList((list) => (previous ? upsert(list, previous) : list.filter((h) => h.id !== next.id)));
-      setProblem("The highlight could not be saved. Check that Reader is running, then try again.");
+      setProblem("The highlight could not be saved. Check that Verso is running, then try again.");
     }
   }
 
@@ -123,7 +123,7 @@ export function useHighlights(bookId: string, active: boolean): Highlights {
           return;
         }
         setList((list) => upsert(list, old));
-        setProblem("The highlight could not be deleted. Check that Reader is running, then try again.");
+        setProblem("The highlight could not be deleted. Check that Verso is running, then try again.");
       });
       return old;
     },
