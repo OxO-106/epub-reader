@@ -8,6 +8,7 @@ import {
   fontSizeRange,
   lineSpacingRange,
   marginSizes,
+  pageTurnChoices,
   paragraphChoices,
   themes,
   type DisplaySettings,
@@ -190,6 +191,26 @@ export function DisplaySettingsPanel({ settings, onChange, onClose, fixed }: Pro
             ))}
           </div>
         </div>
+
+        {settings.flow === "paginated" && (
+          <div class="setting">
+            <div class="setting-name" id="display-page-turn">
+              Page turn
+            </div>
+            <div class="segments" role="group" aria-labelledby="display-page-turn" aria-describedby="display-page-turn-note">
+              {pageTurnChoices.map(({ value, label }) => (
+                <button key={value} type="button" aria-pressed={settings.pageTurn === value} onClick={() => set({ pageTurn: value })}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p class="setting-note" id="display-page-turn-note">
+              {settings.pageTurn === "curl"
+                ? "On a wide screen the page curls over like paper. Pages turn at once when the system asks for less motion."
+                : "The next page is simply there."}
+            </p>
+          </div>
+        )}
         </>
       )}
 

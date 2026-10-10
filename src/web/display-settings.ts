@@ -21,7 +21,19 @@ export interface DisplaySettings {
   flow: Flow;
   /** How paragraphs are set: as the Book does (spaced while translating), indented, or spaced. See reader/paragraphs.ts. */
   paragraphs: Paragraphs;
+  /**
+   * How a page turns in the book look (a wide window, paginated): the page curls over like paper, or the next one is
+   * simply there. Never curls when the system asks for reduced motion. See reader/page-curl.ts.
+   */
+  pageTurn: PageTurn;
 }
+
+export type PageTurn = "curl" | "instant";
+
+export const pageTurnChoices: Array<{ value: PageTurn; label: string }> = [
+  { value: "curl", label: "Curl" },
+  { value: "instant", label: "Instant" },
+];
 
 export type Paragraphs = "book" | "indented" | "spaced";
 
@@ -210,6 +222,7 @@ export function defaultDisplay(): DisplaySettings {
     theme: prefersDark ? "dark" : "light",
     flow: "paginated",
     paragraphs: "book",
+    pageTurn: "curl",
   };
 }
 
@@ -231,6 +244,7 @@ export function normalizeDisplay(input: unknown): DisplaySettings {
     theme: oneOf(saved.theme, Object.keys(themes) as Theme[], fallback.theme),
     flow: oneOf(saved.flow, ["paginated", "scrolled"] as const, fallback.flow),
     paragraphs: oneOf(saved.paragraphs, ["book", "indented", "spaced"] as const, fallback.paragraphs),
+    pageTurn: oneOf(saved.pageTurn, ["curl", "instant"] as const, fallback.pageTurn),
   };
 }
 

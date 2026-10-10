@@ -49,6 +49,9 @@ export interface Renderer extends HTMLElement {
   /** Paginated only: the screenful shown (counted from 0, which is a blank one before the text) and how many there are. */
   page?: number;
   pages?: number;
+  /** Paginated only: no page before (or after) this one, in the whole Book. */
+  atStart?: boolean;
+  atEnd?: boolean;
 }
 
 /** The SVG layer over a Book document that annotations and search outlines are drawn on (overlayer.js). */

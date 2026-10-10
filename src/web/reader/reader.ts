@@ -20,6 +20,7 @@ import { bookStyles } from "./book-styles.ts";
 import { normalizeFontSizes } from "./font-scale.ts";
 import { applyParagraphs, effectiveParagraphs, markParagraphs } from "./paragraphs.ts";
 import { clickMayTurnPage, createTurnQueue, directionForKey, edgeAt, keyMayTurnPage, type Direction } from "./page-turn.ts";
+import { canCurl, curling, curlTurn, type Lift } from "./page-curl.ts";
 import { sha1 } from "./sha1.ts";
 import { resolveLanguage } from "./chinese.ts";
 import { createTranslationEngine, type Surface, type TranslationStatus } from "./translation/engine.ts";
@@ -446,8 +447,26 @@ export function createReader(container: HTMLElement): Reader {
   let opened: Promise<void> = Promise.resolve(); // settles when the current Book has finished opening
   const turns = createTurnQueue(async (direction) => {
     await opened; // a key pressed while the Book is still opening waits for it instead of being lost
-    if (view) await (direction === "next" ? view.next() : view.prev());
+    const turning = view;
+    if (!turning) return;
+    const go = () => (direction === "next" ? turning.next() : turning.prev());
+    if (!curls(direction)) return go();
+    // Going forward lifts the right-hand page of a left-to-right Book, the left-hand one of a right-to-left Book.
+    const lift: Lift = (direction === "next") !== rtl ? "right" : "left";
+    const relocated = new Promise((resolve) => turning.addEventListener("relocate", resolve, { once: true }));
+    await curlTurn(container, lift, (turning.renderer.heads?.length ?? 1) > 1, go, relocated);
   });
+
+  /**
+   * Whether a page turn curls over (page-curl.ts): in the book look, on a paginated reflowable Book, with the Display
+   * setting on and a browser and system that allow it; and only when there is a page to turn to.
+   */
+  function curls(direction: "next" | "prev"): boolean {
+    const renderer = view?.renderer;
+    if (!renderer || !bookLook || fixed || renderer.scrolled !== false || display?.pageTurn !== "curl") return false;
+    if (direction === "next" ? renderer.atEnd : renderer.atStart) return false;
+    return canCurl(container.ownerDocument);
+  }
 
   // ---- translation: the Reader tells the engine where each Book document is on screen ----------------------------------
   const translation = createTranslationEngine();
@@ -709,12 +728,28 @@ export function createReader(container: HTMLElement): Reader {
       });
       const keyTarget = container.ownerDocument;
       const onMarginClick = (click: MouseEvent) => onClick(click, click.clientX, null); // outside the frames
+      // During a page curl every click reaches the root element: one that landed on the pages is a click on the page,
+      // one on a button or link (Next, pressed again quickly) is passed to it.
+      const onCurlClick = (click: MouseEvent) => {
+        if (click.target !== keyTarget.documentElement || !curling()) return;
+        const under = (el: Element) => {
+          const box = el.getBoundingClientRect();
+          return click.clientX >= box.left && click.clientX <= box.right && click.clientY >= box.top && click.clientY <= box.bottom;
+        };
+        if (under(container)) return onClick(click, click.clientX, null);
+        const control = [...keyTarget.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]")].find(
+          (el) => el.getClientRects().length > 0 && under(el),
+        );
+        control?.click();
+      };
       keyTarget.addEventListener("keydown", onKeyDown);
+      keyTarget.addEventListener("click", onCurlClick);
       container.addEventListener("click", onMarginClick);
       container.tabIndex = -1;
       container.style.outline = "none";
       stopInput = () => {
         keyTarget.removeEventListener("keydown", onKeyDown);
+        keyTarget.removeEventListener("click", onCurlClick);
         container.removeEventListener("click", onMarginClick);
         container.removeAttribute("tabindex");
         container.style.outline = "";
